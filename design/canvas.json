@@ -1,0 +1,361 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "F01_create.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "01 크루 만들기 (방장)",
+      "w": 1600,
+      "x": 1680,
+      "y": 0
+    },
+    "F02_search.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "02 목적지 검색",
+      "w": 1600,
+      "x": 3360,
+      "y": 0
+    },
+    "F03_join.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "03 코드로 참여",
+      "w": 1600,
+      "x": 5040,
+      "y": 0
+    },
+    "F04_drive.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "04 주행 메인",
+      "w": 1600,
+      "x": 0,
+      "y": 1020
+    },
+    "F05_fuelMe.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "05 연료 경고 · 민지 차 (AI 주유소 추천)",
+      "w": 1600,
+      "x": 1680,
+      "y": 1020
+    },
+    "F06_fuelThem.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "06 연료 알림 받은 차 · 같이 갈래요?",
+      "w": 1600,
+      "x": 3360,
+      "y": 1020
+    },
+    "F07_inbox.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "07 드랍 편지함 (절반 시트)",
+      "w": 1600,
+      "x": 5040,
+      "y": 1020
+    },
+    "F08_drop.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "08 드랍 보내기",
+      "w": 1600,
+      "x": 0,
+      "y": 2040
+    },
+    "F09_shout.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "09 일행에게 한마디",
+      "w": 1600,
+      "x": 1680,
+      "y": 2040
+    },
+    "F10_ai.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "10 AI 추천 (휴게소 · 식사 · 주유)",
+      "w": 1600,
+      "x": 3360,
+      "y": 2040
+    },
+    "F11_vote.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "11 투표 + 돌림판 이스터에그",
+      "w": 1600,
+      "x": 5040,
+      "y": 2040
+    },
+    "F12_song.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "12 노래 드랍 보내기",
+      "w": 1600,
+      "x": 0,
+      "y": 3060
+    },
+    "F13_songGet.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "13 노래 받기 · Apple Music 재생목록 교체",
+      "w": 1600,
+      "x": 1680,
+      "y": 3060
+    },
+    "F14_decided.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "14 결정 · 기본 내비 경유지 변경",
+      "w": 1600,
+      "x": 3360,
+      "y": 3060
+    },
+    "F15_games.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "15 게임 (정차 중)",
+      "w": 1600,
+      "x": 5040,
+      "y": 3060
+    },
+    "F16_score.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "16 안전 대결 · 주행 중",
+      "w": 1600,
+      "x": 0,
+      "y": 4080
+    },
+    "F17_final.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "17 안전 대결 · 최종 순위",
+      "w": 1600,
+      "x": 1680,
+      "y": 4080
+    },
+    "F18_ad.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "18 같이 켜기 · 광고",
+      "w": 1600,
+      "x": 3360,
+      "y": 4080
+    },
+    "F19_together.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "19 같이 켜기 · 포인트",
+      "w": 1600,
+      "x": 5040,
+      "y": 4080
+    },
+    "FeatureMap.dc.html": {
+      "h": 820,
+      "page": "sim",
+      "title": "기능 맵",
+      "w": 1440,
+      "x": 0,
+      "y": 1220
+    },
+    "FinalApp.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "final",
+      "title": "최종 앱 (전체 흐름 · Play로 체험)",
+      "w": 1600,
+      "x": 0,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "h": 1100,
+      "is_interactive": true,
+      "page": "sim",
+      "title": "핵심 흐름 시뮬레이터 (차 3대)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "UI01_Invite.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "01 시작 · 크루 초대",
+      "w": 1280,
+      "x": 0,
+      "y": 0
+    },
+    "UI02_Map.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "02 메인 (지도 + 크루)",
+      "w": 1280,
+      "x": 1360,
+      "y": 0
+    },
+    "UI03_DropSend.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "03 드랍 보내기 · 대상 선택",
+      "w": 1280,
+      "x": 2720,
+      "y": 0
+    },
+    "UI04_AISuggest.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "04 AI 후보 제안 (보내는 차)",
+      "w": 1280,
+      "x": 4080,
+      "y": 0
+    },
+    "UI05_Vote.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "05 드랍 도착 · 투표 (받는 차)",
+      "w": 1280,
+      "x": 0,
+      "y": 1024
+    },
+    "UI05b_Inbox.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "05-1 드랍 편지함",
+      "w": 1280,
+      "x": 1360,
+      "y": 1024
+    },
+    "UI06_Route.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "06 결정 알림 · 경로 변경",
+      "w": 1280,
+      "x": 2720,
+      "y": 1024
+    },
+    "UI07_SafetyScore.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "07 도착 후 안전 점수",
+      "w": 1280,
+      "x": 4080,
+      "y": 1024
+    },
+    "UI08_ParkGame.dc.html": {
+      "h": 904,
+      "is_interactive": true,
+      "page": "ui",
+      "title": "08 정차 중 크루 게임",
+      "w": 1280,
+      "x": 0,
+      "y": 2048
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-08T07:30:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "page": "final",
+    "view": "canvas"
+  },
+  "notes": {
+    "finalTitle": {
+      "kind": "title1",
+      "maxW": 6640,
+      "page": "final",
+      "text": "CarDrop 최종 UI · 왼쪽 1/3 기본 내비 + 오른쪽 2/3 CarDrop (1600×900)",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "uiTitle": {
+      "kind": "title1",
+      "maxW": 5360,
+      "page": "ui",
+      "text": "CarDrop 메인 UI · Pleos 화면 1280×904 (앱 영역)",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "FeatureMap.dc.html",
+    "UI01_Invite.dc.html",
+    "UI02_Map.dc.html",
+    "UI03_DropSend.dc.html",
+    "UI04_AISuggest.dc.html",
+    "UI05_Vote.dc.html",
+    "UI05b_Inbox.dc.html",
+    "UI06_Route.dc.html",
+    "UI07_SafetyScore.dc.html",
+    "UI08_ParkGame.dc.html",
+    "FinalApp.dc.html",
+    "F01_create.dc.html",
+    "F02_search.dc.html",
+    "F03_join.dc.html",
+    "F04_drive.dc.html",
+    "F05_fuelMe.dc.html",
+    "F06_fuelThem.dc.html",
+    "F07_inbox.dc.html",
+    "F08_drop.dc.html",
+    "F09_shout.dc.html",
+    "F10_ai.dc.html",
+    "F11_vote.dc.html",
+    "F12_song.dc.html",
+    "F13_songGet.dc.html",
+    "F14_decided.dc.html",
+    "F15_games.dc.html",
+    "F16_score.dc.html",
+    "F17_final.dc.html",
+    "F18_ad.dc.html",
+    "F19_together.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "final",
+      "name": "최종 UI"
+    },
+    {
+      "id": "ui",
+      "name": "메인 UI 화면"
+    },
+    {
+      "id": "sim",
+      "name": "흐름 시뮬레이터"
+    }
+  ],
+  "title": "CarDrop 프로토타입"
+}

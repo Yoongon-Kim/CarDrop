@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>CarDrop 핵심 흐름</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#4FD1C5}a:hover{color:#8BE6DC}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; box-sizing: border-box; padding: 40px 48px; background: #0B0E13; color: #E8EDF2; font-family: 'Noto Sans KR', system-ui, sans-serif; display: flex; flex-direction: column; gap: 22px">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; letter-spacing: 0.12em; color: #4FD1C5; font-weight: 700">CARDROP · 가칭</div>
+      <h1 style="margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.02em">떨어져 달려도 한 차처럼</h1>
+      <div style="font-size: 15px; color: #93A1B0">QR로 크루 등록 → 제안 → 드랍 → 응답 → 실행. 같은 목적지로 가는 가족 차량 3대를 시뮬레이션합니다.</div>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 640px">
+      <sc-for list="{{modes}}" as="m" hint-placeholder-count="5">
+        <button type="button" onClick="{{m.pick}}" style="{{m.style}}">{{m.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="background: #12161D; border: 1px solid #1F2630; border-radius: 16px; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #93A1B0">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path></svg>
+        <span style="color: #E8EDF2; font-weight: 700">일행 위치</span>
+        <span>· 지도 정보 · 영동고속도로 강릉 방향</span>
+      </div>
+      <span>{{mapNote}}</span>
+    </div>
+    <div style="position: relative; height: 210px; border-radius: 12px; overflow: hidden; background: #0E141B; border: 1px solid #1A222C">
+      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%">
+        <polyline points="120,0 160,80 150,150 120,200" fill="none" stroke="#1B2430" stroke-width="10" vector-effect="non-scaling-stroke"></polyline>
+        <polyline points="460,0 470,60 420,110 400,200" fill="none" stroke="#1B2430" stroke-width="10" vector-effect="non-scaling-stroke"></polyline>
+        <polyline points="640,200 700,80 760,0" fill="none" stroke="#1B2430" stroke-width="10" vector-effect="non-scaling-stroke"></polyline>
+        <polyline points="0,60 280,90 560,60 1000,110" fill="none" stroke="#161E28" stroke-width="6" vector-effect="non-scaling-stroke"></polyline>
+        <polyline points="0,170 150,150 280,90 420,110 560,60 700,80 850,40 1000,30" fill="none" stroke="#2C3A4C" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+        <polyline points="0,170 150,150 280,90 420,110 560,60 700,80 850,40 1000,30" fill="none" stroke="#4A5C72" stroke-width="2" stroke-dasharray="10 12" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <div style="position: absolute; left: 14px; bottom: 12px; font-size: 12px; font-weight: 700; color: #6F7D8C">서울</div>
+      <div style="position: absolute; right: 14px; top: 26px; font-size: 12px; font-weight: 700; color: #C6D0DA">강릉 경포해변</div>
+      <sc-for list="{{marks}}" as="k" hint-placeholder-count="6">
+        <div style="{{k.style}}">{{k.label}}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{cars}}" as="car" hint-placeholder-count="3">
+      <div style="background: #12161D; border: 1px solid #1F2630; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <div style="{{car.badgeStyle}}">{{car.letter}}</div>
+            <div style="font-size: 16px; font-weight: 700">{{car.name}}</div>
+          </div>
+          <div style="font-size: 12px; color: #93A1B0; border: 1px solid #2A3340; border-radius: 999px; padding: 4px 10px">{{car.chip}}</div>
+        </div>
+
+        <div style="background: #0F151D; border: 1px solid #1C2530; border-radius: 12px; height: 292px; box-sizing: border-box; padding: 18px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+          <sc-if value="{{car.isIdle}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: center">
+              <div style="font-size: 13px; color: #93A1B0">목적지</div>
+              <div style="font-size: 30px; font-weight: 800">강릉 경포해변</div>
+              <div style="font-size: 15px; color: #93A1B0">{{car.eta}}</div>
+              <div style="margin-top: 14px; font-size: 13px; color: #6F7D8C">일행 3대 연결됨 · 대기 중</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{car.hasPanel}}" hint-placeholder-val="{{false}}">
+            <div style="{{car.kindStyle}}">{{car.kind}}</div>
+            <div style="font-size: 21px; font-weight: 800; line-height: 1.3">{{car.heading}}</div>
+            <div style="font-size: 13px; color: #93A1B0; line-height: 1.5">{{car.sub}}</div>
+            <sc-if value="{{car.showQr}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; gap: 18px; align-items: center; margin-top: 4px">
+                <div role="img" aria-label="크루 참여 QR 코드" style="flex: none; width: 120px; height: 120px; box-sizing: border-box; padding: 5px; background: #FFFFFF; border-radius: 8px; display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 0">
+                  <sc-for list="{{qr}}" as="q" hint-placeholder-count="121">
+                    <div style="{{q.style}}"></div>
+                  </sc-for>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <div style="font-size: 12px; color: #93A1B0">참여 코드</div>
+                  <div style="font-size: 26px; font-weight: 800; letter-spacing: 0.08em">{{code}}</div>
+                  <div style="font-size: 12px; color: #93A1B0; line-height: 1.5">폰으로 스캔하거나<br>“크루 참여 {{codeSpoken}}”</div>
+                </div>
+              </div>
+            </sc-if>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px">
+              <sc-for list="{{car.options}}" as="o" hint-placeholder-count="2">
+                <div style="{{o.rowStyle}}">
+                  <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                    <div style="font-size: 15px; font-weight: 700">{{o.name}}</div>
+                    <div style="font-size: 12px; color: #93A1B0">{{o.meta}}</div>
+                  </div>
+                  <div style="{{o.tagStyle}}">{{o.tag}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="{{car.voiceStyle}}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em">{{car.voiceWho}}</div>
+            <div style="font-size: 14px; line-height: 1.45">{{car.voice}}</div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display: flex; gap: 24px; align-items: stretch">
+    <div style="flex: 1 1 0; background: #12161D; border: 1px solid #1F2630; border-radius: 16px; padding: 18px 22px; display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 700; color: #F6A04D; letter-spacing: 0.08em">AI · 차량 데이터 처리</div>
+      <div style="font-size: 15px; line-height: 1.6">{{ai}}</div>
+    </div>
+    <div style="flex: 0 0 560px; display: flex; flex-direction: column; gap: 12px; justify-content: center">
+      <div style="display: flex; gap: 6px">
+        <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+          <button type="button" onClick="{{s.go}}" style="{{s.style}}">{{s.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" onClick="{{prev}}" style="flex: 1; height: 48px; border-radius: 12px; border: 1px solid #2A3340; background: #12161D; color: #E8EDF2; font-size: 15px; font-weight: 700; cursor: pointer">이전</button>
+        <button type="button" onClick="{{next}}" style="flex: 2; height: 48px; border-radius: 12px; border: none; background: #4FD1C5; color: #062A27; font-size: 15px; font-weight: 800; cursor: pointer">{{nextLabel}}</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { mode: 'register', step: 0 }; }
+
+  data() {
+    var N = ['아빠 차', '삼촌 차', '우리 차'];
+    var idle = function () { return { idle: true }; };
+    var opt = function (name, meta, tag, on) { return { name: name, meta: meta, tag: tag || '', on: !!on }; };
+    var DEC = '결정 드랍 · 음성 안내';
+    var SOC = '소셜 드랍 · 화면에만 조용히';
+    var AUTO = '차가 먼저 보낸 드랍 · 음성 안내';
+    var GAME = '게임 드랍 · AI가 음성 진행';
+    var REG = '크루 등록';
+    var PARK = '정차 중 · P단';
+    var unlinked = function () { return { kind: '미연결', heading: 'CarDrop', sub: '크루에 참여하려면 일행 차 화면의 QR을 폰으로 스캔하거나 “크루 참여”라고 말하세요.', options: [], chip: PARK }; };
+    return {
+      names: N,
+      modes: [
+        { id: 'register', label: '크루 등록 · QR' },
+        { id: 'decide', label: '결정 드랍 · 휴게소' },
+        { id: 'auto', label: '차가 먼저 · 연료 부족' },
+        { id: 'song', label: '노래 드랍' },
+        { id: 'game', label: '차 대항 퀴즈' }
+      ],
+      register: {
+        parked: true,
+        stops: [],
+        steps: [
+          { label: '크루 만들기', note: '출발 전 · 각자 집 앞', ai: '“크루 만들어줘” → A차가 크루를 만들고 일회용 참여 코드를 발급. 아는 사람끼리만 연결되는 구조라 주변 차량 노출이 없습니다.',
+            cars: [
+              { kind: REG, heading: '가족 여행 크루를 만들었어요', sub: '목적지: 강릉 경포해변', showQr: true, options: [], who: 'A차 운전자', voice: '크루 만들어줘', user: true, chip: PARK },
+              unlinked(), unlinked()
+            ] },
+          { label: 'B 참여', note: 'B차가 QR로 참여', ai: 'B차 동승자가 폰으로 QR을 스캔 → 폰에 로그인된 계정과 연결된 B차가 크루에 자동 등록. 차 화면에는 카메라가 없어도 됩니다.',
+            cars: [
+              { kind: REG, heading: '삼촌 차가 들어왔어요', sub: '1대 더 기다리는 중', showQr: true, options: [opt('B차 · 삼촌 차', 'QR로 참여', '새로 참여', true)], who: 'Gleo 음성 안내', voice: '삼촌 차가 크루에 들어왔어요.', chip: PARK },
+              { kind: REG, heading: '가족 여행 크루에 참여했어요', sub: '크루장: A차 · 아빠 차', options: [opt('A차 · 아빠 차', '크루장', ''), opt('B차 · 삼촌 차', '나', '', true)], who: 'B차 동승자', voice: '(폰으로 QR 스캔)', user: true, chip: PARK },
+              unlinked()
+            ] },
+          { label: 'C 참여', note: 'C차가 음성 코드로 참여', ai: '“크루 참여 사팔이 구일삼” → 숫자를 인식해 코드 482913으로 변환, 크루 등록. 폰을 꺼내지 않고 말로도 참여할 수 있습니다.',
+            cars: [
+              { kind: REG, heading: '우리 차가 들어왔어요', sub: '3대 모두 모였어요', showQr: false, options: [opt('B차 · 삼촌 차', 'QR로 참여', '연결됨', true), opt('C차 · 우리 차', '음성 코드로 참여', '새로 참여', true)], who: 'Gleo 음성 안내', voice: '우리 차가 크루에 들어왔어요.', chip: PARK },
+              { kind: REG, heading: '가족 여행 크루', sub: '3대 연결됨', options: [opt('A차 · 아빠 차', '크루장', ''), opt('C차 · 우리 차', '방금 참여', '새로 참여', true)], who: 'Gleo 음성 안내', voice: '우리 차가 크루에 들어왔어요.', chip: PARK },
+              { kind: REG, heading: '가족 여행 크루에 참여했어요', sub: '크루장: A차 · 아빠 차', options: [opt('A차 · 아빠 차', '크루장', ''), opt('C차 · 우리 차', '나', '', true)], who: 'C차 운전자', voice: '크루 참여, 사팔이 구일삼', user: true, chip: PARK }
+            ] },
+          { label: '출발', note: '목적지 동기화 완료', ai: '크루 목적지를 3대의 내비에 동시에 설정. 이후 모든 드랍의 후보 계산은 이 목적지와 3대의 실시간 위치를 기준으로 합니다.',
+            cars: [
+              { kind: '크루 준비 완료', heading: '3대 연결 · 목적지 맞춤', sub: '강릉 경포해변 · 3대 내비에 같은 목적지 설정됨', options: [opt('출발하면 자동으로 주행 모드', '드랍은 음성으로 안내돼요', '')], who: 'Gleo 음성 안내', voice: '모두 연결됐어요. 목적지를 강릉 경포해변으로 맞췄어요.', chip: PARK },
+              { kind: '크루 준비 완료', heading: '3대 연결 · 목적지 맞춤', sub: '강릉 경포해변 · 3대 내비에 같은 목적지 설정됨', options: [opt('출발하면 자동으로 주행 모드', '드랍은 음성으로 안내돼요', '')], who: 'Gleo 음성 안내', voice: '모두 연결됐어요. 목적지를 강릉 경포해변으로 맞췄어요.', chip: PARK },
+              { kind: '크루 준비 완료', heading: '3대 연결 · 목적지 맞춤', sub: '강릉 경포해변 · 3대 내비에 같은 목적지 설정됨', options: [opt('출발하면 자동으로 주행 모드', '드랍은 음성으로 안내돼요', '')], who: 'Gleo 음성 안내', voice: '모두 연결됐어요. 목적지를 강릉 경포해변으로 맞췄어요.', chip: PARK }
+            ] }
+        ]
+      },
+      decide: {
+        stops: [{ label: '덕평휴게소', t: 0.66 }, { label: '여주휴게소', t: 0.86 }],
+        steps: [
+          { label: '주행 중', win: -1, ai: '3대가 같은 목적지로 이동 중. 각 차의 위치, 도착 예정 시간, 연료, 연속 주행 시간을 서버가 계속 모아둡니다.',
+            cars: [idle(), idle(), idle()] },
+          { label: '제안', win: -1, ai: '자연어 “배고픈데 휴게소 들렀다 가자” → 의도 [식사 + 휴게소]. 3대의 위치·도착 시간·연료를 조회해서 맨 뒤 C차가 아직 지나치지 않은 곳만 후보로 남깁니다.',
+            cars: [{ kind: DEC, heading: 'AI가 후보를 찾고 있어요', sub: '의도: 식사 + 휴식 · 3대 데이터 확인 중', options: [], who: 'A차 운전자', voice: '배고픈데 휴게소 들렀다 가자', user: true }, idle(), idle()] },
+          { label: '드랍', win: -1, ai: '추천 1순위 덕평: 3대 모두 15분 안에 도착하고 주유도 가능. 2순위 여주: 푸드코트가 크지만 C차 기준 31분. 각 차에 음성 안내와 카드를 동시에 보냅니다.',
+            cars: [
+              { kind: DEC, heading: '드랍을 보냈어요', sub: '응답 대기 0/2 · 30초 무응답 시 1순위로 처리', options: [opt('덕평휴게소', '9km · 3대 모두 15분 안 · 주유 가능', 'AI 추천'), opt('여주휴게소', '24km · 푸드코트 · C차 31분', '')], who: 'Gleo 음성 안내', voice: '삼촌 차, 우리 차에 휴게소 제안을 보냈어요.' },
+              { kind: DEC, heading: 'A차가 휴게소를 제안했어요', sub: '말로 답하세요: “덕평” · “두 번째” · “난 패스”', options: [opt('덕평휴게소', '9km · 12분 · 주유 가능', 'AI 추천'), opt('여주휴게소', '24km · 26분 · 푸드코트', '')], who: 'Gleo 음성 안내', voice: 'A차가 휴게소를 제안했어요. 덕평 9킬로, 여주 24킬로 중 어디로 갈까요?' },
+              { kind: DEC, heading: 'A차가 휴게소를 제안했어요', sub: '말로 답하세요: “덕평” · “두 번째” · “난 패스”', options: [opt('덕평휴게소', '9km · 15분 · 주유 가능', 'AI 추천'), opt('여주휴게소', '24km · 31분 · 푸드코트', '')], who: 'Gleo 음성 안내', voice: 'A차가 휴게소를 제안했어요. 덕평 9킬로, 여주 24킬로 중 어디로 갈까요?' }
+            ] },
+          { label: '응답', win: -1, ai: '“덕평” → 덕평 찬성. “아무 데나 괜찮아” → 상관없음으로 해석해 1순위에 집계. 정해진 명령어가 아니어도 AI가 의도를 읽어 표로 바꿉니다.',
+            cars: [
+              { kind: DEC, heading: '응답이 모였어요', sub: '응답 2/2 · 집계 중', options: [opt('덕평휴게소', 'B차 찬성 · C차 상관없음 → 1순위', '3표', true), opt('여주휴게소', '', '0표')], who: 'Gleo 음성 안내', voice: '모두 응답했어요.' },
+              { kind: DEC, heading: 'A차가 휴게소를 제안했어요', sub: '응답 완료', options: [opt('덕평휴게소', '9km · 12분 · 주유 가능', '내 선택', true), opt('여주휴게소', '24km · 26분 · 푸드코트', '')], who: 'B차 운전자', voice: '덕평', user: true },
+              { kind: DEC, heading: 'A차가 휴게소를 제안했어요', sub: 'AI 해석: “아무 데나” → 상관없음, 1순위로 집계', options: [opt('덕평휴게소', '9km · 15분 · 주유 가능', '상관없음', true), opt('여주휴게소', '24km · 31분 · 푸드코트', '')], who: 'C차 운전자', voice: '아무 데나 괜찮아', user: true }
+            ] },
+          { label: '실행', win: 0, ai: 'NaviHelper로 3대 모두 덕평휴게소를 경유지로 추가. 도착 시각 차이 6분. 전화 한 통, 화면 터치 한 번 없이 끝났습니다.',
+            cars: [
+              { kind: '결정 완료', heading: '덕평휴게소로 갑니다', sub: '경유지 추가됨 · 내비 경로 자동 변경', options: [opt('도착 예정 14:32', '9km 남음', '경유지'), opt('일행 도착', 'B차 14:34 · C차 14:38', '')], who: 'Gleo 음성 안내', voice: '덕평휴게소로 결정됐어요. 경유지를 추가했어요.' },
+              { kind: '결정 완료', heading: '덕평휴게소로 갑니다', sub: '경유지 추가됨 · 내비 경로 자동 변경', options: [opt('도착 예정 14:34', '9km 남음', '경유지'), opt('일행 도착', 'A차 14:32 · C차 14:38', '')], who: 'Gleo 음성 안내', voice: '덕평휴게소로 결정됐어요. 경유지를 추가했어요.' },
+              { kind: '결정 완료', heading: '덕평휴게소로 갑니다', sub: '경유지 추가됨 · 내비 경로 자동 변경', options: [opt('도착 예정 14:38', '9km 남음', '경유지'), opt('일행 도착', 'A차 14:32 · B차 14:34', '')], who: 'Gleo 음성 안내', voice: '덕평휴게소로 결정됐어요. 경유지를 추가했어요.' }
+            ] }
+        ]
+      },
+      auto: {
+        stops: [{ label: '문막휴게소', t: 0.8 }],
+        steps: [
+          { label: '주행 중', win: -1, ai: '아무도 말하지 않아도 차량 데이터를 계속 확인합니다. 연료·배터리 잔량, 주행 가능 거리, 연속 주행 시간.', cars: [idle(), idle(), idle()] },
+          { label: '감지', win: -1, ai: 'Vehicle SDK: C차 연료 12%, 주행 가능 68km. 남은 경로 190km라 목적지까지 못 감 → 사람이 말하기 전에 차가 자동으로 드랍을 만듭니다.',
+            cars: [idle(), idle(), { kind: AUTO, heading: '주행 가능 거리 68km', sub: '남은 경로 190km · 다음 주유 가능 휴게소 41km', options: [], who: 'Gleo 음성 안내', voice: '연료가 부족해요. 일행에게 주유 제안을 보낼게요.' }] },
+          { label: '드랍', win: -1, ai: '3대 모두 30분 안에 닿는 주유 가능 휴게소를 추천. 운전자 모두에게 음성으로 묻습니다.',
+            cars: [
+              { kind: AUTO, heading: 'C차 연료가 부족해요', sub: '말로 답하세요: “좋아” · “C차만 들러”', options: [opt('문막휴게소에서 다 같이 쉬기', '41km · 주유 · 3대 모두 30분 안', 'AI 추천'), opt('C차만 들르기', '나머지는 계속 이동', '')], who: 'Gleo 음성 안내', voice: 'C차 연료가 부족해요. 문막휴게소에서 다 같이 쉬어갈까요?' },
+              { kind: AUTO, heading: 'C차 연료가 부족해요', sub: '말로 답하세요: “좋아” · “C차만 들러”', options: [opt('문막휴게소에서 다 같이 쉬기', '41km · 주유 · 3대 모두 30분 안', 'AI 추천'), opt('C차만 들르기', '나머지는 계속 이동', '')], who: 'Gleo 음성 안내', voice: 'C차 연료가 부족해요. 문막휴게소에서 다 같이 쉬어갈까요?' },
+              { kind: AUTO, heading: '일행에게 주유 제안을 보냈어요', sub: '응답 대기 0/2', options: [opt('문막휴게소에서 다 같이 쉬기', '41km · 주유', 'AI 추천'), opt('C차만 들르기', '', '')], who: 'Gleo 음성 안내', voice: '일행에게 물어봤어요.' }
+            ] },
+          { label: '응답', win: -1, ai: '“좋아” → 찬성. “그래 쉬었다 가자” → 찬성. 2/2 찬성.',
+            cars: [
+              { kind: AUTO, heading: 'C차 연료가 부족해요', sub: '응답 완료', options: [opt('문막휴게소에서 다 같이 쉬기', '41km · 주유', '내 선택', true), opt('C차만 들르기', '', '')], who: 'A차 운전자', voice: '좋아', user: true },
+              { kind: AUTO, heading: 'C차 연료가 부족해요', sub: '응답 완료', options: [opt('문막휴게소에서 다 같이 쉬기', '41km · 주유', '내 선택', true), opt('C차만 들르기', '', '')], who: 'B차 운전자', voice: '그래 쉬었다 가자', user: true },
+              { kind: AUTO, heading: '응답이 모였어요', sub: '2/2 찬성', options: [opt('문막휴게소에서 다 같이 쉬기', 'A차 · B차 찬성', '2표', true), opt('C차만 들르기', '', '0표')], who: 'Gleo 음성 안내', voice: '모두 같이 쉬어가기로 했어요.' }
+            ] },
+          { label: '실행', win: 0, ai: '3대 모두 문막휴게소 경유지 추가. 연료 부족이라는 차량 데이터가 소통의 시작점이 된 사례.',
+            cars: [
+              { kind: '결정 완료', heading: '문막휴게소로 갑니다', sub: '경유지 추가됨 · 주유소 있음', options: [opt('도착 예정 15:05', '41km 남음', '경유지')], who: 'Gleo 음성 안내', voice: '문막휴게소를 경유지로 추가했어요.' },
+              { kind: '결정 완료', heading: '문막휴게소로 갑니다', sub: '경유지 추가됨 · 주유소 있음', options: [opt('도착 예정 15:08', '41km 남음', '경유지')], who: 'Gleo 음성 안내', voice: '문막휴게소를 경유지로 추가했어요.' },
+              { kind: '결정 완료', heading: '문막휴게소로 갑니다', sub: '경유지 추가됨 · 주행 가능 거리 충분', options: [opt('도착 예정 15:12', '41km 남음', '경유지')], who: 'Gleo 음성 안내', voice: '문막휴게소를 경유지로 추가했어요.' }
+            ] }
+        ]
+      },
+      song: {
+        stops: [],
+        steps: [
+          { label: '주행 중', win: -1, ai: 'A차에서 음악 재생 중.', cars: [{ kind: '재생 중', heading: '[곡 제목]', sub: '[아티스트]', options: [], who: '', voice: '' }, idle(), idle()] },
+          { label: '보내기', win: -1, ai: '“노래 보내줘” → 의도 [노래 드랍]. 대상: 등록된 일행 차량 전체.',
+            cars: [{ kind: SOC, heading: '노래를 보냈어요', sub: '[곡 제목] — [아티스트]', options: [opt('B차', '전송됨', ''), opt('C차', '전송됨', '')], who: 'A차 동승자', voice: '지금 노래 다른 차에도 보내줘', user: true }, idle(), idle()] },
+          { label: '받기', win: -1, ai: '소셜 드랍은 음성 안내를 하지 않습니다. 화면에만 조용히 띄워서 운전자를 방해하지 않고, 동승자가 처리합니다.',
+            cars: [
+              { kind: SOC, heading: '노래를 보냈어요', sub: '[곡 제목] — [아티스트]', options: [opt('B차', '확인 대기', ''), opt('C차', '확인 대기', '')], who: '', voice: '' },
+              { kind: SOC, heading: 'A차가 노래를 보냈어요', sub: '[곡 제목] — [아티스트]', options: [opt('같이 듣기', '지금 곡 다음에 재생', ''), opt('나중에', '드랍함에 보관', '')], who: '', voice: '' },
+              { kind: SOC, heading: 'A차가 노래를 보냈어요', sub: '[곡 제목] — [아티스트]', options: [opt('같이 듣기', '지금 곡 다음에 재생', ''), opt('나중에', '드랍함에 보관', '')], who: '', voice: '' }
+            ] },
+          { label: '같이 듣기', win: -1, ai: 'B차 동승자가 수락. C차는 응답 없음 → 자동으로 드랍함에 보관. 강요하지 않는 소셜 드랍.',
+            cars: [
+              { kind: SOC, heading: '2대가 같이 듣는 중', sub: '[곡 제목] — [아티스트]', options: [opt('B차', '같이 듣는 중', '수락', true), opt('C차', '드랍함에 보관됨', '')], who: '', voice: '' },
+              { kind: SOC, heading: '같이 듣는 중', sub: '[곡 제목] — [아티스트] · A차와 함께', options: [opt('같이 듣기', '재생 중', '수락', true)], who: 'B차 동승자', voice: '(화면 터치) 같이 듣기', user: true },
+              { kind: SOC, heading: '드랍함', sub: '받은 노래 1곡', options: [opt('[곡 제목]', 'A차가 보냄', '')], who: '', voice: '' }
+            ] }
+        ]
+      },
+      game: {
+        stops: [{ label: '평창', t: 0.6 }],
+        steps: [
+          { label: '주행 중', win: -1, ai: '긴 고속도로 구간. 뒷좌석이 심심해지는 시간.', cars: [idle(), idle(), idle()] },
+          { label: '시작', win: -1, ai: '“차 대항 퀴즈 하자” → 의도 [게임 드랍]. AI 진행자가 지금 지나는 지역(평창)으로 문제를 만듭니다.',
+            cars: [idle(), idle(), { kind: GAME, heading: '차 대항 퀴즈를 열었어요', sub: '일행 차량에 초대를 보냈어요', options: [], who: 'C차 동승자', voice: '차 대항 퀴즈 하자', user: true }] },
+          { label: '문제', win: -1, ai: '음성으로만 진행 → 주행 중 화면이 가려져도 운전자까지 참여 가능. 먼저 말한 차가 답권을 가져갑니다.',
+            cars: [
+              { kind: GAME, heading: '지금 지나는 곳은 평창', sub: '2018년 평창에서 열린 국제 대회는?', options: [opt('A차', '0점', ''), opt('B차', '0점', ''), opt('C차', '0점', '')], who: 'AI 진행자', voice: '지금 지나는 곳은 평창이에요. 2018년 여기서 열린 국제 대회는?' },
+              { kind: GAME, heading: '지금 지나는 곳은 평창', sub: '2018년 평창에서 열린 국제 대회는?', options: [opt('A차', '0점', ''), opt('B차', '0점', ''), opt('C차', '0점', '')], who: 'AI 진행자', voice: '지금 지나는 곳은 평창이에요. 2018년 여기서 열린 국제 대회는?' },
+              { kind: GAME, heading: '지금 지나는 곳은 평창', sub: '2018년 평창에서 열린 국제 대회는?', options: [opt('A차', '0점', ''), opt('B차', '0점', ''), opt('C차', '0점', '')], who: 'AI 진행자', voice: '지금 지나는 곳은 평창이에요. 2018년 여기서 열린 국제 대회는?' }
+            ] },
+          { label: '정답', win: -1, ai: '“동계올림픽” → 정답 판정. 다음 문제는 경로상 다음 지역(강릉)에서 출제.',
+            cars: [
+              { kind: GAME, heading: 'B차 정답!', sub: '정답: 동계올림픽', options: [opt('B차', '10점', '1위', true), opt('A차', '0점', ''), opt('C차', '0점', '')], who: 'A차 운전자', voice: '아시안게임!', user: true },
+              { kind: GAME, heading: 'B차 정답!', sub: '정답: 동계올림픽', options: [opt('B차', '10점', '1위', true), opt('A차', '0점', ''), opt('C차', '0점', '')], who: 'B차 동승자', voice: '동계올림픽!', user: true },
+              { kind: GAME, heading: 'B차 정답!', sub: '다음 문제는 강릉 근처에서 나가요', options: [opt('B차', '10점', '1위', true), opt('A차', '0점', ''), opt('C차', '0점', '')], who: 'AI 진행자', voice: 'B차 정답! 다음 문제는 강릉 근처에서 나갑니다.' }
+            ] }
+        ]
+      }
+    };
+  }
+
+  // 지도 경로(0~1000 x 0~200) 위 비율 t 지점의 좌표(%)
+  at(t) {
+    var P = [[0,170],[150,150],[280,90],[420,110],[560,60],[700,80],[850,40],[1000,30]];
+    var L = [], total = 0;
+    for (var i = 1; i < P.length; i++) { var d = Math.hypot(P[i][0]-P[i-1][0], P[i][1]-P[i-1][1]); L.push(d); total += d; }
+    var target = Math.max(0, Math.min(1, t)) * total;
+    for (var j = 0; j < L.length; j++) {
+      if (target <= L[j] || j === L.length - 1) {
+        var f = L[j] ? Math.min(1, target / L[j]) : 0;
+        var x = P[j][0] + (P[j+1][0]-P[j][0]) * f, y = P[j][1] + (P[j+1][1]-P[j][1]) * f;
+        return { x: x / 10, y: y / 2 };
+      }
+      target -= L[j];
+    }
+    return { x: 100, y: 15 };
+  }
+
+  renderVals() {
+    var self = this;
+    var D = this.data();
+    var mode = this.state.mode;
+    var sc = D[mode];
+    var step = Math.min(this.state.step, sc.steps.length - 1);
+    var S = sc.steps[step];
+    var colors = ['#4FD1C5', '#F6A04D', '#9AA8FF'];
+    var letters = ['A', 'B', 'C'];
+
+    var modes = D.modes.map(function (m) {
+      var on = m.id === mode;
+      return {
+        label: m.label,
+        pick: function () { self.setState({ mode: m.id, step: 0 }); },
+        style: 'height: 44px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; ' +
+          (on ? 'background: #E8EDF2; color: #0B0E13; border: 1px solid #E8EDF2' : 'background: transparent; color: #C6D0DA; border: 1px solid #2A3340')
+      };
+    });
+
+    var marks = [];
+    sc.stops.forEach(function (s, i) {
+      var chosen = S.win === i;
+      var p = self.at(s.t);
+      marks.push({ label: '', style: 'position: absolute; left: ' + p.x + '%; top: ' + p.y + '%; transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 3px; ' + (chosen ? 'background: #F6A04D' : 'background: #C6D0DA') });
+      marks.push({ label: s.label, style: 'position: absolute; left: ' + p.x + '%; top: ' + p.y + '%; transform: translate(-50%, -170%); white-space: nowrap; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; ' +
+        (chosen ? 'background: #F6A04D; color: #2A1400' : 'background: #1C2530; color: #C6D0DA; border: 1px solid #2E3948') });
+    });
+    var parked = !!sc.parked;
+    var drift = parked ? 0 : step * 0.012;
+    var tCars = parked ? [0.035, 0.075, 0.115] : [0.5 + drift, 0.4 + drift, 0.28 + drift];
+    var joined = parked ? [true, step >= 1, step >= 2] : [true, true, true];
+    tCars.forEach(function (t, i) {
+      var p = self.at(t);
+      marks.push({ label: letters[i], style: 'position: absolute; left: ' + p.x + '%; top: ' + p.y + '%; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; box-shadow: 0 0 0 4px #0E141B; ' +
+        (joined[i] ? 'color: #0B0E13; background: ' + colors[i] : 'color: #6F7D8C; background: #1C2530; border: 1px dashed #4A5664') });
+    });
+
+    var cars = S.cars.map(function (c, i) {
+      var idle = !!c.idle;
+      var hasVoice = !!(c.voice);
+      var k = c.kind || '';
+      var kindColor = /소셜/.test(k) ? '#9AA8FF' : (/게임/.test(k) ? '#F6A04D' : (/미연결/.test(k) ? '#93A1B0' : '#4FD1C5'));
+      return {
+        letter: letters[i],
+        name: letters[i] + '차 · ' + D.names[i],
+        chip: c.chip || '주행 중 · 음성 전용',
+        badgeStyle: 'width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #0B0E13; background: ' + colors[i],
+        isIdle: idle,
+        hasPanel: !idle,
+        showQr: !!c.showQr,
+        eta: '도착 예정 ' + ['16:40', '16:43', '16:47'][i] + ' · 2시간 10분',
+        kind: k,
+        kindStyle: 'align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 4px 8px; border-radius: 6px; color: ' + kindColor + '; background: #16212B; border: 1px solid #243140',
+        heading: c.heading || '',
+        sub: c.sub || '',
+        options: (c.options || []).map(function (o) {
+          return {
+            name: o.name, meta: o.meta, tag: o.tag,
+            rowStyle: 'display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; ' +
+              (o.on ? 'background: #10302D; border: 1px solid #4FD1C5' : 'background: #141C26; border: 1px solid #222C38'),
+            tagStyle: o.tag ? ('flex: none; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; ' + (o.on ? 'background: #4FD1C5; color: #062A27' : 'background: #2A2215; color: #F6A04D')) : 'display: none'
+          };
+        }),
+        voiceWho: c.who || '',
+        voice: c.voice || '',
+        voiceStyle: hasVoice
+          ? ('display: flex; gap: 10px; align-items: flex-start; min-height: 56px; box-sizing: border-box; padding: 10px 14px; border-radius: 12px; ' +
+             (c.user ? 'background: #2A2215; color: #F8D7B0; border: 1px solid #4A3820' : 'background: #10302D; color: #BFF3EC; border: 1px solid #1E5550'))
+          : 'display: flex; gap: 10px; align-items: flex-start; min-height: 56px; box-sizing: border-box; padding: 10px 14px; border-radius: 12px; color: #4A5664; border: 1px dashed #222C38'
+      };
+    });
+
+    // 장식용 QR 패턴 (11x11): 세 모서리 위치 표시 + 고정 패턴
+    var qr = [];
+    for (var r = 0; r < 11; r++) {
+      for (var c2 = 0; c2 < 11; c2++) {
+        var inF = function (r0, c0) { var dr = r - r0, dc = c2 - c0; if (dr < 0 || dr > 2 || dc < 0 || dc > 2) return null; return !(dr === 1 && dc === 1) || true; };
+        var finder = (r < 3 && c2 < 3) || (r < 3 && c2 > 7) || (r > 7 && c2 < 3);
+        var on;
+        if (finder) {
+          var rr = r > 7 ? r - 8 : r, cc = c2 > 7 ? c2 - 8 : c2;
+          on = !(rr === 1 && cc === 1) ? true : true;
+          on = (rr === 1 && cc === 1) ? true : (rr === 1 || cc === 1) ? false : true;
+          if (rr === 1 && cc === 1) on = true;
+        } else {
+          on = ((r * 7 + c2 * 13 + r * c2) % 5) < 2;
+        }
+        qr.push({ style: 'background: ' + (on ? '#0B0E13' : '#FFFFFF') });
+      }
+    }
+
+    var steps = sc.steps.map(function (s, i) {
+      var on = i === step;
+      var done = i < step;
+      return {
+        label: (i + 1) + '. ' + s.label,
+        go: function () { self.setState({ step: i }); },
+        style: 'flex: 1; height: 40px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; ' +
+          (on ? 'background: #F6A04D; color: #2A1400; border: 1px solid #F6A04D' : (done ? 'background: #1C2530; color: #C6D0DA; border: 1px solid #2E3948' : 'background: transparent; color: #93A1B0; border: 1px solid #2A3340'))
+      };
+    });
+
+    var last = step >= sc.steps.length - 1;
+    return {
+      modes: modes, marks: marks, cars: cars, steps: steps, ai: S.ai, qr: qr,
+      code: '482 913', codeSpoken: '사팔이 구일삼',
+      mapNote: parked ? (S.note || '출발 전') : '위치는 투표 화면과 AI 후보 계산에 함께 사용',
+      nextLabel: last ? '처음부터' : '다음 단계',
+      next: function () { self.setState({ step: last ? 0 : step + 1 }); },
+      prev: function () { self.setState({ step: Math.max(0, step - 1) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

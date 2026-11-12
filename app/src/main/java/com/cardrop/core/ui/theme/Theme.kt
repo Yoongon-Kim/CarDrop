@@ -15,6 +15,8 @@ object CdColors {
     val Blue = Color(0xFF3182F6)
     val BlueDark = Color(0xFF1B64DA)
     val BlueLight = Color(0xFFE8F3FF)
+    /** Background of a ticked row. */
+    val BlueTint = Color(0xFFF4F9FF)
     val Ink = Color(0xFF191F28)
     val Ink2 = Color(0xFF333D4B)
     val Gray600 = Color(0xFF4E5968)
@@ -42,6 +44,8 @@ object CdColors {
     val NavBanner = Color(0xFF1E2A4A)
     val Purple = Color(0xFF8B5CF6)
     val Teal = Color(0xFF00B8A9)
+    val TealLight = Color(0xFFE6F8F4)
+    val TealDark = Color(0xFF0B7F6F)
     val Yellow = Color(0xFFFFB020)
 }
 

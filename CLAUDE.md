@@ -53,6 +53,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - `TodoNote("...")` marks unbuilt parts of a screen. Remove it when the part is done.
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).
+- Board 10: a driver can add only places the app knows (`findKnownPlace` in `ai/PlacePick.kt`), because a
+  voted place needs a location to become a waypoint. A real place search can replace this later.
 
 ## Design boards
 

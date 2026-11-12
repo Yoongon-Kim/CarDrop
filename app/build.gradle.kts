@@ -35,6 +35,7 @@ android {
 
         // Switch each area from its fake to its real implementation.
         buildConfigField("boolean", "USE_REAL_VEHICLE", localFlag("cardrop.useRealVehicle").toString())
+        buildConfigField("boolean", "USE_REAL_VOICE", localFlag("cardrop.useRealVoice").toString())
         buildConfigField("String", "NAV_APP", "\"${localString("cardrop.navApp").ifEmpty { "inapp" }}\"")
         buildConfigField("String", "CLAUDE_API_KEY", "\"${localString("cardrop.claudeApiKey")}\"")
         buildConfigField("String", "KAKAO_REST_KEY", "\"${localString("cardrop.kakaoRestKey")}\"")
@@ -63,6 +64,8 @@ dependencies {
     implementation(libs.vehicle.sdk)
     implementation(libs.maplibre.android) // in-app navigator map (navi/NavMap.kt)
     implementation(libs.anthropic.java) // real AiService (ai/ClaudeAiService.kt), approved by the lead 2026-11-13
+    implementation(libs.pleos.tts) // real voice, speaking (voice/PleosVoiceService.kt), approved by the lead 2026-11-13
+    implementation(libs.pleos.stt) // real voice, listening
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

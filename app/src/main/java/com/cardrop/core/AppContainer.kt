@@ -25,6 +25,7 @@ import com.cardrop.vehicle.FakeVehicleRepository
 import com.cardrop.vehicle.PleosVehicleRepository
 import com.cardrop.vehicle.VehicleRepository
 import com.cardrop.voice.FakeVoiceService
+import com.cardrop.voice.PleosVoiceService
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -87,7 +88,11 @@ class AppContainer(context: Context) {
             FallbackAiService(primary = ClaudeAiService(BuildConfig.CLAUDE_API_KEY, stopsAhead = ::stopsAhead), backup = fake)
         }
     }
-    val voice: VoiceService = FakeVoiceService()
+    /**
+     * `cardrop.useRealVoice=true`: the Pleos speech SDKs (spoken Korean, real listening). Otherwise the fake:
+     * captions only, and the mic always hears "배고파" (good for rehearsing without speaking).
+     */
+    val voice: VoiceService = if (BuildConfig.USE_REAL_VOICE) PleosVoiceService(context) else FakeVoiceService()
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice)
 

@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
  * Owner: lead.
  *
  * Design rule: DECISION drops are spoken aloud; SOCIAL drops are never spoken.
- * The real version uses android.speech.tts.TextToSpeech and SpeechRecognizer if the Pleos image
- * has them (day-1 check), or a cloud service if not.
+ * [PleosVoiceService] is the real version (the Pleos speech SDKs, `cardrop.useRealVoice=true`);
+ * Android's own TextToSpeech can't reach the Pleos speech engine (day-1 check, see CLAUDE.md).
  */
 interface VoiceService {
     /** The last sentence spoken, so the UI can show it as a caption. */
@@ -20,8 +20,8 @@ interface VoiceService {
 
     /**
      * Listens for one sentence. Returns null when nothing was heard.
-     * [placeName] = true when we expect only a place name (board 10 "말해서 추가"); the real version
-     * can tell the recognizer to expect a short phrase (RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH).
+     * [placeName] = true when we expect only a place name (board 10 "말해서 추가"). The fake then
+     * hears a place name; the Pleos recognizer has no special mode for it.
      */
     suspend fun listen(placeName: Boolean = false): String?
 }

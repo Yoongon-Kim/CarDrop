@@ -82,6 +82,7 @@ Use it to rehearse the 시연 on one emulator.
 | Key | Values | Effect |
 | --- | --- | --- |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
+| `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
 | `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |
 | `cardrop.claudeApiKey` | key | Set = the real AI (`ai/ClaudeAiService.kt`, Anthropic Java SDK); empty = the fake. If a Claude call fails, the fake answers (`adb logcat -s CarDropAi`). The key is built into the APK, so don't share the APK |
 | `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes (empty = OSRM only) |
@@ -96,6 +97,24 @@ Use it to rehearse the 시연 on one emulator.
 - Driving-time units are unverified (seconds assumed). See the TODO in `PleosVehicleRepository`.
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 
+## Voice notes (Pleos speech SDKs 3.3.1, checked on the emulator 2026-11-13)
+
+- The image has no Google speech services. Its speech engine is Pleos's own (`ai.pleos.playground.caas`).
+  Android's `android.speech.tts.TextToSpeech` can't use it: the engine's service isn't marked as a default
+  one, so Android's lookup skips it (init fails with status -1). Use the Pleos SDKs instead:
+  `ai.pleos.playground:TextToSpeech` and `SpeechToText` (`voice/PleosVoiceService.kt`).
+- Docs: https://document.pleos.ai/en/docs/pleos-only/connect-sdk-pleos/TextToSpeech/intro (and `SpeechToText/`).
+  Permissions `pleos.car.permission.TTS_SERVICE` / `STT_SERVICE` (normal, no prompt). The Pleos service
+  records the microphone itself, so CarDrop needs no `RECORD_AUDIO`.
+- Call `initialize()` before any other SDK call: `addEventListener()` first crashes the app.
+- `Mode.ON_DEVICE` needs no app registration. `HYBRID` (the SDK default) and `SERVER` need Pleos Playground
+  app credentials through `registerApp(...)`.
+- On the emulator, speaking works (you hear it on the computer). Listening hears nothing unless Extended
+  controls > Microphone > "Virtual microphone uses host audio input" is on; then it stops after 15 s.
+- Logs: `adb logcat -s CarDropVoice`.
+- adb on this image: apps run as Android user 10, so use `--user 10`, e.g.
+  `adb shell pm grant --user 10 com.cardrop <permission>` and `adb shell am start --user 10 -n com.cardrop/.MainActivity`.
+
 ## In-app navigator (`cardrop.navApp=inapp`, the default)
 
 The first demo round runs on the emulator, and the emulator's built-in Pleos navigation shows a blank
@@ -106,7 +125,7 @@ GPS position, live routes, rerouting, turn guidance. Only the GPS input is simul
 `python3 tools/drive_gps.py` (drives the 영동고속도로 from km 40 at 6x speed, 1 GPS fix per second via
 `adb emu geo fix`; `--speed 1` for real time, `--start-km`, `--gpx` for Extended controls). The emulator's
 own route player can't make Korean routes (Google has no driving directions in Korea). Grant location
-when the app asks (or `adb shell pm grant com.cardrop android.permission.ACCESS_FINE_LOCATION`).
+when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permission.ACCESS_FINE_LOCATION`).
 
 - Layout: with `inapp`, our window holds the whole 1600 x 900 design. The navigator is the left 533 px
   (`core/ui/Shell.kt`), CarDrop is the right 2/3. Everything is scaled down a little to fit.

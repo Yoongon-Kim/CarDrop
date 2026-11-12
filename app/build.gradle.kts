@@ -55,6 +55,7 @@ android {
 dependencies {
     implementation(libs.vehicle.sdk)
     implementation(libs.maplibre.android) // in-app navigator map (navi/NavMap.kt)
+    implementation(libs.anthropic.java) // real AiService (ai/ClaudeAiService.kt), approved by the lead 2026-11-13
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

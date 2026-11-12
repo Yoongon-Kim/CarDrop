@@ -3,7 +3,9 @@ package com.cardrop.core
 import android.content.Context
 import com.cardrop.BuildConfig
 import com.cardrop.ai.AiService
+import com.cardrop.ai.ClaudeAiService
 import com.cardrop.ai.FakeAiService
+import com.cardrop.ai.FallbackAiService
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.core.model.Place
@@ -77,7 +79,14 @@ class AppContainer(context: Context) {
         inAppNavigation?.placesAhead(pool) ?: DemoRoute.placesAhead(pool, route.positions.value.values)
 
     // Lead
-    val ai: AiService = FakeAiService(stopsAhead = ::stopsAhead)
+    /** Claude when local.properties has `cardrop.claudeApiKey`; the fake without one, or when a Claude call fails. */
+    val ai: AiService = FakeAiService(stopsAhead = ::stopsAhead).let { fake ->
+        if (BuildConfig.CLAUDE_API_KEY.isBlank()) {
+            fake
+        } else {
+            FallbackAiService(primary = ClaudeAiService(BuildConfig.CLAUDE_API_KEY, stopsAhead = ::stopsAhead), backup = fake)
+        }
+    }
     val voice: VoiceService = FakeVoiceService()
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice)

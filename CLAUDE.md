@@ -83,7 +83,7 @@ Use it to rehearse the 시연 on one emulator.
 | --- | --- | --- |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |
-| `cardrop.claudeApiKey` | key | Exposed as `BuildConfig.CLAUDE_API_KEY` for the real `AiService` |
+| `cardrop.claudeApiKey` | key | Set = the real AI (`ai/ClaudeAiService.kt`, Anthropic Java SDK); empty = the fake. If a Claude call fails, the fake answers (`adb logcat -s CarDropAi`). The key is built into the APK, so don't share the APK |
 | `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes (empty = OSRM only) |
 
 ## Vehicle SDK notes (2.3.2, checked against the SDK classes)

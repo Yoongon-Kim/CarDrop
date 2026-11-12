@@ -8,6 +8,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- The real voice (cardrop.useRealVoice=true): the Pleos speech service, used through the Pleos
+         TextToSpeech and SpeechToText SDKs (protectionLevel="normal", no prompt). The Pleos service
+         records the microphone itself, so CarDrop needs no microphone permission. -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+    <uses-permission android:name="pleos.car.permission.STT_SERVICE" />
+
     <!-- Pleos Vehicle Service read permissions (protectionLevel="normal").
          CarDrop only reads car data; it never controls the car. -->
     <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />

@@ -11,6 +11,52 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet">
 <style>
+/* 공용 컨트롤 · 기존 CarDrop 토큰 (#3182F6 · #F2F4F6 · 800 weight) */
+.cd-back{width:54px;height:54px;flex:none;border:0;border-radius:16px;background:#FFFFFF;color:#333D4B;display:flex;align-items:center;justify-content:center}
+.cd-chip{height:44px;padding:0 16px;border:0;border-radius:14px;background:#F2F4F6;color:#333D4B;font-size:14px;font-weight:800;display:inline-flex;align-items:center;gap:6px;flex:none}
+.cd-chip:disabled{opacity:.4;cursor:default}
+.cd-chip.is-blue{background:#E8F3FF;color:#1B64DA}
+.cd-chip.is-purple{background:#F1EDFF;color:#5B3FD9}
+.cd-chip.is-primary{background:#3182F6;color:#FFFFFF}
+.cd-chip.is-primary-purple{background:#6A4CF0;color:#FFFFFF}
+.cd-chip.is-danger{background:#FFEEEE;color:#D22030}
+.cd-chip.is-white{background:#FFFFFF}
+.cd-field{height:54px;box-sizing:border-box;padding:0 16px;border:2px solid #E5E8EB;border-radius:16px;background:#FFFFFF;font-family:inherit;font-size:17px;font-weight:700;color:#191F28;outline:none;min-width:0}
+.cd-field::placeholder{color:#8B95A1;font-weight:500}
+.cd-field:focus{border-color:#3182F6}
+.cd-status{font-size:13px;font-weight:700;color:#4E5968}
+.cd-error{font-size:13px;font-weight:800;color:#D22030}
+.cd-pencil{width:30px;height:30px;margin-left:4px;border:0;border-radius:10px;background:rgba(25,31,40,0.06);color:#4E5968;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
+audio.cd-audio{height:44px;width:360px;max-width:100%}
+
+/* 일행에게 한마디 · 문구 편집 */
+.phrase-actions{display:flex;gap:8px}
+.phrase-editor{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border-radius:20px;background:#F9FAFB;animation:cdPop .3s ease-out}
+.phrase-editor label{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:800;color:#4E5968}
+.phrase-editor .cd-field:focus{border-color:#6A4CF0}
+
+/* 노래 · 드랍 / 따라듣기 */
+.cd-music-tabs{display:flex;align-self:flex-start;padding:5px;background:#FFFFFF;border-radius:18px;gap:4px}
+.cd-music-tabs button{height:48px;padding:0 22px;border:0;border-radius:14px;font-size:16px;font-weight:800;color:#4E5968;background:transparent}
+.cd-music-tabs button[aria-pressed=true]{background:#FFF0F5;color:#D6336C}
+.cd-listening{display:flex;align-items:center;gap:16px;background:#FFFFFF;border-radius:24px;padding:18px 22px}
+.cd-follow-list{display:flex;flex-direction:column;background:#FFFFFF;border-radius:26px;padding:4px 22px}
+.cd-follow-row{display:flex;align-items:center;gap:14px;padding:12px 0;border:0;border-bottom:1px solid #F2F4F6;background:transparent;text-align:left;color:#191F28}
+.cd-follow-row:last-child{border-bottom:0}
+.cd-track-info{flex:1;display:flex;flex-direction:column;gap:2px}.cd-track-info strong{font-size:17px;font-weight:800}.cd-track-info span{font-size:13px;color:#4E5968}
+.cd-follow-row b{height:40px;padding:0 14px;border-radius:12px;display:flex;align-items:center;font-size:14px;font-weight:800;background:#FFF0F5;color:#D6336C}
+.cd-follow-row[aria-pressed=true] b{background:#D6336C;color:#FFFFFF}
+
+/* 퀵 드랍 */
+.cd-quick{height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:800;color:#191F28;border:2px solid #FFFFFF;background:#FFFFFF}
+.cd-quick.is-empty{border:2px dashed #B0B8C1;background:transparent;color:#4E5968}
+
+/* 크루 위치 도로 */
+@keyframes cdLaneMove{to{stroke-dashoffset:-38}}
+@keyframes cdRec{0%,100%{box-shadow:0 0 0 0 rgba(240,68,82,0.45)}50%{box-shadow:0 0 0 18px rgba(240,68,82,0)}}
+.cd-road-dashes{animation:cdLaneMove 2s linear infinite reverse}
+@media(prefers-reduced-motion:reduce){.cd-road-dashes{animation:none}}
+
 body{margin:0;background:#F2F4F6}
 a{color:#3182F6}a:hover{color:#1B64DA}
 button{font-family:inherit;cursor:pointer}
@@ -87,7 +133,7 @@ button{font-family:inherit;cursor:pointer}
     </div>
   </nav>
 
-  <main style="flex: 1; min-width: 0; padding: 24px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; position: relative">
+  <main style="overflow-y:auto;flex: 1; min-width: 0; padding: 24px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; position: relative">
 
     <!-- 01 크루 만들기 -->
     <sc-if value="{{is.create}}" hint-placeholder-val="{{true}}">
@@ -130,7 +176,7 @@ button{font-family:inherit;cursor:pointer}
           <sc-for list="{{members}}" as="m" hint-placeholder-count="4">
             <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #F2F4F6">
               <svg viewBox="0 0 120 80" aria-hidden="true" style="{{m.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{m.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{m.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg>
-              <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 800">{{m.name}}</span><span style="font-size: 13px; color: #4E5968">{{m.meta}}</span></span>
+              <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 800">{{m.name}} <button class="cd-pencil" type="button" aria-label="{{m.name}} 별명 편집" onClick="{{m.edit}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4"/></svg></button></span><span style="font-size: 13px; color: #4E5968">{{m.meta}}</span></span>
               <span style="{{m.stStyle}}">{{m.st}}</span>
             </div>
           </sc-for>
@@ -186,7 +232,7 @@ button{font-family:inherit;cursor:pointer}
         <section aria-label="찾은 크루" style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 24px; display: flex; flex-direction: column; gap: 12px; animation: cdPop 0.5s ease-out; position: relative; overflow: hidden">
           <span style="align-self: flex-start; font-size: 13px; font-weight: 800; color: #1B64DA; background: #E8F3FF; border-radius: 999px; padding: 6px 12px">크루를 찾았어요</span>
           <span style="font-size: 30px; font-weight: 800">강릉 여행</span>
-          <span style="font-size: 15px; color: #4E5968">아빠 차 크루 · 3대 참여 중 · 강릉 경포해변 230km</span>
+          <span style="font-size: 15px; color: #4E5968">{{vehicle.blue}} 크루 · 3대 참여 중 · 강릉 경포해변 230km</span>
           <div style="background: #F9FAFB; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px; margin-top: 6px">
             <span style="font-size: 18px; font-weight: 800">경포해변으로 안내할까요?</span>
             <span style="font-size: 14px; color: #4E5968">지금 내 내비는 신촌역으로 안내 중이에요</span>
@@ -213,35 +259,28 @@ button{font-family:inherit;cursor:pointer}
           </button>
         </div>
       </header>
-      <div style="display: flex; gap: 12px; height: 214px; flex: none">
-        <section aria-label="일행 레이스" style="flex: 1.25; position: relative; border-radius: 24px; background: #DFF3E6; overflow: hidden">
-          <svg viewBox="0 0 500 214" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%">
-            <ellipse cx="250" cy="116" rx="214" ry="78" fill="#C5E8D1"></ellipse>
-            <ellipse cx="250" cy="116" rx="200" ry="68" fill="none" stroke="#3E4652" stroke-width="30"></ellipse>
-            <ellipse cx="250" cy="116" rx="200" ry="68" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-dasharray="12 12"></ellipse>
-            <ellipse cx="250" cy="116" rx="160" ry="36" fill="#BFE5CB"></ellipse>
-            <circle cx="150" cy="112" r="14" fill="#5DBB7A"></circle><rect x="147" y="120" width="6" height="10" fill="#8B6B4A"></rect>
-            <circle cx="350" cy="110" r="16" fill="#4FAE6E"></circle><rect x="347" y="120" width="6" height="10" fill="#8B6B4A"></rect>
-            <circle cx="255" cy="108" r="10" fill="#6FC98A"></circle>
-            <rect x="244" y="26" width="6" height="34" fill="#191F28"></rect><rect x="250" y="26" width="24" height="16" fill="#FFFFFF" stroke="#191F28" stroke-width="2"></rect><rect x="250" y="26" width="8" height="8" fill="#191F28"></rect><rect x="266" y="26" width="8" height="8" fill="#191F28"></rect><rect x="258" y="34" width="8" height="8" fill="#191F28"></rect>
-          </svg>
-          <sc-for list="{{racers}}" as="c" hint-placeholder-count="4">
-            <div style="{{c.move}}"><span style="{{c.tagStyle}}">{{c.tag}}</span><svg viewBox="0 0 120 80" aria-hidden="true" style="{{c.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{c.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{c.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg></div>
-          </sc-for>
-          <span style="position: absolute; left: 14px; top: 12px; font-size: 14px; font-weight: 800; background: rgba(255,255,255,0.92); border-radius: 10px; padding: 4px 10px">Race</span>
-        </section>
-        <section aria-label="리더보드" style="flex: 1; background: #FFFFFF; border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px">
-          <span style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px">안전 운전 리더보드</span>
-          <sc-for list="{{board}}" as="b" hint-placeholder-count="4">
-            <div style="{{b.row}}"><span style="width: 18px; font-size: 16px; font-weight: 800; color: #1B64DA">{{b.rank}}</span><svg viewBox="0 0 120 80" aria-hidden="true" style="{{b.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{b.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{b.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg><span style="flex: 1; font-size: 15px; font-weight: 800">{{b.n}}</span><span style="font-size: 17px; font-weight: 800">{{b.s}}</span></div>
-          </sc-for>
-        </section>
-      </div>
+      <section aria-label="크루 위치" style="flex: none; position: relative; height: 200px; border-radius: 24px; background: #DFF3E6; overflow: hidden">
+        <svg viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%">
+          <circle cx="90" cy="70" r="16" fill="#5DBB7A"></circle><circle cx="300" cy="62" r="20" fill="#4FAE6E"></circle><circle cx="560" cy="72" r="14" fill="#6FC98A"></circle><circle cx="780" cy="58" r="18" fill="#5DBB7A"></circle>
+          <circle cx="210" cy="190" r="14" fill="#6FC98A"></circle><circle cx="690" cy="194" r="16" fill="#4FAE6E"></circle>
+          <path d="M-40 150 C65 150 90 132 130 132 S300 172 370 159 S510 106 610 124 S780 175 860 140 S965 102 1040 116" fill="none" stroke="#3E4652" stroke-width="40"></path>
+          <path class="cd-road-dashes" d="M-40 150 C65 150 90 132 130 132 S300 172 370 159 S510 106 610 124 S780 175 860 140 S965 102 1040 116" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="18 20"></path>
+          <rect x="972" y="86" width="12" height="56" fill="#FFFFFF"></rect>
+        </svg>
+        <span style="position: absolute; left: 14px; top: 12px; font-size: 14px; font-weight: 800; background: rgba(255,255,255,0.92); border-radius: 10px; padding: 4px 10px">크루 위치</span>
+        <span style="position: absolute; right: 14px; top: 12px; font-size: 13px; font-weight: 800; color: #0B7F5A; background: rgba(255,255,255,0.92); border-radius: 10px; padding: 4px 10px">강릉 경포해변 방면 →</span>
+        <sc-for list="{{positions}}" as="c" hint-placeholder-count="4">
+          <div style="{{c.markerStyle}}">
+            <span style="{{c.pill}}"><span style="font-weight: 800">{{c.name}}</span><span style="{{c.sub}}">{{c.rank}}번째 · {{c.minutes}}분</span></span>
+            <svg viewBox="0 0 120 80" aria-hidden="true" style="{{c.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{c.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{c.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg>
+          </div>
+        </sc-for>
+      </section>
       <sc-if value="{{fuelBanner}}" hint-placeholder-val="{{false}}">
         <section role="alert" aria-label="연료 알림" style="display: flex; align-items: center; gap: 14px; background: #FFF4E6; border: 2px solid #FFC58F; border-radius: 22px; padding: 12px 16px; animation: cdPop 0.5s ease-out">
           <span style="width: 52px; height: 52px; border-radius: 50%; background: #FF8A3D; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v17M3 22h11M14 9h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3M6 8h5"></path></svg></span>
           <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
-            <span style="font-size: 13px; font-weight: 800; color: #B85700">민지 차 · 주행 가능 85km · 덕평 주유소 9km</span>
+            <span style="font-size: 13px; font-weight: 800; color: #B85700">{{vehicle.yellow}} · 주행 가능 85km · 덕평 주유소 9km</span>
             <span style="font-size: 20px; font-weight: 800">{{fuelText}}</span>
             <span style="font-size: 13px; color: #4E5968">{{fuelSub}}</span>
           </span>
@@ -255,32 +294,58 @@ button{font-family:inherit;cursor:pointer}
         <sc-for list="{{crew}}" as="c" hint-placeholder-count="4">
           <div style="{{c.box}}">
             <svg viewBox="0 0 120 80" aria-hidden="true" style="{{c.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{c.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{c.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg>
-            <span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px; font-weight: 800">{{c.name}}</span><span style="font-size: 13px; color: #4E5968">{{c.gap}}</span></span>
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px; font-weight: 800">{{c.name}} <button class="cd-pencil" type="button" aria-label="{{c.name}} 별명 편집" onClick="{{c.edit}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4"/></svg></button></span><span style="font-size: 13px; color: #4E5968">{{c.gap}}</span><span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #4E5968; white-space: nowrap; overflow: hidden"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D6336C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>{{c.track}}</span></span>
             <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px"><span style="{{c.fuelStyle}}">{{c.fuel}}</span><span style="width: 74px; height: 6px; border-radius: 3px; background: rgba(0,0,0,0.08); overflow: hidden"><span style="{{c.bar}}"></span></span></span>
           </div>
         </sc-for>
       </section>
       <section aria-label="퀵 드랍" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px">
-        <span style="font-size: 14px; font-weight: 800; color: #4E5968">퀵 드랍 · 누르면 바로 크루 전체에</span>
-        <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
-          <sc-for list="{{quick}}" as="q" hint-placeholder-count="5">
-            <button type="button" onClick="{{q.go}}" style="height: 72px; border-radius: 20px; border: none; background: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px">
+        <div style="display: flex; align-items: center; justify-content: space-between"><span style="font-size: 14px; font-weight: 800; color: #4E5968">퀵 드랍 · 누르면 바로 보낼 곳을 골라요</span><button type="button" onClick="{{editQuick}}" style="height: 34px; padding: 0 12px; border-radius: 10px; border: none; background: #FFFFFF; color: #333D4B; font-size: 13px; font-weight: 700">편집</button></div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+          <sc-for list="{{quick}}" as="q" hint-placeholder-count="4">
+            <button type="button" aria-label="{{q.label}}" onClick="{{q.go}}" class="{{q.cls}}">
               <span style="{{q.ic}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{q.d}}"></path></svg></span>
-              <span style="font-size: 16px; font-weight: 800; color: #191F28">{{q.n}}</span>
+              <span>{{q.n}}</span>
             </button>
           </sc-for>
         </div>
       </section>
+      <sc-if value="{{feedback}}" hint-placeholder-val="{{false}}">
+        <div role="status" style="position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 8; display: flex; align-items: center; gap: 10px; background: #191F28; color: #FFFFFF; border-radius: 16px; padding: 14px 20px; font-size: 16px; font-weight: 700; box-shadow: 0 12px 30px rgba(0,0,0,0.25); animation: cdPop 0.4s ease-out; white-space: nowrap">
+          <span style="width: 26px; height: 26px; border-radius: 50%; background: #3182F6; display: flex; align-items: center; justify-content: center; flex: none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>{{feedback}}
+        </div>
+      </sc-if>
       <button type="button" onClick="{{go.drop}}" style="margin-top: auto; height: 80px; border-radius: 24px; border: none; background: #3182F6; color: #FFFFFF; display: flex; align-items: center; gap: 16px; padding: 0 24px; text-align: left">
         <span style="width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center; "><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg></span>
         <span style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 800">드랍하기</span><span style="font-size: 14px; opacity: 0.9">말로 제안해요 · 스티어링 음성 버튼</span></span>
       </button>
     </sc-if>
 
+    <sc-if value="{{editingQuick}}" hint-placeholder-val="{{false}}">
+      <header style="display: flex; align-items: center; gap: 12px">
+        <button type="button" class="cd-back" onClick="{{go.drive}}" aria-label="뒤로"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+        <div style="flex: 1; display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 30px; font-weight: 800">퀵 드랍 편집</h1><span style="font-size: 14px; color: #4E5968">홈에 둘 드랍을 최대 4개 골라요 · 고른 순서대로 놓여요</span></div>
+        <span aria-live="polite" style="font-size: 15px; font-weight: 800; color: #1B64DA; background: #E8F3FF; border-radius: 999px; padding: 8px 14px">{{quickN}} / 4</span>
+      </header>
+      <section aria-label="퀵 드랍 편집" style="background: #FFFFFF; border-radius: 26px; padding: 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{quickOptions}}" as="o" hint-placeholder-count="9">
+          <button type="button" aria-pressed="{{o.on}}" onClick="{{o.pick}}" style="{{o.style}}">
+            <span style="{{o.ic}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.d}}"></path></svg></span>
+            <span style="flex: 1; text-align: left; font-size: 17px; font-weight: 800">{{o.label}}</span>
+            <span style="{{o.badge}}">{{o.order}}</span>
+          </button>
+        </sc-for>
+      </section>
+      <sc-if value="{{quickHint}}" hint-placeholder-val="{{false}}"><span role="status" class="cd-error">{{quickHint}}</span></sc-if>
+      <div style="margin-top: auto; display: flex; gap: 10px">
+        <button type="button" onClick="{{go.drive}}" style="flex: 1; height: 68px; border-radius: 20px; border: none; background: #FFFFFF; color: #333D4B; font-size: 17px; font-weight: 800">취소</button>
+        <button type="button" onClick="{{saveQuick}}" style="flex: 2; height: 68px; border-radius: 20px; border: none; background: #3182F6; color: #FFFFFF; font-size: 18px; font-weight: 800">홈에 저장하기</button>
+      </div>
+    </sc-if>
     <!-- 07 편지함: 앱 절반 시트 -->
     <sc-if value="{{is.inbox}}" hint-placeholder-val="{{false}}">
-      <div style="position: absolute; inset: 0; background: rgba(25,31,40,0.32)"></div>
-      <section aria-label="드랍 편지함" style="position: absolute; top: 0; right: 0; bottom: 0; width: 520px; background: #F2F4F6; border-radius: 28px 0 0 28px; padding: 24px 22px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; box-shadow: -12px 0 30px rgba(0,0,0,0.15); animation: cdSlide 0.35s ease-out">
+      <button type="button" onClick="{{go.drive}}" aria-label="편지함 닫기" style="position: absolute; inset: 0; z-index: 150; border: none; padding: 0; background: rgba(25,31,40,0.32); cursor: default"></button>
+      <section aria-label="드랍 편지함" style="position: absolute; z-index: 151; top: 0; right: 0; bottom: 0; width: 560px; overflow-y: auto; background: #F2F4F6; border-radius: 28px 0 0 28px; padding: 24px 22px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; box-shadow: -12px 0 30px rgba(0,0,0,0.15); animation: cdSlide 0.35s ease-out">
         <div style="display: flex; justify-content: space-between; align-items: center"><h1 style="margin: 0; font-size: 26px; font-weight: 800">드랍 편지함</h1><button type="button" onClick="{{go.drive}}" aria-label="닫기" style="width: 48px; height: 48px; border-radius: 14px; border: none; background: #FFFFFF; color: #333D4B; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div>
         <div role="tablist" aria-label="편지함 분류" style="display: flex; gap: 6px"><sc-for list="{{tabs}}" as="t" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button></sc-for></div>
         <div style="background: #FFFFFF; border-radius: 22px; padding: 4px 16px; display: flex; flex-direction: column">
@@ -298,12 +363,12 @@ button{font-family:inherit;cursor:pointer}
 
     <!-- 13 노래 받기: 모달 -->
     <sc-if value="{{is.songGet}}" hint-placeholder-val="{{false}}">
-      <div style="position: absolute; inset: 0; background: rgba(25,31,40,0.32)"></div>
-      <section role="dialog" aria-label="노래 드랍 받기" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 560px; background: #FFFFFF; border-radius: 30px; padding: 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: cdPop 0.4s ease-out">
+      <div style="position: absolute; inset: 0; z-index: 150; background: rgba(25,31,40,0.32)"></div>
+      <section role="dialog" aria-label="노래 드랍 받기" style="position: absolute; z-index: 151; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 560px; background: #FFFFFF; border-radius: 30px; padding: 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: cdPop 0.4s ease-out">
         <div style="display: flex; align-items: center; gap: 12px"><span style="width: 48px; height: 48px; border-radius: 50%; background: #00B8A9; color: #06302C; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; flex: none">A</span><span style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 800; color: #D6336C">소셜 드랍 · 노래</span><span style="font-size: 22px; font-weight: 800">{{songHead}}</span></span></div>
         <div style="display: flex; align-items: center; gap: 14px; background: #FFF0F5; border-radius: 20px; padding: 14px">
           <span style="width: 64px; height: 64px; border-radius: 16px; background: #D6336C; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none; "><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span>
-          <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 19px; font-weight: 800">바다로 가자</span><span style="font-size: 14px; color: #4E5968">드라이브 밴드 · 3:42</span></span>
+          <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 19px; font-weight: 800">{{sharedTitle}}</span><span style="font-size: 14px; color: #4E5968">{{sharedArtist}}</span></span>
         </div>
         <sc-if value="{{songAsk}}" hint-placeholder-val="{{true}}">
           <span style="font-size: 14px; color: #4E5968">받으면 지금 듣는 Apple Music 재생목록에서 이 곡으로 바뀌어요</span>
@@ -312,7 +377,7 @@ button{font-family:inherit;cursor:pointer}
         <sc-if value="{{songDone}}" hint-placeholder-val="{{false}}">
           <div style="border: 2px solid #F2F4F6; border-radius: 20px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; animation: cdPop 0.4s ease-out">
             <span style="font-size: 13px; font-weight: 800; color: #4E5968">Apple Music · 강릉 가는 길 재생목록</span>
-            <div style="display: flex; align-items: center; gap: 10px; background: #FFF0F5; border-radius: 14px; padding: 10px 12px"><span style="font-size: 12px; font-weight: 800; color: #FFFFFF; background: #D6336C; border-radius: 6px; padding: 2px 6px">지금 재생</span><span style="flex: 1; font-size: 15px; font-weight: 800">바다로 가자 <span style="font-size: 12px; color: #4E5968; font-weight: 500">· 아빠 차가 보냄</span></span></div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FFF0F5; border-radius: 14px; padding: 10px 12px"><span style="font-size: 12px; font-weight: 800; color: #FFFFFF; background: #D6336C; border-radius: 6px; padding: 2px 6px">지금 재생</span><span style="flex: 1; font-size: 15px; font-weight: 800">{{sharedTitle}} <span style="font-size: 12px; color: #4E5968; font-weight: 500">· {{vehicle.blue}}가 보냄</span></span></div>
             <div style="display: flex; align-items: center; gap: 10px; padding: 6px 12px"><span style="font-size: 12px; font-weight: 800; color: #4E5968; background: #F2F4F6; border-radius: 6px; padding: 2px 6px">다음</span><span style="flex: 1; font-size: 15px; color: #4E5968">여름 고속도로 · 원래 듣던 곡 이어서</span></div>
           </div>
           <button type="button" onClick="{{go.drive}}" style="height: 56px; border-radius: 18px; border: none; background: #3182F6; color: #FFFFFF; font-size: 16px; font-weight: 800">확인</button>
@@ -320,9 +385,9 @@ button{font-family:inherit;cursor:pointer}
       </section>
     </sc-if>
 
-    <!-- 05 연료 부족 · 민지 차 -->
+    <!-- 05 연료 부족 · {{vehicle.yellow}} -->
     <sc-if value="{{is.fuelMe}}" hint-placeholder-val="{{false}}">
-      <header style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; font-weight: 800; color: #B85700">연료 경고 · 민지 차 화면</span><h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em">{{fuelMeTitle}}</h1></header>
+      <header style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; font-weight: 800; color: #B85700">연료 경고 · {{vehicle.yellow}} 화면</span><h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em">{{fuelMeTitle}}</h1></header>
       <sc-if value="{{fuelStep0}}" hint-placeholder-val="{{true}}">
         <section style="background: #FFFFFF; border-radius: 24px; padding: 24px; display: flex; gap: 24px; align-items: center">
           <svg viewBox="0 0 120 80" aria-hidden="true" style="{{fuelCar.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{fuelCar.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{fuelCar.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg>
@@ -366,7 +431,7 @@ button{font-family:inherit;cursor:pointer}
         <button type="button" onClick="{{go.drive}}" aria-label="닫기" style="width: 54px; height: 54px; border-radius: 16px; border: none; background: #FFFFFF; color: #333D4B; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
       </header>
       <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
-        <sc-for list="{{targets}}" as="t" hint-placeholder-count="4"><button type="button" onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="{{t.style}}"><span style="font-size: 17px; font-weight: 800">{{t.name}}</span><span style="font-size: 12px; color: #4E5968">{{t.meta}}</span></button></sc-for>
+        <sc-for list="{{targets}}" as="t" hint-placeholder-count="4"><button type="button" onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="{{t.style}}"><span style="{{t.check}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-size: 17px; font-weight: 800">{{t.name}}</span><span style="font-size: 12px; color: #4E5968; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.meta}}</span></span></button></sc-for>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px"><h2 style="margin: 0; font-size: 24px; font-weight: 800">무엇을 보낼까요?</h2><span style="font-size: 14px; color: #4E5968">누르면 바로 다음 단계로 넘어가요</span></div>
       <sc-for list="{{kinds}}" as="g" hint-placeholder-count="2">
@@ -380,11 +445,48 @@ button{font-family:inherit;cursor:pointer}
                 <span style="{{it.metaStyle}}">{{it.meta}}</span>
               </button>
             </sc-for>
+            <sc-if value="{{g.decision}}"><button type="button" onClick="{{turnPlaces}}" aria-label="{{pageLabel}}" style="border:0;border-radius:16px;color:#1B64DA;background:#E8F3FF;font-size:28px">{{arrow}}</button></sc-if>
           </div>
         </div>
       </sc-for>
     </sc-if>
 
+    <!-- 음성 메시지 보내기 -->
+    <sc-if value="{{voicePage}}" hint-placeholder-val="{{false}}">
+      <header style="display: flex; align-items: center; gap: 12px">
+        <button type="button" class="cd-back" aria-label="뒤로" onClick="{{go.drop}}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+        <div style="display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 30px; font-weight: 800">음성 메시지</h1><span style="font-size: 14px; color: #4E5968">소셜 드랍 · 받는 차에는 화면에만 조용히 떠요</span></div>
+      </header>
+      <section style="flex: 1; background: #FFFFFF; border-radius: 30px; padding: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px">
+        <button type="button" disabled="{{waitingMic}}" onClick="{{recordMemo}}" aria-label="{{recordLabel}}" style="{{micStyle}}">
+          <sc-if value="{{micRecording}}" hint-placeholder-val="{{false}}"><span style="width: 34px; height: 34px; border-radius: 8px; background: #FFFFFF"></span></sc-if>
+          <sc-if value="{{micIdle}}" hint-placeholder-val="{{true}}"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg></sc-if>
+        </button>
+        <span style="font-size: 24px; font-weight: 800; margin-top: 6px">{{recordLabel}}</span>
+        <span role="status" style="font-size: 15px; color: #4E5968">{{memoStatus}}</span>
+        <sc-if value="{{hasRecording}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; align-items: center; gap: 12px; background: #F1EDFF; border-radius: 20px; padding: 12px 16px; margin-top: 8px; animation: cdPop 0.4s ease-out">
+            <span style="font-size: 12px; font-weight: 800; color: #FFFFFF; background: #6A4CF0; border-radius: 6px; padding: 3px 7px">미리 듣기</span>
+            <audio class="cd-audio" controls src="{{memoUrl}}"></audio>
+          </div>
+        </sc-if>
+      </section>
+      <div style="display: flex; gap: 10px; align-items: center"><span style="flex: 1; font-size: 15px; color: #4E5968">받는 차 · {{recipient}} · 최대 1분</span><button type="button" disabled="{{noRecording}}" onClick="{{sendMemo}}" style="{{memoSendStyle}}">이 음성 보내기</button></div>
+    </sc-if>
+
+    <!-- 받은 음성 메시지 -->
+    <sc-if value="{{listenPage}}" hint-placeholder-val="{{false}}">
+      <header style="display: flex; align-items: center; gap: 12px">
+        <button type="button" class="cd-back" aria-label="뒤로" onClick="{{go.inbox}}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+        <div style="display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 30px; font-weight: 800">받은 음성 메시지</h1><span style="font-size: 14px; color: #4E5968">소셜 드랍 · 정차 중이거나 동승자가 들어요</span></div>
+      </header>
+      <section style="background: #FFFFFF; border-radius: 26px; padding: 22px 24px; display: flex; align-items: center; gap: 16px; animation: cdPop 0.4s ease-out">
+        <span style="width: 64px; height: 64px; border-radius: 50%; background: #6A4CF0; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 800; color: #5B3FD9">소셜 드랍 · 음성</span><span style="font-size: 20px; font-weight: 800">녹음한 음성 메시지</span><span style="font-size: 13px; color: #4E5968">방금 · 누르면 재생돼요</span></span>
+        <audio class="cd-audio" controls src="{{receivedUrl}}"></audio>
+      </section>
+      <button type="button" onClick="{{go.drive}}" style="margin-top: auto; height: 68px; border-radius: 20px; border: none; background: #3182F6; color: #FFFFFF; font-size: 18px; font-weight: 800">확인</button>
+    </sc-if>
     <!-- 09 일행에게 한마디 -->
     <sc-if value="{{is.shout}}" hint-placeholder-val="{{false}}">
       <header style="display: flex; align-items: center; gap: 12px">
@@ -392,33 +494,48 @@ button{font-family:inherit;cursor:pointer}
         <div style="display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 30px; font-weight: 800">일행에게 한마디</h1><span style="font-size: 14px; color: #4E5968">소셜 드랍 · 받는 차에는 음성 없이 화면에만 조용히 떠요</span></div>
       </header>
       <section style="background: #FFFFFF; border-radius: 26px; padding: 22px; display: flex; flex-direction: column; gap: 14px">
-        <span style="font-size: 16px; font-weight: 800">자주 쓰는 한마디</span>
+        <div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 16px; font-weight: 800">자주 쓰는 한마디</span><div class="phrase-actions"><button type="button" class="cd-chip is-purple" onClick="{{newPhrase}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>문구 추가</button><button type="button" class="cd-chip" disabled="{{noPhrase}}" onClick="{{editPhrase}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4"></path></svg>선택한 문구 고치기</button></div></div>
+        <sc-if value="{{phraseEditing}}" hint-placeholder-val="{{false}}"><form class="phrase-editor" onSubmit="{{savePhrase}}">
+          <label>{{phraseHeading}}<input class="cd-field" value="{{phraseText}}" onChange="{{changePhrase}}" maxlength="80" required placeholder="예: 입구에서 만나요"></label>
+          <div style="display: flex; align-items: center; gap: 8px"><sc-if value="{{phraseError}}" hint-placeholder-val="{{false}}"><span role="status" class="cd-error">{{phraseError}}</span></sc-if><span style="flex: 1"></span><sc-if value="{{canDeletePhrase}}" hint-placeholder-val="{{false}}"><button type="button" class="cd-chip is-danger" onClick="{{deletePhrase}}">삭제</button></sc-if><button type="button" class="cd-chip is-white" onClick="{{cancelPhrase}}">취소</button><button type="submit" class="cd-chip is-primary-purple">저장</button></div>
+        </form></sc-if>
         <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px"><sc-for list="{{shouts}}" as="s" hint-placeholder-count="6"><button type="button" onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="{{s.style}}">{{s.t}}</button></sc-for></div>
       </section>
       <section style="background: #F1EDFF; border-radius: 26px; padding: 18px 22px; display: flex; align-items: center; gap: 14px">
         <span style="width: 58px; height: 58px; border-radius: 50%; background: #6A4CF0; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none; "><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg></span>
-        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 800; color: #3B2A9E">직접 말해서 보내기</span><span style="font-size: 14px; color: #4E5968">“삼촌 차에 곧 도착한다고 전해줘” → AI가 짧게 다듬어 보내요</span></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 800; color: #3B2A9E">직접 말해서 보내기</span><span style="font-size: 14px; color: #4E5968">“{{vehicle.purple}}에 곧 도착한다고 전해줘” → AI가 짧게 다듬어 보내요</span></span>
       </section>
-      <div style="margin-top: auto; display: flex; gap: 10px; align-items: center"><span style="flex: 1; font-size: 15px; color: #4E5968">받는 차 · 크루 전체 (3대)</span><button type="button" onClick="{{go.drive}}" style="height: 68px; padding: 0 34px; border-radius: 20px; border: none; background: #6A4CF0; color: #FFFFFF; font-size: 18px; font-weight: 800">“{{shoutPicked}}” 보내기</button></div>
+      <div style="margin-top: auto; display: flex; gap: 10px; align-items: center"><span style="flex: 1; font-size: 15px; color: #4E5968">받는 차 · {{recipient}}</span><button type="button" disabled="{{disableShout}}" onClick="{{sendShout}}" style="height: 68px; padding: 0 34px; border-radius: 20px; border: none; background: #6A4CF0; color: #FFFFFF; font-size: 18px; font-weight: 800">{{shoutButton}}</button></div>
     </sc-if>
 
     <!-- 10 AI 추천 (휴게소 · 식사 · 주유) -->
-    <sc-if value="{{is.ai}}" hint-placeholder-val="{{false}}">
-      <header style="display: flex; align-items: center; gap: 12px">
-        <button type="button" onClick="{{go.drop}}" aria-label="뒤로" style="width: 54px; height: 54px; border-radius: 16px; border: none; background: #FFFFFF; color: #333D4B; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
-        <div style="display: flex; flex-direction: column"><span style="font-size: 14px; color: #4E5968">{{ai.quote}}</span><h1 style="margin: 0; font-size: 30px; font-weight: 800">{{ai.title}}</h1></div>
-      </header>
-      <div style="display: flex; flex-direction: column; gap: 10px">
-        <sc-for list="{{ai.items}}" as="f" hint-placeholder-count="3">
-          <div style="{{f.box}}">
-            <span style="{{f.tile}}">{{f.ini}}</span>
-            <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="display: flex; gap: 8px; align-items: center"><span style="font-size: 20px; font-weight: 800">{{f.n}}</span><span style="{{f.badgeStyle}}">AI 추천</span></span><span style="font-size: 14px; color: #4E5968">{{f.m}}</span><span style="font-size: 13px; color: #1B64DA; font-weight: 700">{{f.why}}</span></span>
-            <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px"><span style="font-size: 24px; font-weight: 800">{{f.t}}</span><span style="font-size: 12px; color: #4E5968">4대 평균</span></span>
+    <sc-if value="{{composer}}">
+      <div style="{{composeWrap}}">
+        <section role="{{composeRole}}" aria-label="장소 선택" style="{{composePanel}}">
+          <header style="display: flex; align-items: center; gap: 12px">
+            <sc-if value="{{composePage}}" hint-placeholder-val="{{true}}"><button type="button" class="cd-back" onClick="{{closeCompose}}" aria-label="뒤로"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button></sc-if>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; color: #4E5968">{{composeSub}}</span><span style="{{composeTitleStyle}}">{{ai.title}}</span></div>
+            <sc-if value="{{quickPopupOn}}" hint-placeholder-val="{{false}}"><button type="button" onClick="{{closeCompose}}" aria-label="닫기" style="width: 48px; height: 48px; border-radius: 14px; border: none; background: #F2F4F6; color: #333D4B; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+          </header>
+          <div style="display: flex; flex-direction: column; gap: 10px; overflow: auto; min-height: 0">
+            <sc-for list="{{places}}" as="f" hint-placeholder-count="3">
+              <button type="button" onClick="{{f.toggle}}" aria-pressed="{{f.on}}" style="{{f.style}}">
+                <span style="{{f.tile}}">{{f.ini}}</span>
+                <span style="flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: left; min-width: 0"><span style="display: flex; gap: 8px; align-items: center"><span style="font-size: 19px; font-weight: 800">{{f.name}}</span><span style="{{f.badge}}">AI 추천</span></span><span style="font-size: 14px; color: #4E5968">{{f.meta}}</span><sc-if value="{{f.detail}}" hint-placeholder-val="{{true}}"><span style="font-size: 13px; color: #1B64DA; font-weight: 700">{{f.detail}}</span></sc-if></span>
+                <span style="font-size: 22px; font-weight: 800; flex: none">{{f.t}}</span>
+                <span style="{{f.check}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+              </button>
+            </sc-for>
           </div>
-        </sc-for>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <button type="button" class="cd-chip is-blue" onClick="{{speakPlace}}" style="height: 54px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg>말해서 추가</button>
+            <form onSubmit="{{addPlace}}" style="flex: 1; display: flex; gap: 8px; min-width: 0"><input class="cd-field" name="place" maxlength="48" required aria-label="장소 이름" placeholder="다른 곳을 직접 입력" style="flex: 1"><button type="submit" class="cd-chip" style="height: 54px; background: {{addChipBg}}">추가</button></form>
+          </div>
+          <sc-if value="{{speechHint}}" hint-placeholder-val="{{false}}"><span role="status" class="cd-status">{{speechHint}}</span></sc-if>
+          <sc-if value="{{hasPlace}}" hint-placeholder-val="{{false}}"><button type="button" class="cd-chip is-blue" onClick="{{confirmPlace}}" style="align-self: flex-start">‘{{placeText}}’ 후보에 넣기</button></sc-if>
+          <button type="button" disabled="{{noPlaces}}" onClick="{{sendPoll}}" style="{{sendPollStyle}}">{{sendPollText}}</button>
+        </section>
       </div>
-      <span style="font-size: 13px; color: #4E5968; background: #FFFFFF; border-radius: 14px; padding: 12px 14px">AI가 본 정보 · 4대 모두 지나가는 경로 · 도착 시간 차이 · 연료 · 연속 운전 시간 · 리뷰 평점</span>
-      <button type="button" onClick="{{go.vote}}" style="margin-top: auto; height: 78px; border-radius: 22px; border: none; background: #3182F6; color: #FFFFFF; font-size: 21px; font-weight: 800">이 3곳으로 투표 보내기</button>
     </sc-if>
 
     <!-- 11 투표 (받는 차) + 돌림판 이스터에그 -->
@@ -430,9 +547,9 @@ button{font-family:inherit;cursor:pointer}
           <span style="font-size: 15px; color: #4E5968">{{vote.sub}}</span>
         </div>
         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px">
-          <button type="button" onClick="{{eggToggle}}" style="height: 36px; padding: 0 12px 0 6px; border-radius: 999px; border: 1px dashed #B0B8C1; background: #FFFFFF; color: #4E5968; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px">
+          <sc-if value="{{canSpin}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{eggToggle}}" style="height: 36px; padding: 0 12px 0 6px; border-radius: 999px; border: 1px dashed #B0B8C1; background: #FFFFFF; color: #4E5968; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px">
             <svg width="24" height="24" viewBox="-12 -12 24 24" aria-hidden="true" style=""><path d="M0 0 L0 -11 A11 11 0 0 1 9.5 5.5 Z" fill="#3182F6"></path><path d="M0 0 L9.5 5.5 A11 11 0 0 1 -9.5 5.5 Z" fill="#FF8A3D"></path><path d="M0 0 L-9.5 5.5 A11 11 0 0 1 0 -11 Z" fill="#11A08D"></path></svg>고민되면 돌려보기
-          </button>
+          </button></sc-if>
           <span style="font-size: 38px; font-weight: 800; color: #F04452; line-height: 1">1:48</span>
         </div>
       </header>
@@ -441,7 +558,10 @@ button{font-family:inherit;cursor:pointer}
           <span style="font-size: 13px; color: #4E5968; font-weight: 700">내 표만 정해줘요 · 다른 차 투표엔 영향 없음</span>
           <div style="position: relative; width: 170px; height: 170px">
             <div style="position: absolute; left: 50%; top: -8px; transform: translateX(-50%); border-left: 11px solid transparent; border-right: 11px solid transparent; border-top: 18px solid #191F28; z-index: 2"></div>
-            <svg viewBox="-110 -110 220 220" aria-hidden="true" style="{{eggWheel}}"><circle r="106" fill="#FFFFFF"></circle><path d="M0 0 L0 -100 A100 100 0 0 1 86.6 50 Z" fill="#3182F6"></path><path d="M0 0 L86.6 50 A100 100 0 0 1 -86.6 50 Z" fill="#FF8A3D"></path><path d="M0 0 L-86.6 50 A100 100 0 0 1 0 -100 Z" fill="#11A08D"></path><text x="44" y="-10" fill="#FFFFFF" font-size="26" font-weight="900" text-anchor="middle">1</text><text x="0" y="66" fill="#FFFFFF" font-size="26" font-weight="900" text-anchor="middle">2</text><text x="-44" y="-10" fill="#FFFFFF" font-size="26" font-weight="900" text-anchor="middle">3</text><circle r="18" fill="#FFFFFF"></circle></svg>
+            <div style="{{eggWheel}}">
+              <svg viewBox="-110 -110 220 220" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%"><circle r="106" fill="#FFFFFF"></circle><sc-for list="{{segments}}" as="w" hint-placeholder-count="3"><path d="{{w.path}}" fill="{{w.color}}" stroke="#FFFFFF" stroke-width="3"></path></sc-for><circle r="14" fill="#FFFFFF"></circle></svg>
+              <sc-for list="{{segments}}" as="w" hint-placeholder-count="3"><span style="{{w.lab}}">{{w.label}}</span></sc-for>
+            </div>
           </div>
           <span style="font-size: 16px; font-weight: 800">{{eggResult}}</span>
           <button type="button" onClick="{{eggAction}}" style="width: 100%; height: 50px; border-radius: 14px; border: none; background: #3182F6; color: #FFFFFF; font-size: 15px; font-weight: 800">{{eggCta}}</button>
@@ -464,6 +584,15 @@ button{font-family:inherit;cursor:pointer}
         <span style="font-size: 14px; font-weight: 800; background: #FFFFFF; color: #191F28; border-radius: 999px; padding: 8px 14px">3/4 응답</span>
       </div>
       <div style="background: #FFFFFF; border-radius: 18px; padding: 14px 16px; display: flex; gap: 12px; align-items: center"><span style="font-size: 12px; font-weight: 800; color: #FFFFFF; background: #3182F6; border-radius: 6px; padding: 3px 7px">AI</span><span style="flex: 1; font-size: 15px"><b>{{interpret}}</b> · <span style="color: #4E5968">{{interpretSub}}</span></span></div>
+      <section aria-label="후보 추가" style="background: #FFFFFF; border-radius: 22px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; gap: 8px; align-items: center">
+          <span style="font-size: 15px; font-weight: 800; flex: none; margin-right: 4px">다른 곳이 좋아요</span>
+          <button type="button" class="cd-chip is-blue" onClick="{{speakPlace}}" style="height: 52px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path></svg>말해서 추가</button>
+          <form onSubmit="{{addPlace}}" style="flex: 1; display: flex; gap: 8px; min-width: 0"><input class="cd-field" name="place" maxlength="48" required aria-label="장소 이름" placeholder="장소 이름을 입력" style="flex: 1; height: 52px"><button type="submit" class="cd-chip" style="height: 52px">후보에 추가</button></form>
+        </div>
+        <sc-if value="{{speechHint}}" hint-placeholder-val="{{false}}"><span role="status" class="cd-status">{{speechHint}}</span></sc-if>
+        <sc-if value="{{hasPlace}}" hint-placeholder-val="{{false}}"><button type="button" class="cd-chip is-blue" onClick="{{confirmPlace}}" style="align-self: flex-start">‘{{placeText}}’ 후보에 넣기</button></sc-if>
+      </section>
       <button type="button" onClick="{{go.decided}}" style="margin-top: auto; height: 72px; border-radius: 22px; border: none; background: #3182F6; color: #FFFFFF; font-size: 20px; font-weight: 800">응답하기</button>
     </sc-if>
 
@@ -471,11 +600,15 @@ button{font-family:inherit;cursor:pointer}
     <sc-if value="{{is.song}}" hint-placeholder-val="{{false}}">
       <header style="display: flex; align-items: center; gap: 12px">
         <button type="button" onClick="{{go.drop}}" aria-label="뒤로" style="width: 54px; height: 54px; border-radius: 16px; border: none; background: #FFFFFF; color: #333D4B; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
-        <div style="display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 30px; font-weight: 800">노래 드랍</h1><span style="font-size: 14px; color: #4E5968">친구가 받으면 친구의 Apple Music 재생목록에서 이 곡으로 바뀌어요</span></div>
+        <div style="display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 30px; font-weight: 800">노래</h1><span style="font-size: 14px; color: #4E5968">{{musicSubtitle}}</span></div>
+        <span style="flex: 1"></span>
+        <button type="button" disabled style="height: 50px; padding: 0 16px; border-radius: 14px; border: none; background: #FFFFFF; color: #8B95A1; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: default">노래방<span style="font-size: 11px; font-weight: 800; color: #4E5968; background: #F2F4F6; border-radius: 6px; padding: 2px 6px">준비 중</span></button>
       </header>
+      <div class="cd-music-tabs" role="group" aria-label="노래 기능"><button type="button" aria-pressed="{{dropMode}}" onClick="{{openMusicDrop}}">노래 드랍하기</button><button type="button" aria-pressed="{{followMode}}" onClick="{{openFollow}}">노래 따라듣기</button></div>
+      <sc-if value="{{dropMode}}">
       <section style="background: #FFFFFF; border-radius: 24px; padding: 20px 22px; display: flex; align-items: center; gap: 16px">
         <span style="width: 76px; height: 76px; border-radius: 18px; background: #D6336C; display: flex; align-items: center; justify-content: center; flex: none; "><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span>
-        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #D6336C; font-weight: 800">내 차에서 지금 재생 중 · Apple Music</span><span style="font-size: 22px; font-weight: 800">{{songPicked}}</span></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #D6336C; font-weight: 800">보낼 곡</span><span style="font-size: 22px; font-weight: 800">{{songPicked}}</span></span>
       </section>
       <section style="background: #FFFFFF; border-radius: 26px; padding: 8px 22px; display: flex; flex-direction: column">
         <sc-for list="{{songs}}" as="s" hint-placeholder-count="4">
@@ -483,13 +616,23 @@ button{font-family:inherit;cursor:pointer}
         </sc-for>
       </section>
       <div style="margin-top: auto; display: flex; gap: 10px; align-items: center"><span style="flex: 1; font-size: 15px; color: #4E5968">받는 차 · 크루 전체 (3대) · 각자 받을지 정해요</span><button type="button" onClick="{{go.songGet}}" style="height: 70px; padding: 0 34px; border-radius: 20px; border: none; background: #D6336C; color: #FFFFFF; font-size: 18px; font-weight: 800">노래 드랍하기</button></div>
+      </sc-if>
+      <sc-if value="{{followMode}}">
+        <section class="cd-listening">
+          <span style="width: 64px; height: 64px; border-radius: 18px; background: #D6336C; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 800; color: #D6336C">내 차에서 듣는 곡</span><span style="font-size: 22px; font-weight: 800">{{ownTrack}}</span><span role="status" style="font-size: 14px; color: #4E5968">{{followStatus}}</span></span>
+          <sc-if value="{{following}}" hint-placeholder-val="{{false}}"><button type="button" class="cd-chip" onClick="{{stopFollow}}" style="height: 50px">내 음악으로 돌아가기</button></sc-if>
+        </section>
+        <div class="cd-follow-list"><sc-for list="{{followCars}}" as="car" hint-placeholder-count="3"><button type="button" onClick="{{car.listen}}" aria-pressed="{{car.active}}" class="cd-follow-row"><svg viewBox="0 0 120 80" aria-hidden="true" style="{{car.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{car.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{car.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 800">{{car.name}}</span><span style="font-size: 13px; color: #4E5968">{{car.track}}</span></span><b>{{car.action}}</b></button></sc-for></div>
+        <span style="margin-top: auto; font-size: 13px; color: #4E5968">차를 고르면 그 차에서 나오는 곡이 내 차에서 이어서 나와요 · 시연용 음원</span>
+      </sc-if>
     </sc-if>
 
     <!-- 14 결정 -->
     <sc-if value="{{is.decided}}" hint-placeholder-val="{{false}}">
       <section role="alert" style="background: #3182F6; color: #FFFFFF; border-radius: 30px; padding: 28px; display: flex; flex-direction: column; gap: 14px; animation: cdPop 0.5s ease-out; position: relative; overflow: hidden">
-        <span style="display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700"><span style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>투표가 끝났어요 · 4대 중 3대 동의</span>
-        <span style="font-size: 36px; font-weight: 800; line-height: 1.25">덕평자연휴게소로<br>결정되었어요</span>
+        <span style="display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700"><span style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>투표 결과 · 시연</span>
+        <span style="font-size: 36px; font-weight: 800; line-height: 1.25">{{decision}}<br>결정되었어요</span>
         <span style="font-size: 18px; font-weight: 700">왼쪽 내비의 경유지를 바꿨어요 · 3초 후 안내 시작</span>
         <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.3); overflow: hidden; width: 70%"><div style="width: 66%; height: 100%; background: #FFFFFF"></div></div>
         <div style="display: flex; gap: 10px; width: 70%"><button type="button" onClick="{{go.drive}}" style="flex: 2; height: 58px; border-radius: 16px; border: none; background: #FFFFFF; color: #1B64DA; font-size: 17px; font-weight: 800">지금 안내 시작</button><button type="button" onClick="{{go.drive}}" style="flex: 1; height: 58px; border-radius: 16px; border: none; background: rgba(255,255,255,0.2); color: #FFFFFF; font-size: 15px; font-weight: 700">우리 차는 안 들르기</button></div>
@@ -538,7 +681,7 @@ button{font-family:inherit;cursor:pointer}
     <sc-if value="{{is.score}}" hint-placeholder-val="{{false}}">
       <header style="display: flex; justify-content: space-between; align-items: flex-end">
         <div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; color: #4E5968">안전 운전 대결 · 실시간 · 도착까지 68km</span><h1 style="margin: 0; font-size: 30px; font-weight: 800">지금 2위! 1위까지 <span style="color: #3182F6">3점</span></h1></div>
-        <span style="font-size: 13px; font-weight: 800; color: #1B64DA; background: #E8F3FF; border-radius: 999px; padding: 7px 12px">도착하면 최종 순위가 나와요</span>
+        <button type="button" onClick="{{openArrived}}" style="height: 40px; padding: 0 14px; border-radius: 999px; border: none; background: #E8F3FF; color: #1B64DA; font-size: 13px; font-weight: 800">도착하면 결과가 자동으로 떠요 · 시연</button>
       </header>
       <section aria-label="실시간 레이스" style="position: relative; height: 190px; border-radius: 24px; background: #DFF3E6; overflow: hidden; flex: none">
         <svg viewBox="0 0 923 190" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%">
@@ -554,7 +697,7 @@ button{font-family:inherit;cursor:pointer}
         <section aria-label="점수 현황" style="flex: 1.2; background: #FFFFFF; border-radius: 26px; padding: 16px 20px; display: flex; flex-direction: column; justify-content: space-evenly">
           <sc-for list="{{live}}" as="l" hint-placeholder-count="4"><div style="{{l.row}}"><span style="width: 26px; font-size: 20px; font-weight: 800; color: #1B64DA">{{l.rank}}</span><svg viewBox="0 0 120 80" aria-hidden="true" style="{{l.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{l.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{l.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg><span style="flex: 1; font-size: 16px; font-weight: 800">{{l.n}}</span><span style="font-size: 13px; color: #4E5968">{{l.note}}</span><span style="width: 56px; text-align: right; font-size: 24px; font-weight: 800">{{l.s}}</span></div></sc-for>
         </section>
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0"><section aria-label="AI 응원" style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; justify-content: center"><span style="align-self: flex-start; font-size: 12px; font-weight: 800; color: #FFFFFF; background: #3182F6; border-radius: 6px; padding: 3px 7px">AI 응원 · 음성으로만 나와요</span><div style="background: #E8F3FF; border-radius: 4px 20px 20px 20px; padding: 12px 16px; font-size: 17px; font-weight: 800; color: #1B64DA; animation: cdPop 0.5s ease-out">멋져요! 30분째 급정거 없이 달리는 중</div><div style="background: #FFF4E6; border-radius: 4px 20px 20px 20px; padding: 12px 16px; font-size: 16px; font-weight: 800; color: #B85700; animation: cdPop 0.8s ease-out">삼촌 차와 3점 차이! 분발하세요</div></section><section aria-label="주간 순위" style="flex: 1.3; min-height: 0; background: #FFFFFF; border-radius: 26px; padding: 16px 20px; display: flex; flex-direction: column; justify-content: space-between"><div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 16px; font-weight: 800">이번 주 순위</span><span style="font-size: 12px; color: #4E5968">연락처 친구 · 11월 2주차</span></div><sc-for list="{{weekly}}" as="w" hint-placeholder-count="5"><div style="{{w.row}}"><span style="width: 22px; font-size: 16px; font-weight: 800; color: #1B64DA">{{w.r}}</span><span style="flex: 1; font-size: 15px; font-weight: 700">{{w.n}}</span><span style="{{w.dStyle}}">{{w.d}}</span><span style="width: 44px; text-align: right; font-size: 17px; font-weight: 800">{{w.s}}</span></div></sc-for></section></div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0"><section aria-label="AI 응원" style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; justify-content: center"><span style="align-self: flex-start; font-size: 12px; font-weight: 800; color: #FFFFFF; background: #3182F6; border-radius: 6px; padding: 3px 7px">AI 응원 · 음성으로만 나와요</span><div style="background: #E8F3FF; border-radius: 4px 20px 20px 20px; padding: 12px 16px; font-size: 17px; font-weight: 800; color: #1B64DA; animation: cdPop 0.5s ease-out">멋져요! 30분째 급정거 없이 달리는 중</div><div style="background: #FFF4E6; border-radius: 4px 20px 20px 20px; padding: 12px 16px; font-size: 16px; font-weight: 800; color: #B85700; animation: cdPop 0.8s ease-out">{{vehicle.purple}}와 3점 차이! 분발하세요</div></section><section aria-label="주간 순위" style="flex: 1.3; min-height: 0; background: #FFFFFF; border-radius: 26px; padding: 16px 20px; display: flex; flex-direction: column; justify-content: space-between"><div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 16px; font-weight: 800">이번 주 순위</span><span style="font-size: 12px; color: #4E5968">연락처 친구 · 11월 2주차</span></div><sc-for list="{{weekly}}" as="w" hint-placeholder-count="5"><div style="{{w.row}}"><span style="width: 22px; font-size: 16px; font-weight: 800; color: #1B64DA">{{w.r}}</span><span style="flex: 1; font-size: 15px; font-weight: 700">{{w.n}}</span><span style="{{w.dStyle}}">{{w.d}}</span><span style="width: 44px; text-align: right; font-size: 17px; font-weight: 800">{{w.s}}</span></div></sc-for></section></div>
       </div>
     </sc-if>
 
@@ -567,8 +710,8 @@ button{font-family:inherit;cursor:pointer}
       <section aria-label="시상대" style="position: relative; background: #FFFFFF; border-radius: 30px; padding: 20px 30px 0; height: 420px; box-sizing: border-box; display: flex; align-items: flex-end; justify-content: center; gap: 18px; overflow: hidden; flex: none">
         <sc-for list="{{confetti}}" as="c" hint-placeholder-count="14"><span style="{{c}}"></span></sc-for>
         
-        <sc-for list="{{podium}}" as="p" hint-placeholder-count="3">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 210px">
+        <sc-for list="{{podium}}" as="p" hint-placeholder-count="4">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 180px">
             <sc-if value="{{p.crown}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; font-weight: 800; color: #1B64DA; background: #E8F3FF; border-radius: 999px; padding: 4px 12px">오늘의 베스트 드라이버</span></sc-if>
             <svg viewBox="0 0 120 80" aria-hidden="true" style="{{p.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{p.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{p.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg>
             <span style="font-size: 17px; font-weight: 800">{{p.n}}</span>
@@ -578,7 +721,7 @@ button{font-family:inherit;cursor:pointer}
       </section>
       <div style="display: flex; gap: 14px; flex: 1; min-height: 0">
         <section style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 16px 20px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; font-size: 15px; align-content: space-evenly"><span style="font-weight: 800; color: #4E5968">차</span><span style="font-weight: 800; color: #4E5968">급가속</span><span style="font-weight: 800; color: #4E5968">급제동</span><span style="font-weight: 800; color: #4E5968">과속</span><span style="font-weight: 800; color: #4E5968">보너스</span><sc-for list="{{table}}" as="t" hint-placeholder-count="20"><span style="{{t.s}}">{{t.v}}</span></sc-for></section>
-        <div style="flex: 1.7; display: flex; gap: 14px; min-height: 0"><section style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px"><span style="align-self: flex-start; font-size: 12px; font-weight: 800; color: #FFFFFF; background: #3182F6; border-radius: 6px; padding: 3px 7px">AI 한마디</span><span style="font-size: 17px; font-weight: 800">삼촌 차가 제일 부드럽게 달렸어요</span><span style="font-size: 13px; color: #4E5968; line-height: 1.5">민지 차는 연료 경고를 먼저 알려서 팀워크 보너스 +5점!</span><button type="button" style="margin-top: auto; height: 50px; border-radius: 14px; border: none; background: #3182F6; color: #FFFFFF; font-size: 15px; font-weight: 800">크루에 결과 드랍</button></section><section aria-label="주간 순위" style="flex: 1.3; min-height: 0; background: #FFFFFF; border-radius: 26px; padding: 14px 18px; display: flex; flex-direction: column; justify-content: space-between"><div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 16px; font-weight: 800">이번 주 순위</span><span style="font-size: 12px; color: #4E5968">연락처 친구 · 11월 2주차</span></div><sc-for list="{{weekly}}" as="w" hint-placeholder-count="5"><div style="{{w.row}}"><span style="width: 22px; font-size: 16px; font-weight: 800; color: #1B64DA">{{w.r}}</span><span style="flex: 1; font-size: 15px; font-weight: 700">{{w.n}}</span><span style="{{w.dStyle}}">{{w.d}}</span><span style="width: 44px; text-align: right; font-size: 17px; font-weight: 800">{{w.s}}</span></div></sc-for></section></div>
+        <div style="flex: 1.7; display: flex; gap: 14px; min-height: 0"><section style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px"><span style="align-self: flex-start; font-size: 12px; font-weight: 800; color: #FFFFFF; background: #3182F6; border-radius: 6px; padding: 3px 7px">AI 한마디</span><span style="font-size: 17px; font-weight: 800">{{vehicle.purple}}가 제일 부드럽게 달렸어요</span><span style="font-size: 13px; color: #4E5968; line-height: 1.5">{{vehicle.yellow}}는 연료 경고를 먼저 알려서 팀워크 보너스 +5점!</span><button type="button" style="margin-top: auto; height: 50px; border-radius: 14px; border: none; background: #3182F6; color: #FFFFFF; font-size: 15px; font-weight: 800">크루에 결과 드랍</button></section><section aria-label="주간 순위" style="flex: 1.3; min-height: 0; background: #FFFFFF; border-radius: 26px; padding: 14px 18px; display: flex; flex-direction: column; justify-content: space-between"><div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 16px; font-weight: 800">이번 주 순위</span><span style="font-size: 12px; color: #4E5968">연락처 친구 · 11월 2주차</span></div><sc-for list="{{weekly}}" as="w" hint-placeholder-count="5"><div style="{{w.row}}"><span style="width: 22px; font-size: 16px; font-weight: 800; color: #1B64DA">{{w.r}}</span><span style="flex: 1; font-size: 15px; font-weight: 700">{{w.n}}</span><span style="{{w.dStyle}}">{{w.d}}</span><span style="width: 44px; text-align: right; font-size: 17px; font-weight: 800">{{w.s}}</span></div></sc-for></section></div>
       </div>
     </sc-if>
 
@@ -604,21 +747,143 @@ button{font-family:inherit;cursor:pointer}
         <section style="flex: 1; background: #FFFFFF; border-radius: 26px; padding: 18px 22px; display: flex; flex-direction: column; gap: 10px"><span style="font-size: 16px; font-weight: 800">내 포인트 1,250P</span><span style="font-size: 14px; color: #4E5968">휴게소 할인 쿠폰, 주유 할인으로 바꿀 수 있어요</span><div style="display: flex; justify-content: space-between; align-items: center; background: #F9FAFB; border-radius: 14px; padding: 12px 14px"><span style="font-size: 15px; font-weight: 800">휴게소 푸드코트 2,000원</span><span style="font-size: 14px; font-weight: 800; color: #1B64DA">800P</span></div><div style="display: flex; justify-content: space-between; align-items: center; background: #F9FAFB; border-radius: 14px; padding: 12px 14px"><span style="font-size: 15px; font-weight: 800">주유 리터당 50원 할인</span><span style="font-size: 14px; font-weight: 800; color: #1B64DA">1,000P</span></div><button type="button" style="margin-top: auto; height: 56px; border-radius: 16px; border: none; background: #3182F6; color: #FFFFFF; font-size: 16px; font-weight: 800">포인트 쓰러 가기</button></section>
       </div>
     </sc-if>
+    <!-- 퀵 드랍 투표 결과 알림 (보낸 차) -->
+    <sc-if value="{{pollOpen}}" hint-placeholder-val="{{false}}">
+      <div style="position: absolute; inset: 0; z-index: 160; background: rgba(25,31,40,0.32)"></div>
+      <section role="alertdialog" aria-label="투표 결과" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 161; width: 600px; background: #FFFFFF; border-radius: 30px; padding: 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: cdPop 0.4s ease-out">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <span style="width: 48px; height: 48px; border-radius: 50%; background: #3182F6; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 800; color: #1B64DA">결정 드랍 · 투표가 끝났어요</span><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">{{pollHead}}</span></span>
+        </div>
+        <span style="font-size: 14px; color: #4E5968">{{pollSub}}</span>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <sc-for list="{{pollTally}}" as="t" hint-placeholder-count="3">
+            <div style="{{t.row}}">
+              <span style="{{t.num}}">{{t.i}}</span>
+              <span style="flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0"><span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 17px; font-weight: 800">{{t.name}}</span><span style="font-size: 13px; color: #4E5968">{{t.meta}}</span></span><span style="height: 8px; border-radius: 4px; background: #E5E8EB; overflow: hidden"><span style="{{t.bar}}"></span></span></span>
+              <span style="display: flex; align-items: center"><sc-for list="{{t.voters}}" as="v" hint-placeholder-count="2"><svg viewBox="0 0 120 80" aria-hidden="true" style="{{v.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{v.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle></svg></sc-for><span style="font-size: 16px; font-weight: 800; margin-left: 6px; min-width: 30px; text-align: right">{{t.count}}</span></span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size: 13px; color: #4E5968">“바꿔줘”라고 말해도 돼요 · 가만히 두면 10초 뒤 자동으로 경유지에 넣어요</span>
+        <div style="display: flex; gap: 10px"><button type="button" onClick="{{pollSkip}}" style="flex: 1; height: 62px; border-radius: 18px; border: none; background: #F2F4F6; color: #333D4B; font-size: 16px; font-weight: 800">우리 차는 안 들르기</button><button type="button" onClick="{{pollApply}}" style="flex: 2; height: 62px; border-radius: 18px; border: none; background: #3182F6; color: #FFFFFF; font-size: 17px; font-weight: 800">내비 경유지로 바꾸기</button></div>
+      </section>
+    </sc-if>
+
+    <!-- 차 별명 바꾸기 -->
+    <sc-if value="{{renaming}}" hint-placeholder-val="{{false}}">
+      <div style="position: absolute; inset: 0; z-index: 200; background: rgba(25,31,40,0.32)"></div>
+      <form role="dialog" aria-label="차 별명 바꾸기" onSubmit="{{saveName}}" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 201; width: 480px; background: #FFFFFF; border-radius: 30px; padding: 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: cdPop 0.35s ease-out">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <svg viewBox="0 0 120 80" aria-hidden="true" style="{{renameBadge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{renameL}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{renameL}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg>
+          <span style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 800; color: #1B64DA">차 별명</span><span style="font-size: 22px; font-weight: 800">{{renameLabel}}</span></span>
+        </div>
+        <input class="cd-field" aria-label="새 별명" maxlength="18" value="{{renameText}}" onChange="{{changeName}}" placeholder="예: 막내 차, 캠핑카">
+        <span style="font-size: 13px; color: #4E5968">비워두면 기본 이름으로 돌아가요 · 최대 18자</span>
+        <div style="display: flex; gap: 10px"><button type="button" onClick="{{closeName}}" style="flex: 1; height: 60px; border-radius: 18px; border: none; background: #F2F4F6; color: #333D4B; font-size: 16px; font-weight: 800">취소</button><button type="submit" style="flex: 2; height: 60px; border-radius: 18px; border: none; background: #3182F6; color: #FFFFFF; font-size: 17px; font-weight: 800">저장</button></div>
+      </form>
+    </sc-if>
+
+    <!-- 도착 감지 → 안전 운전 결과 모달 -->
+    <sc-if value="{{arrivedOpen}}" hint-placeholder-val="{{false}}">
+      <div style="position: absolute; inset: 0; z-index: 200; background: rgba(25,31,40,0.32)"></div>
+      <section role="dialog" aria-label="안전 운전 결과" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 201; width: 600px; background: #FFFFFF; border-radius: 30px; padding: 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: cdPop 0.4s ease-out; overflow: hidden">
+        <span style="align-self: flex-start; font-size: 13px; font-weight: 800; color: #0B7F5A; background: #E6F8F1; border-radius: 999px; padding: 6px 12px; position: relative">강릉 경포해변 도착 · 차가 주행 종료를 감지했어요</span>
+        <span style="font-size: 28px; font-weight: 800; line-height: 1.3; position: relative">오늘의 베스트 드라이버는<br><span style="color: #3182F6">{{vehicle.purple}}</span>예요</span>
+        <div style="display: flex; align-items: flex-end; justify-content: center; gap: 10px; background: #F9FAFB; border-radius: 22px; padding: 14px 14px 0">
+          <sc-for list="{{podiumMini}}" as="p" hint-placeholder-count="4"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><svg viewBox="0 0 120 80" aria-hidden="true" style="{{p.badge}}"><ellipse cx="60" cy="70" rx="44" ry="7" fill="rgba(25,31,40,0.14)"></ellipse><path d="M14 52 Q12 40 26 37 L40 24 Q46 17 58 17 L76 17 Q88 17 94 27 L102 37 Q112 39 110 52 Q110 61 100 61 L22 61 Q14 61 14 52Z" fill="url(#g-{{p.l}})"></path><path d="M44 26 Q48 21 56 21 L74 21 Q83 21 87 28 L91 35 L40 35 Z" fill="#E6F1FF"></path><path d="M65 21 L65 35" stroke="url(#g-{{p.l}})" stroke-width="3"></path><path d="M24 42 Q40 39 60 40" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round" fill="none"></path><circle cx="34" cy="60" r="10" fill="#2B2F36"></circle><circle cx="88" cy="60" r="10" fill="#2B2F36"></circle><circle cx="34" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="88" cy="60" r="4" fill="#D1D6DB"></circle><circle cx="106" cy="46" r="3" fill="#FFF3B0"></circle></svg><span style="font-size: 14px; font-weight: 800; white-space: nowrap">{{p.n}}</span><div style="{{p.block}}"><span style="{{p.rankS}}">{{p.rank}}</span><span style="{{p.scoreS}}">{{p.s}}</span></div></div></sc-for>
+        </div>
+        <div style="display: flex; gap: 10px; position: relative"><button type="button" onClick="{{closeArrived}}" style="flex: 1; height: 60px; border-radius: 18px; border: none; background: #F2F4F6; color: #333D4B; font-size: 16px; font-weight: 800">닫기</button><button type="button" onClick="{{go.final}}" style="flex: 2; height: 60px; border-radius: 18px; border: none; background: #3182F6; color: #FFFFFF; font-size: 17px; font-weight: 800">점수 자세히 보기</button></div>
+      </section>
+    </sc-if>
   </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"start":{"editor":"enum","options":["create","search","join","drive","fuelMe","fuelThem","inbox","drop","shout","ai","vote","song","songGet","decided","games","score","final","ad","together"],"default":"create"},"$preview":{"width":1600,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"start":{"editor":"enum","options":["create","search","join","drive","quickEdit","voiceMemo","fuelMe","fuelThem","inbox","drop","shout","ai","vote","song","songGet","decided","games","score","final","ad","together"],"default":"create"},"$preview":{"width":1600,"height":900}}'>
 class Component extends DCLogic {
   constructor(p) { super(p); this.state = { screen: null, fuel: '', fuelStep: 0, fuelAlone: false, station: 0, target: 'all', aiKind: 'rest', shout: 0, tab: 'all', pick: 'o1', eggOpen: false, eggSpun: false, song: 0, songOk: false, game: 'omok', quizPick: null, vs: null, gameSent: false }; }
+  cancelMedia(){
+    this.mediaVersion=(this.mediaVersion||0)+1;
+    if(this.recognition){this.recognition.onend=this.recognition.onresult=this.recognition.onerror=null;this.recognition.abort();this.recognition=null;}
+    if(this.recorder){this.recorder.onstop=null;if(this.recorder.state!=='inactive')this.recorder.stop();this.recorder=null;}
+    if(this.stream){this.stream.getTracks().forEach(t=>t.stop());this.stream=null;}
+    clearTimeout(this.memoTimer);
+    if(this.pendingUrl){URL.revokeObjectURL(this.pendingUrl);this.pendingUrl=null;}
+  }
+  get TRACKS(){return ['/_blob/81b1cef81e9f80b46113d6615befb13c','/_blob/1b693245190e1ee78e6d1221f65fc688','/_blob/9b9a4e6dd867afd88a14dde6a79e6632','/_blob/7c57e338150a280c4f2c98610f233748'];}
+  playFollow(car,track){
+    if(this.followPlayer)this.followPlayer.pause();
+    const player=new Audio(this.TRACKS[track]);
+    this.followPlayer=player;player.loop=true;player.volume=0.36;
+    this.setState({followCar:car,musicError:''});
+    player.play().catch(()=>{if(this.followPlayer===player){this.followPlayer=null;this.setState({followCar:null,musicError:'재생하지 못했어요. 차량을 다시 선택하세요.'});}});
+  }
+  stopFollow(){
+    if(this.followPlayer)this.followPlayer.pause();
+    this.followPlayer=null;this.setState({followCar:null,musicError:''});
+  }
+  componentWillUnmount(){clearTimeout(this.pollTimer);if(this.followPlayer)this.followPlayer.pause();this.cancelMedia();(this.state.messages||[]).forEach(m=>{if(m.audio)URL.revokeObjectURL(m.audio);});}
+  dictatePlace(){
+    const API=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!API){this.setState({speechHint:'이 브라우저는 음성 인식을 지원하지 않아요. 아래 키보드 입력을 이용하세요.'});return;}
+    if(this.recognition)return;
+    try{
+      const r=new API();this.recognition=r;r.lang='ko-KR';r.interimResults=false;
+      r.onresult=e=>this.setState({placeText:e.results[0][0].transcript,speechHint:'장소 이름을 확인하고 추가하세요.'});
+      r.onerror=()=>this.setState({speechHint:'음성을 듣지 못했어요. 다시 시도하거나 키보드를 이용하세요.'});
+      r.onend=()=>{this.recognition=null;if(!this.state.placeText && this.state.speechHint==='듣고 있어요…')this.setState({speechHint:'장소 이름을 다시 말해주세요.'});};
+      this.setState({placeText:'',speechHint:'듣고 있어요…'});r.start();
+    }catch(e){this.recognition=null;this.setState({speechHint:'마이크를 열 수 없어요. 키보드로 입력할 수 있어요.'});}
+  }
+  async recordMemo(){
+    if(this.recorder && this.recorder.state==='recording'){this.recorder.stop();return;}
+    if(this.state.memoPhase==='waiting')return;
+    this.cancelMedia();
+    const version=this.mediaVersion;
+    this.setState({memoPhase:'waiting',memoUrl:'',memoHint:'마이크 사용 권한을 확인하고 있어요.'});
+    try{
+      if(!navigator.mediaDevices || !window.MediaRecorder)throw Error();
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      if(version!==this.mediaVersion){stream.getTracks().forEach(t=>t.stop());return;}
+      this.stream=stream;const rec=new MediaRecorder(stream),chunks=[];this.recorder=rec;
+      rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+      rec.onstop=()=>{
+        clearTimeout(this.memoTimer);stream.getTracks().forEach(t=>t.stop());this.stream=null;this.recorder=null;
+        if(version!==this.mediaVersion)return;
+        if(!chunks.length){this.setState({memoPhase:'idle',memoHint:'녹음된 소리가 없어요. 다시 시도하세요.'});return;}
+        this.pendingUrl=URL.createObjectURL(new Blob(chunks,{type:rec.mimeType||chunks[0].type}));
+        this.setState({memoPhase:'ready',memoUrl:this.pendingUrl,memoHint:'들어본 뒤 보내세요.'});
+      };
+      rec.onerror=()=>{this.cancelMedia();this.setState({memoPhase:'idle',memoHint:'녹음을 다시 시도해주세요.'});};
+      rec.start();this.setState({memoPhase:'recording',memoHint:'다시 누르면 녹음이 끝나요.'});
+      this.memoTimer=setTimeout(()=>{if(rec.state==='recording')rec.stop();},60000);
+    }catch(e){if(version===this.mediaVersion){this.cancelMedia();this.setState({memoPhase:'idle',memoHint:'녹음할 수 없어요. 마이크 권한과 브라우저 설정을 확인하세요.'});}}
+  }
   renderVals() {
     var self = this;
+    var nicknames=this.state.nicknames;
+    if(!nicknames){try{nicknames=JSON.parse(localStorage.getItem('cardrop.names.v1'));}catch(_){}}
+    var vehicle={blue:'아빠 차',purple:'삼촌 차',teal:'이모 차',yellow:'민지 차'};
+    Object.keys(vehicle).forEach(function(id){if(typeof nicknames?.[id]==='string' && nicknames[id].trim())vehicle[id]=nicknames[id];});
+    function editName(id){return function(){self.setState({renameId:id,renameText:nicknames?.[id]||''});};}
+    function saveName(e){e.preventDefault();var id=self.state.renameId;if(!vehicle[id])return;
+      var next=Object.assign({},nicknames||{}),value=self.state.renameText.trim().slice(0,18);
+      if(value)next[id]=value;else delete next[id];
+      try{localStorage.setItem('cardrop.names.v1',JSON.stringify(next));}catch(_){}
+      self.setState({nicknames:next,renameId:null});
+    }
+    // 받는 차: 'all' 또는 ['b','d'] 처럼 여러 대
+    var CARKEY={b:vehicle.purple,c:vehicle.teal,d:vehicle.yellow};
+    function pickList(t){return Array.isArray(t)?t.filter(function(k){return CARKEY[k];}):(t&&t!=='all'&&CARKEY[t]?[t]:[]);}
+    function recipientName(t){var a=pickList(t);return (!a.length||a.length===3)?'크루 전체':a.map(function(k){return CARKEY[k];}).join(' · ');}
+
     var IMG = { blue: '/_blob/8e10a05df8ddf57feaa7bb69f546b926', purple: '/_blob/a34440e93f701f777043b12b77cb8273', teal: '/_blob/c4051f1a3f77e9d6cef469cc03e4103e', yellow: '/_blob/76512cb754699fb9f3b94db78121c8cf', gray: '/_blob/4a67bab04520dfaccb9af82d874acaf7' };
     var CB = { blue: ['#3182F6', '#FFFFFF'], purple: ['#8B5CF6', '#FFFFFF'], teal: ['#00B8A9', '#06302C'], yellow: ['#FFB020', '#3A2600'], gray: ['#E5E8EB', '#4E5968'] };
     var LET = { blue: 'blue', purple: 'purple', teal: 'teal', yellow: 'yellow', gray: 'gray' };
     var DUR = { blue: 1.3, purple: 1.5, teal: 1.4, yellow: 1.2, gray: 0 }; var BADGE = function (k, sz) { sz = sz || 40; return 'width: ' + Math.round(sz * 1.65) + 'px; height: ' + Math.round(sz * 1.1) + 'px; flex: none; overflow: visible' + (DUR[k] ? '; animation: cdBob ' + DUR[k] + 's ease-in-out infinite' : '; opacity: 0.7'); };
     var S = ['create','search','join','drive','fuelMe','fuelThem','inbox','drop','shout','ai','vote','song','songGet','decided','games','score','final','ad','together'];
     var screen = this.state.screen || this.props.start || 'create';
-    var go = function (s, extra) { return function () { var st = { screen: s, eggOpen: false, eggSpun: false }; if (s === 'fuelThem') st.fuel = ''; if (s === 'fuelMe') st.fuelStep = 0; if (s === 'songGet') st.songOk = false; if (extra) for (var k in extra) st[k] = extra[k]; self.setState(st); }; };
+    var go = function (s, extra) { return function () { self.cancelMedia();var st = { phraseMode:null,phraseText:'',phraseError:'',memoPhase:'idle',memoUrl:'',memoHint:'',placeText:'',speechHint:'',screen: s, quickPopup:false, feedback:"", eggOpen: false, eggSpun: false, arrived: false }; if (s === 'fuelThem') st.fuel = ''; if (s === 'fuelMe') st.fuelStep = 0; if (s === 'songGet') st.songOk = false; if (extra) for (var k in extra) st[k] = extra[k]; self.setState(st); }; };
     var G = {}; S.forEach(function (k) { G[k] = go(k); });
     var is = {}; S.forEach(function (k) { is[k] = screen === k; });
     is.driveLike = screen === 'drive' || screen === 'fuelThem' || screen === 'inbox' || screen === 'songGet';
@@ -632,19 +897,34 @@ class Component extends DCLogic {
     if (screen === 'final') nav.destEta = '도착';
 
     var RAIL = [['홈', 'drive', 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'], ['드랍', 'drop', 'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z'], ['크루', 'create', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'], ['게임', 'games', 'M6 12h4M8 10v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.98 3.59L2 15a3 3 0 0 0 5.2 2.1L9 15h6l1.8 2.1A3 3 0 0 0 22 15l-.7-6.41A4 4 0 0 0 17.32 5z'], ['기록', 'score', 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3']];
-    var grp = { drive: 'drive', fuelThem: 'drive', inbox: 'drive', fuelMe: 'drive', songGet: 'drive', decided: 'drive', drop: 'drop', shout: 'drop', ai: 'drop', vote: 'drop', song: 'drop', ad: 'drop', together: 'drop', create: 'create', search: 'create', join: 'create', games: 'games', score: 'score', final: 'score' };
+    var grp = { quickEdit: 'drive', drive: 'drive', fuelThem: 'drive', inbox: 'drive', fuelMe: 'drive', songGet: 'drive', decided: 'drive', voiceMemo:'drop',listenMemo:'drive',drop: 'drop', shout: 'drop', ai: 'drop', vote: 'drop', song: 'drop', ad: 'drop', together: 'drop', create: 'create', search: 'create', join: 'create', games: 'games', score: 'score', final: 'score' };
     var rail = RAIL.map(function (r) { var on = grp[screen] === r[1]; return { label: r[0], d: r[2], go: G[r[1]], style: 'display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 64px; height: 64px; border-radius: 18px; border: none; font-size: 12px; font-weight: 800; ' + (on ? 'background: #E8F3FF; color: #1B64DA' : 'background: transparent; color: #6B7684') }; });
 
-    var members = [['아빠 차 (나)', '방장 · 연료 64%', '연결됨', 'blue', true], ['삼촌 차', '코드로 참여 · 방금 전', '연결됨', 'purple', true], ['민지 차', '저장된 그룹 · 1분 전', '연결됨', 'yellow', true], ['이모 차', '초대 보냄 · 응답 기다리는 중', '기다리는 중', 'gray', false]].map(function (m, i) {
-      return { name: m[0], meta: m[1], st: m[2], img: IMG[m[3]], badge: BADGE(m[3]), l: LET[m[3]], anim: 'width: 78px; ' + (m[4] ? bob(i) : 'opacity: 0.6'), stStyle: 'font-size: 13px; font-weight: 800; padding: 6px 10px; border-radius: 999px; ' + (m[4] ? 'background: #E8F3FF; color: #1B64DA' : 'background: #FFF4E6; color: #B85700') };
+    var members = [[(vehicle.blue+' (나)'), '방장 · 연료 64%', '연결됨', 'blue', true], [(vehicle.purple), '코드로 참여 · 방금 전', '연결됨', 'purple', true], [(vehicle.yellow), '저장된 그룹 · 1분 전', '연결됨', 'yellow', true], [(vehicle.teal), '초대 보냄 · 응답 기다리는 중', '기다리는 중', 'gray', false]].map(function (m, i) {
+      return { edit:editName(m[3]==='gray'?'teal':m[3]),name: m[0], meta: m[1], st: m[2], img: IMG[m[3]], badge: BADGE(m[3]), l: LET[m[3]], anim: 'width: 78px; ' + (m[4] ? bob(i) : 'opacity: 0.6'), stStyle: 'font-size: 13px; font-weight: 800; padding: 6px 10px; border-radius: 999px; ' + (m[4] ? 'background: #E8F3FF; color: #1B64DA' : 'background: #FFF4E6; color: #B85700') };
     });
 
     var TINT = { blue: '#EEF5FF', purple: '#F3EEFF', teal: '#E6F8F4', yellow: '#FFF7DD' };
-    var CREW = [['아빠 차 (나)', 'blue', '선두', 64], ['삼촌 차', 'purple', '2.1km 뒤', 48], ['이모 차', 'teal', '3.4km 뒤', 55], ['민지 차', 'yellow', '1.5km 뒤 · 85km 주행 가능', 12]];
-    var crew = CREW.map(function (c, i) { var low = c[3] < 20; return { name: c[0], img: IMG[c[1]], badge: BADGE(c[1], 54), l: LET[c[1]], gap: c[2], anim: 'width: 82px; ' + bob(i), fuel: low ? '연료 경고' : '연료 ' + c[3] + '%',
+    var CREW = [[(vehicle.blue+' (나)'), 'blue', '선두', 64], [(vehicle.purple), 'purple', '2.1km 뒤', 48], [(vehicle.teal), 'teal', '3.4km 뒤', 55], [(vehicle.yellow), 'yellow', '1.5km 뒤 · 85km 주행 가능', 12]];
+    var positions=[{i:2,left:13,eta:26},{i:1,left:37,eta:23},{i:3,left:61,eta:21},{i:0,left:86,eta:18}].map(function(c,j){
+      var key=CREW[c.i][1], me=c.i===0;
+      return {l:key,badge:BADGE(key,40),name:CREW[c.i][0],rank:4-j,minutes:c.eta,
+        pill:'display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 10px;border-radius:12px;font-size:13px;white-space:nowrap;box-shadow:0 4px 12px rgba(25,31,40,0.12);'+(me?'background:#3182F6;color:#FFFFFF':'background:#FFFFFF;color:#191F28'),
+        sub:'font-size:12px;font-weight:700;'+(me?'color:#FFFFFF':'color:#1B64DA'),
+        markerStyle:'position:absolute;left:'+c.left+'%;top:'+([132,159,124,140][j]/200*100)+'%;transform:translate(-50%,calc(-100% + 10px));display:flex;flex-direction:column;align-items:center;gap:2px;z-index:'+(2+j)};
+    });
+    var SONGS = [['바다로 가자', '드라이브 밴드'], ['여름 고속도로', '파란 하늘'], ['휴게소 블루스', '호두과자 트리오'], ['강릉 가는 길', '동해선']];
+    var peerTracks={purple:this.state.purpleTrack??1,teal:3,yellow:2};
+    var followed=this.state.followCar;
+    var ownTrack=followed?peerTracks[followed]:0;
+    var followCars=CREW.slice(1).map(function(c){
+      var id=c[1],active=followed===id;
+      return {name:c[0],track:SONGS[peerTracks[id]].join(' · '),active:String(active),action:active?'따라듣는 중':'따라듣기',badge:BADGE(id,40),l:LET[id],listen:function(){if(!active)self.playFollow(id,peerTracks[id]);}};
+    });
+    var crew = CREW.map(function (c, i) { var low = c[3] < 20; return { edit:editName(c[1]),track:SONGS[i===0?ownTrack:peerTracks[c[1]]].join(' · '),name: c[0], img: IMG[c[1]], badge: BADGE(c[1], 54), l: LET[c[1]], gap: c[2], anim: 'width: 82px; ' + bob(i), fuel: low ? '연료 경고' : '연료 ' + c[3] + '%',
       box: 'display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px; border-radius: 22px; background: ' + TINT[c[1]] + '; ' + (low ? 'border: 2px solid #FFB067' : 'border: 2px solid ' + TINT[c[1]]),
       fuelStyle: 'font-size: 13px; font-weight: 800; ' + (low ? 'color: #B85700' : 'color: #4E5968'), bar: 'display: block; height: 100%; width: ' + c[3] + '%; background: ' + (low ? '#FF8A3D' : '#3182F6') }; });
-    var board = [['1', 'purple', '삼촌 차', 94], ['2', 'blue', '나', 91], ['3', 'teal', '이모 차', 86], ['4', 'yellow', '민지 차', 83]].map(function (b) { return { rank: b[0], img: IMG[b[1]], badge: BADGE(b[1], 32), l: LET[b[1]], n: b[2], s: b[3], row: 'display: flex; align-items: center; gap: 8px; padding: 2px 6px; border-radius: 12px; ' + (b[2] === '나' ? 'background: #E8F3FF' : '') }; });
+    var board = [['1', 'purple', (vehicle.purple), 94], ['2', 'blue', '나', 91], ['3', 'teal', (vehicle.teal), 86], ['4', 'yellow', (vehicle.yellow), 83]].map(function (b) { return { rank: b[0], img: IMG[b[1]], badge: BADGE(b[1], 32), l: LET[b[1]], n: b[2], s: b[3], row: 'display: flex; align-items: center; gap: 8px; padding: 2px 6px; border-radius: 12px; ' + (b[2] === '나' ? 'background: #E8F3FF' : '') }; });
 
     var rpath = "path('M 51 116 A 202 68 0 1 0 455 116 A 202 68 0 1 0 51 116')";
     var racers = [['purple', '1st', -5.6], ['blue', '2nd (나)', -4.4], ['teal', '3rd', -3.4], ['yellow', '4th', -2.6]].map(function (x) {
@@ -652,49 +932,112 @@ class Component extends DCLogic {
         move: 'position: absolute; left: 0; top: 0; offset-path: ' + rpath + '; offset-rotate: 0deg; offset-anchor: 50% 80%; animation: cdRace 16s linear infinite; animation-delay: ' + x[2] + 's; display: flex; flex-direction: column; align-items: center',
         tagStyle: 'font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 8px; white-space: nowrap; ' + (x[1].indexOf('나') > -1 ? 'background: #3182F6; color: #FFFFFF' : 'background: #FFFFFF; color: #191F28') };
     });
-    var weekly = [['1', '민수', '97', '▲1'], ['2', '나', '92', '▲2'], ['3', '삼촌', '89', '▼1'], ['4', '지현', '85', '–'], ['5', '이모', '80', '▼2']].map(function (w) { var me = w[1] === '나'; var up = w[3].charAt(0) === '▲', dn = w[3].charAt(0) === '▼';
-      return { r: w[0], n: me ? '나 (아빠 차)' : w[1], s: w[2], d: w[3], row: 'display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 10px; ' + (me ? 'background: #E8F3FF' : ''), dStyle: 'font-size: 12px; font-weight: 800; width: 30px; text-align: right; color: ' + (up ? '#F04452' : dn ? '#3182F6' : '#8B95A1') }; });
+    var weekly = [['1', '민수', '97', '▲1'], ['2', '나', '92', '▲2'], ['3', (vehicle.purple), '89', '▼1'], ['4', '지현', '85', '–'], ['5', (vehicle.teal), '80', '▼2']].map(function (w) { var me = w[1] === '나'; var up = w[3].charAt(0) === '▲', dn = w[3].charAt(0) === '▼';
+      return { r: w[0], n: me ? ('나 ('+vehicle.blue+')') : w[1], s: w[2], d: w[3], row: 'display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 10px; ' + (me ? 'background: #E8F3FF' : ''), dStyle: 'font-size: 12px; font-weight: 800; width: 30px; text-align: right; color: ' + (up ? '#F04452' : dn ? '#3182F6' : '#8B95A1') }; });
     var ICON = { rest: 'M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v3M10 2v3M14 2v3', food: 'M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7', fuel: 'M3 22V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v17M3 22h11M14 9h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3M6 8h5', dest: 'M4 22V4M4 4h12l-2 4 2 4H4', shout: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', voice: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM19 11a7 7 0 0 1-14 0M12 18v3', song: 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z', game: 'M6 12h4M8 10v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.98 3.59L2 15a3 3 0 0 0 5.2 2.1L9 15h6l1.8 2.1A3 3 0 0 0 22 15l-.7-6.41A4 4 0 0 0 17.32 5z', together: 'M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04' };
-    var CLR = { rest: ['#E8F3FF', '#1B64DA'], food: ['#FFF4E6', '#C25A00'], fuel: ['#FFF7DD', '#8A5A00'], dest: ['#E6F8F4', '#0B7F6F'], shout: ['#F1EDFF', '#5B3FD9'], voice: ['#F1EDFF', '#5B3FD9'], song: ['#FFF0F5', '#D6336C'], game: ['#E6F8F4', '#0B7F6F'], together: ['#FFF7DD', '#8A5A00'] };
+    ICON.inbox = 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-10 6L2 7';
+    ICON.score = 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3';
+    ICON.add = 'M12 5v14M5 12h14';
+    var CLR = { inbox: ['#F2F4F6', '#333D4B'], score: ['#E8F3FF', '#1B64DA'], add: ['#E5E8EB', '#4E5968'], rest: ['#E8F3FF', '#1B64DA'], food: ['#FFF4E6', '#C25A00'], fuel: ['#FFF7DD', '#8A5A00'], dest: ['#E6F8F4', '#0B7F6F'], shout: ['#F1EDFF', '#5B3FD9'], voice: ['#F1EDFF', '#5B3FD9'], song: ['#FFF0F5', '#D6336C'], game: ['#E6F8F4', '#0B7F6F'], together: ['#FFF7DD', '#8A5A00'] };
     var icStyle = function (k, s) { return 'width: ' + s + 'px; height: ' + s + 'px; border-radius: ' + Math.round(s / 3) + 'px; background: ' + CLR[k][0] + '; color: ' + CLR[k][1] + '; display: flex; align-items: center; justify-content: center; flex: none'; };
-    var target = function (k) { return { rest: G.ai && go('ai', { aiKind: 'rest' }), food: go('ai', { aiKind: 'food' }), fuel: go('ai', { aiKind: 'fuel' }), dest: go('vote'), shout: G.shout, voice: G.shout, song: G.song, game: G.games, together: G.ad }[k]; };
-    var quick = [['rest', '휴게소'], ['food', '식사'], ['fuel', '주유'], ['shout', '한마디'], ['song', '노래']].map(function (q) { return { n: q[1], d: ICON[q[0]], ic: icStyle(q[0], 38), go: target(q[0]) }; });
+    function compose(kind, popup) {
+      return go(popup ? 'drive' : 'ai',{aiKind:kind, quickPopup:popup, selected:kind==='custom'?[]:[0,1,2],customPlaces:[],target:popup?'all':self.state.target});
+    }
+    var target = function (k) { return { rest: compose('rest', false), food: compose('food', false), fuel: compose('fuel', false), dest: go('vote',{aiKind:'rest',ballot:[['','새 목적지 제안','직접 추가로 목적지를 제안하세요']],pick:'o1',destinationPoll:true}), shout: G.shout, voice:go('voiceMemo'),cafe:compose('cafe',false),custom:compose('custom',false), song: G.song, game: G.games, together: G.ad }[k]; };
+    var defaults = []; // 4칸 모두 점선 + : 자주 쓰는 드랍을 유저가 직접 채움
+    var labels = {rest:'휴게소',food:'식사',fuel:'주유',shout:'한마디',song:'노래',game:'게임 초대',together:'같이 켜기',inbox:'편지함',score:'운전 기록'};
+    var saved = this.state.quickIds;
+    if (!saved) {
+      try { saved = JSON.parse(localStorage.getItem('cardrop.quick.v1')); } catch (_) {}
+      saved = Array.isArray(saved) ? saved.filter(function(k,i,a){return Object.keys(labels).includes(k) && a.indexOf(k)===i;}).slice(0,4) : defaults;
+    }
+    var draft = this.state.quickDraft || saved;
+    var quick = saved.map(function(k){
+      return {n:labels[k],label:labels[k]+' 퀵 드랍',d:ICON[k],ic:icStyle(k,38),cls:'cd-quick',go:['rest','food','fuel'].includes(k)?compose(k,true):(k==='inbox'||k==='score'?G[k]:target(k))};
+    });
+    var editQuick=function(){self.setState({screen:'quickEdit',quickDraft:saved.slice(),quickHint:''});};
+    while(quick.length<4)quick.push({n:'추가',label:'퀵 드랍 추가',d:ICON.add,ic:'width: 38px; height: 38px; border-radius: 50%; background: #E5E8EB; color: #4E5968; display: flex; align-items: center; justify-content: center; flex: none',cls:'cd-quick is-empty',go:editQuick});
+    var quickOptions = Object.keys(labels).map(function(k){
+      var position=draft.indexOf(k), selected=position!==-1;
+      return {label:labels[k],on:String(selected),d:ICON[k],ic:icStyle(k,46),order:selected?String(position+1):'',
+        badge:selected?'width: 30px; height: 30px; border-radius: 50%; background: #3182F6; color: #FFFFFF; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none':'width: 30px; height: 30px; border-radius: 50%; border: 2px solid #D1D6DB; box-sizing: border-box; flex: none',
+        style:'min-height:80px;border-radius:20px;padding:0 16px;display:flex;align-items:center;gap:12px;color:#191F28;'+(selected?'border:2px solid #3182F6;background:#F4F9FF':'border:2px solid #F2F4F6;background:#FFFFFF'),
+        pick:function(){
+          if (!selected && draft.length===4){self.setState({quickHint:'기존 기능 하나를 해제하면 추가할 수 있어요.'});return;}
+          self.setState({quickDraft:selected?draft.filter(function(id){return id!==k;}):draft.concat(k),quickHint:''});
+        }};
+    });
 
     var fuel = this.state.fuel;
-    var fuelText = fuel === 'join' ? '같이 덕평 주유소에 들러요' : fuel === 'pass' ? '우리는 가던 길로 가요' : '민지가 주유소 간대요, 같이 갈래요?';
-    var fuelSub = fuel === 'join' ? '내 내비에도 경유지로 넣었어요 · 민지 차에 응답이 전달됐어요' : fuel === 'pass' ? '경로는 그대로예요 · 민지 차는 경포해변에서 합류해요' : '아니면 그냥 가던 길 가도 돼요 · “같이 가자”라고 말해도 돼요';
+    var fuelText = fuel === 'join' ? '같이 덕평 주유소에 들러요' : fuel === 'pass' ? '우리는 가던 길로 가요' : (vehicle.yellow+'에서'+' 주유소 간대요, 같이 갈래요?');
+    var fuelSub = fuel === 'join' ? ('내 내비에도 경유지로 넣었어요 · '+vehicle.yellow+'에 응답이 전달됐어요') : fuel === 'pass' ? ('경로는 그대로예요 · '+vehicle.yellow+'는 경포해변에서 합류해요') : '아니면 그냥 가던 길 가도 돼요 · “같이 가자”라고 말해도 돼요';
 
     var IN = [
-      ['yellow', 'need', '연료 알림', '방금', '민지가 주유소 간대요', '같이 갈지 아직 안 골랐어요', '응답', G.fuelThem],
-      ['blue', 'need', '결정 · 투표', '1분 전', '아빠 차: 어디서 쉬어갈까요?', '덕평 · 여주 · 문막 · 1:48 남음', '투표', G.vote],
-      ['purple', 'social', '소셜 · 한마디', '5분 전', '삼촌 차: “천천히 와요~”', '일행에게 한마디', '', null],
-      ['teal', 'social', '소셜 · 노래', '12분 전', '이모 차가 노래를 보냈어요', '바다로 가자 · 드라이브 밴드', '듣기', G.songGet],
+      ['yellow', 'need', '연료 알림', '방금', (vehicle.yellow+'에서'+' 주유소 간대요'), '같이 갈지 아직 안 골랐어요', '응답', G.fuelThem],
+      ['blue', 'need', '결정 · 투표', '1분 전', (vehicle.blue+': 어디서 쉬어갈까요?'), '덕평 · 여주 · 문막 · 1:48 남음', '투표', go('vote',{aiKind:'rest',ballot:null,pick:'o1',destinationPoll:false})],
+      ['purple', 'social', '소셜 · 한마디', '5분 전', (vehicle.purple+': “천천히 와요~”'), '일행에게 한마디', '', null],
+      ['teal', 'social', '소셜 · 노래', '12분 전', (vehicle.teal+'가 노래를 보냈어요'), '바다로 가자 · 드라이브 밴드', '듣기', G.songGet],
       ['blue', 'done', '결정 · 완료', '40분 전', '목적지를 경포해변으로 맞췄어요', '방장이 크루 만들 때 설정', '', null]
     ];
+    (this.state.messages||[]).slice().reverse().forEach(function(msg){
+      if(msg.audio){IN.unshift(['blue','social','음성 메시지','방금','녹음한 음성 메시지',recipientName(msg.target),'듣기',go('listenMemo',{receivedUrl:msg.audio})]);return;}
+      if(msg.phrase){IN.unshift(['blue','social','일행에게 한마디','방금',msg.phrase,recipientName(msg.target),'',null]);return;}
+      IN.unshift(['blue','need','장소 투표','방금',msg.rows.map(row=>row[1]).join(', '),recipientName(msg.target),'투표',go('vote',{ballot:msg.rows,aiKind:msg.kind,pick:'o1',destinationPoll:false})]);
+    });
     var tab = this.state.tab;
-    var tabs = [['all', '전체 5'], ['need', '응답 필요 2'], ['social', '소셜 2'], ['done', '지난 결정']].map(function (t) { var on = t[0] === tab; return { label: t[1], on: on ? 'true' : 'false', pick: function () { self.setState({ tab: t[0] }); }, style: 'height: 40px; padding: 0 14px; border-radius: 999px; border: none; font-size: 14px; font-weight: 800; ' + (on ? 'background: #191F28; color: #FFFFFF' : 'background: #FFFFFF; color: #4E5968') }; });
+    var tabs = [['all', '전체 '+IN.length], ['need', '응답 필요 '+IN.filter(function(x){return x[1]==='need';}).length], ['social', '소셜 '+IN.filter(function(x){return x[1]==='social';}).length], ['done', '지난 결정']].map(function (t) { var on = t[0] === tab; return { label: t[1], on: on ? 'true' : 'false', pick: function () { self.setState({ tab: t[0] }); }, style: 'height: 40px; padding: 0 14px; border-radius: 999px; border: none; font-size: 14px; font-weight: 800; ' + (on ? 'background: #191F28; color: #FFFFFF' : 'background: #FFFFFF; color: #4E5968') }; });
     var list = IN.filter(function (d) { return tab === 'all' || d[1] === tab; });
     var inboxItems = list.map(function (d, i) { var kc = d[1] === 'need' ? 'color: #D22030; background: #FFEEEE' : (d[1] === 'social' ? 'color: #5B3FD9; background: #F1EDFF' : 'color: #4E5968; background: #F2F4F6');
       return { img: IMG[d[0]], badge: BADGE(d[0]), l: LET[d[0]], kind: d[2], time: d[3], title: d[4], sub: d[5], act: d[6], go: d[7] || G.inbox, row: 'display: flex; align-items: center; gap: 10px; padding: 12px 0; ' + (i < list.length - 1 ? 'border-bottom: 1px solid #F2F4F6' : ''), kindStyle: 'font-size: 11px; font-weight: 800; border-radius: 6px; padding: 2px 6px; ' + kc, actStyle: 'height: 40px; padding: 0 14px; border-radius: 12px; border: none; font-size: 14px; font-weight: 800; flex: none; ' + (d[1] === 'need' ? 'background: #3182F6; color: #FFFFFF' : 'background: #E8F3FF; color: #1B64DA') }; });
 
     var tgt = this.state.target;
-    var targets = [['all', '크루 전체', '삼촌 · 이모 · 민지'], ['b', '삼촌 차만', '1대'], ['d', '민지 차만', '1대'], ['mix', '조합 만들기', '차를 골라 묶기']].map(function (t) { var on = t[0] === tgt; return { name: t[1], meta: t[2], on: on ? 'true' : 'false', pick: function () { self.setState({ target: t[0] }); }, style: 'height: 74px; border-radius: 20px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 16px; gap: 2px; color: #191F28; ' + (on ? 'background: #E8F3FF; border: 2px solid #3182F6' : 'background: #FFFFFF; border: 2px solid #FFFFFF') }; });
+    var picked = pickList(tgt), allOn = !picked.length || picked.length === 3;
+    var targets = [['all', '크루 전체', (vehicle.purple+' · '+vehicle.teal+' · '+vehicle.yellow)], ['b', vehicle.purple, '여러 대 함께 고를 수 있어요'], ['c', vehicle.teal, '여러 대 함께 고를 수 있어요'], ['d', vehicle.yellow, '여러 대 함께 고를 수 있어요']].map(function (t) {
+      var on = t[0] === 'all' ? allOn : (!allOn && picked.indexOf(t[0]) > -1);
+      return { name: t[1], meta: t[0] === 'all' ? t[2] : (on ? '선택됨' : '누르면 추가'), on: on ? 'true' : 'false',
+        pick: function () {
+          if (t[0] === 'all') { self.setState({ target: 'all' }); return; }
+          var cur = allOn ? [] : picked.slice(), at = cur.indexOf(t[0]);
+          if (at > -1) cur.splice(at, 1); else cur.push(t[0]);
+          self.setState({ target: (!cur.length || cur.length === 3) ? 'all' : cur });
+        },
+        check: 'width: 26px; height: 26px; border-radius: ' + (t[0] === 'all' ? '50%' : '8px') + '; flex: none; display: flex; align-items: center; justify-content: center; box-sizing: border-box; ' + (on ? 'background: #3182F6; color: #FFFFFF' : 'border: 2px solid #D1D6DB; color: transparent'),
+        style: 'height: 74px; border-radius: 20px; display: flex; align-items: center; gap: 12px; padding: 0 16px; color: #191F28; text-align: left; ' + (on ? 'background: #E8F3FF; border: 2px solid #3182F6' : 'background: #FFFFFF; border: 2px solid #FFFFFF') }; });
     var K = [
       { tag: '결정 드랍 · 음성으로 묻고 투표해요', fg: '#1B64DA', bg: '#E8F3FF', cols: 4, items: [['rest', '휴게소', 'AI 3곳 추천'], ['food', '식사', 'AI 음식점 추천'], ['fuel', '주유 · 충전', '잔량 기준 추천'], ['dest', '목적지 변경', '모두 함께']] },
       { tag: '소셜 드랍 · 화면에만 조용히', fg: '#5B3FD9', bg: '#F1EDFF', cols: 5, items: [['shout', '일행에게 한마디', '자주 쓰는 말'], ['voice', '음성 메시지', '녹음해서'], ['song', '노래 드랍', 'Apple Music'], ['game', '게임 초대', '정차 시 시작'], ['together', '같이 켜기', 'P 정차 중 · 포인트']] }
     ];
-    var kinds = K.map(function (g) { return { tag: g.tag, tagStyle: 'align-self: flex-start; font-size: 13px; font-weight: 800; color: ' + g.fg + '; background: ' + g.bg + '; border-radius: 8px; padding: 5px 10px', gridStyle: 'display: grid; grid-template-columns: repeat(' + g.cols + ', minmax(0, 1fr)); gap: 10px',
+    var more=!!this.state.morePlaces;
+    if(more) K[0].items=[['cafe','카페','커피 · 드라이브 스루'],['custom','직접 추가','원하는 곳 입력']];
+    Object.assign(ICON,{cafe:ICON.rest,custom:'M12 4v16M4 12h16'});
+    CLR.cafe=CLR.food;CLR.custom=CLR.rest;
+    var kinds = K.map(function (g) { return { decision:g===K[0],tag: g.tag, tagStyle: 'align-self: flex-start; font-size: 13px; font-weight: 800; color: ' + g.fg + '; background: ' + g.bg + '; border-radius: 8px; padding: 5px 10px', gridStyle: 'display: grid; grid-template-columns: repeat(' + g.items.length + ', minmax(0, 1fr)) '+(g===K[0]?'44px':'')+'; gap: 10px',
       items: g.items.map(function (it) { var lock = it[0] === 'together'; return { name: it[1], meta: it[2], d: ICON[it[0]], ic: icStyle(it[0], 48), go: target(it[0]), metaStyle: 'font-size: 12px; ' + (lock ? 'color: #B85700; font-weight: 800' : 'color: #4E5968'), style: 'height: 148px; border-radius: 22px; border: 2px solid #FFFFFF; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #191F28' }; }) }; });
 
-    var SH = ['먼저 가세요, 따라갈게요', '천천히 와요~', '다음 휴게소에서 봐요', '뒤에 사고 났어요, 조심!', '곧 도착해요', '배고파요, 밥 먹고 가요'];
-    var shouts = SH.map(function (t, i) { var on = i === self.state.shout; return { t: t, on: on ? 'true' : 'false', pick: function () { self.setState({ shout: i }); }, style: 'height: 66px; border-radius: 18px; font-size: 17px; font-weight: 800; ' + (on ? 'background: #F1EDFF; color: #3B2A9E; border: 2px solid #6A4CF0' : 'background: #F9FAFB; color: #191F28; border: 2px solid #F9FAFB') }; });
+    var SH = ['먼저 가세요, 따라갈게요', '천천히 와요~', '다음 휴게소에서 봐요', '뒤에 사고 났어요, 조심!', '곧 도착해요', '배고파요, 밥 먹고 가요', '여기 주차 공간 부족해!', '길 잘못 들었어ㅠ'];
+    var phrases=this.state.phrases;
+    if(!phrases){
+      try{phrases=JSON.parse(localStorage.getItem('cardrop.shouts.v1'));}catch(_){}
+      if(!Array.isArray(phrases)||!phrases.every(t=>typeof t==='string' && t.trim() && t.length<=80))phrases=SH;
+    }
+    var selectedPhrase=Math.min(this.state.shout,phrases.length-1);
+    var editing=this.state.phraseMode;
+    function commitPhrases(next,index){
+      try{localStorage.setItem('cardrop.shouts.v1',JSON.stringify(next));}catch(_){}
+      self.setState({phrases:next,shout:Math.max(0,index),phraseMode:null,phraseText:'',phraseError:''});
+    }
+    var shouts = phrases.map(function (t, i) { var on = i === selectedPhrase; return { t: t, on: on ? 'true' : 'false', pick: function () { self.setState({ shout: i,phraseMode:null,phraseError:'' }); }, style: 'height: 66px; border-radius: 18px; font-size: 17px; font-weight: 800; ' + (on ? 'background: #F1EDFF; color: #3B2A9E; border: 2px solid #6A4CF0' : 'background: #F9FAFB; color: #191F28; border: 2px solid #F9FAFB') }; });
 
     var tile = function (bg, fg) { return 'width: 58px; height: 58px; border-radius: 18px; flex: none; background: ' + bg + '; color: ' + fg + '; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center'; };
     var AI = {
-      rest: { quote: '“휴게소 들렀다 가자”', title: 'AI가 휴게소 3곳을 골랐어요', items: [['덕', '덕평자연휴게소', '9km · 주유 · 푸드코트 · 산책로', '4대 모두 15분 안 · 민지 차 주유 가능', '12분'], ['여', '여주휴게소', '33km · EV 충전 · 대형 식당', '지금 덜 붐벼요', '24분'], ['문', '문막휴게소', '57km · 카페', '점심시간에 맞춰 도착', '36분']] },
+      rest: { quote: '“휴게소 들렀다 가자”', title: 'AI가 휴게소 3곳을 골랐어요', items: [['덕', '덕평자연휴게소', '9km · 주유 · 푸드코트 · 산책로', ('4대 모두 15분 안 · '+vehicle.yellow+' 주유 가능'), '12분'], ['여', '여주휴게소', '33km · EV 충전 · 대형 식당', '지금 덜 붐벼요', '24분'], ['문', '문막휴게소', '57km · 카페', '점심시간에 맞춰 도착', '36분']] },
       food: { quote: '“배고픈데 뭐 먹고 가자”', title: 'AI가 음식점 3곳을 골랐어요', items: [['푸', '덕평 푸드코트', '9km · 한식 · 분식 · 주유소 있음', '4대 모두 15분 안 · 메뉴 선택 폭 넓음', '12분'], ['쌀', '이천 쌀밥 정식', '이천IC 4km · 한정식', '평점 4.7 · 단체석 · 12시 전 도착', '21분'], ['국', '여주 한우국밥', '여주휴게소 옆 · 국밥', '대기 없음 · 빨리 나와요', '26분']] },
-      fuel: { quote: '“주유하고 가자”', title: 'AI가 주유소 3곳을 골랐어요', items: [['덕', '덕평자연휴게소 주유소', '9km · 휘발유 1,689원', '민지 차 연료로 여유 있게 도착', '6분'], ['이', '이천 알뜰주유소', '이천IC 2km · 휘발유 1,629원', '가장 싸요 · 고속도로 잠깐 나가요', '14분'], ['여', '여주휴게소 주유소', '33km · EV 충전 가능', '민지 차는 빠듯해요', '21분']] }
+      fuel: { quote: '“주유하고 가자”', title: 'AI가 주유소 3곳을 골랐어요', items: [['덕', '덕평자연휴게소 주유소', '9km · 휘발유 1,689원', (vehicle.yellow+' 연료로 여유 있게 도착'), '6분'], ['이', '이천 알뜰주유소', '이천IC 2km · 휘발유 1,629원', '가장 싸요 · 고속도로 잠깐 나가요', '14분'], ['여', '여주휴게소 주유소', '33km · EV 충전 가능', (vehicle.yellow+'는 빠듯해요'), '21분']] }
     };
+    [['cafe','카페',['경포 호수 카페','해변 드라이브 스루','강문 커피점']]].forEach(function(group){
+      AI[group[0]]={quote:'경로 주변 · 시연 후보',title:group[1]+' 후보를 골라주세요',items:group[2].map(function(name,i){return [name[0],name,'시연 장소 · '+(i+1)*2+'km','',''];})};
+    });
+    AI.custom={quote:'직접 제안',title:'어디에 들를까요?',items:[]};
     var ak = this.state.aiKind; var bgs = [['#E8F3FF', '#1B64DA'], ['#FFF4E6', '#C25A00'], ['#E6F8F4', '#0B7F6F']];
     var ai = { quote: AI[ak].quote, title: AI[ak].title, items: AI[ak].items.map(function (f, i) { return { ini: f[0], n: f[1], m: f[2], why: f[3], t: f[4], tile: tile(bgs[i][0], bgs[i][1]), badgeStyle: i === 0 ? 'font-size: 12px; font-weight: 800; color: #1B64DA; background: #E8F3FF; border-radius: 999px; padding: 3px 8px' : 'display: none', box: 'display: flex; align-items: center; gap: 16px; background: #FFFFFF; border-radius: 24px; padding: 16px 20px; ' + (i === 0 ? 'border: 2px solid #3182F6' : 'border: 2px solid #FFFFFF') }; }) };
 
@@ -708,34 +1051,103 @@ class Component extends DCLogic {
 
     // 투표
     var VOTE = {
-      rest: { tag: '아빠 차의 제안 · 민지 차 연료 경고', title: '어디서 쉬어갈까요?', sub: '주유소가 있고 민지 차가 갈 수 있는 곳만 골랐어요', o: [['6분', '덕평자연휴게소', '9km · 가장 가까워요'], ['21분', '여주휴게소', '33km · 지금 덜 붐벼요'], ['36분', '문막휴게소', '57km · 점심시간에 맞춰 도착']] },
-      food: { tag: '아빠 차의 제안 · 식사', title: '뭐 먹고 갈까요?', sub: 'AI가 4대 모두 가기 좋은 곳으로 골랐어요', o: [['12분', '덕평 푸드코트', '한식 · 분식'], ['21분', '이천 쌀밥 정식', '평점 4.7'], ['26분', '여주 한우국밥', '대기 없음']] },
-      fuel: { tag: '민지 차의 제안 · 주유', title: '어디서 주유할까요?', sub: '민지 차 연료로 갈 수 있는 곳만 골랐어요', o: [['6분', '덕평 주유소', '1,689원'], ['14분', '이천 알뜰주유소', '1,629원'], ['21분', '여주 주유소', 'EV 충전']] }
+      rest: { tag: (vehicle.blue+'의 제안 · '+vehicle.yellow+' 연료 경고'), title: '어디서 쉬어갈까요?', sub: ('주유소가 있고 '+vehicle.yellow+'가 갈 수 있는 곳만 골랐어요'), o: [['6분', '덕평자연휴게소', '9km · 가장 가까워요'], ['21분', '여주휴게소', '33km · 지금 덜 붐벼요'], ['36분', '문막휴게소', '57km · 점심시간에 맞춰 도착']] },
+      food: { tag: (vehicle.blue+'의 제안 · 식사'), title: '뭐 먹고 갈까요?', sub: 'AI가 4대 모두 가기 좋은 곳으로 골랐어요', o: [['12분', '덕평 푸드코트', '한식 · 분식'], ['21분', '이천 쌀밥 정식', '평점 4.7'], ['26분', '여주 한우국밥', '대기 없음']] },
+      fuel: { tag: (vehicle.yellow+'의 제안 · 주유'), title: '어디서 주유할까요?', sub: (vehicle.yellow+' 연료로 갈 수 있는 곳만 골랐어요'), o: [['6분', '덕평 주유소', '1,689원'], ['14분', '이천 알뜰주유소', '1,629원'], ['21분', '여주 주유소', 'EV 충전']] }
     };
+    var popup=!!this.state.quickPopup && screen==='drive';
+    var pool=AI[ak].items.map(function(f){return [f[4],f[1],f[2]];}).concat(this.state.customPlaces||[]);
+    var selected=this.state.selected||[0];
+    var places=pool.map(function(row,i){
+      var on=selected.includes(i);
+      var src=AI[ak].items[i], tc=bgs[i%3];
+      return {name:row[1],meta:row[2],t:row[0],ini:src?src[0]:row[1].charAt(0),detail:!popup && src?src[3]:'',on:String(on),
+        tile:'width: '+(popup?48:58)+'px; height: '+(popup?48:58)+'px; border-radius: 18px; flex: none; background: '+(src?tc[0]:'#F2F4F6')+'; color: '+(src?tc[1]:'#333D4B')+'; font-size: '+(popup?19:22)+'px; font-weight: 800; display: flex; align-items: center; justify-content: center',
+        badge:i===0&&src&&ak!=='cafe'?'font-size: 12px; font-weight: 800; color: #1B64DA; background: #E8F3FF; border-radius: 999px; padding: 3px 8px':'display: none',
+        check:'width: 32px; height: 32px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; '+(on?'background: #3182F6; color: #FFFFFF':'border: 2px solid #D1D6DB; color: transparent; box-sizing: border-box'),
+        style:'display: flex; align-items: center; gap: 14px; text-align: left; border-radius: 22px; padding: '+(popup?'12px 16px':'16px 20px')+'; color: #191F28; '+(on?'background: #F4F9FF; border: 2px solid #3182F6':'background: #FFFFFF; border: 2px solid '+(popup?'#F2F4F6':'#FFFFFF')),toggle:function(){self.setState({selected:on?selected.filter(function(id){return id!==i;}):selected.concat(i)});}};
+    });
+    var recipient=recipientName(tgt);
+    function sendPoll(){
+      var rows=pool.filter(function(_,i){return selected.includes(i);});
+      if(!rows.length)return;
+      var summary=rows.map(function(row){return row[1];}).join(', ');
+      var entry={rows:rows,kind:ak,target:tgt};
+      var updates={messages:[entry].concat(self.state.messages||[]),feedback:recipient+'에 '+summary+ ' 투표를 보냈어요.'};
+      Object.assign(updates,{ballot:rows,pick:'o1',destinationPoll:false});
+      if(popup){
+        updates.pollWait={rows:rows,kind:ak,target:tgt};updates.pollResult=null;
+        clearTimeout(self.pollTimer);
+        self.pollTimer=setTimeout(function(){
+          self.setState({pollResult:{rows:rows,kind:ak,target:tgt},feedback:''});
+          self.pollTimer=setTimeout(function(){if(self.state.pollResult&&self.applyPoll)self.applyPoll();},10000);
+        },3500);
+      }
+      go(!popup?'vote':'drive',updates)();
+    }
     var vk = VOTE[ak] ? ak : 'rest'; var V = VOTE[vk];
+    if(this.state.ballot) V={tag:recipient+' · 투표',title:this.state.destinationPoll?'목적지를 어디로 바꿀까요?':(VOTE[ak]?V.title:'어디에 들를까요?'),sub:'원하는 장소를 선택하거나 직접 추가하세요.',o:this.state.ballot};
+    function addName(name){
+      name=name.trim().slice(0,48);
+      if(!name)return;
+
+      var voting=screen==='vote', rows=voting?V.o:pool;
+      var index=rows.findIndex(function(row){return row[1]===name;});
+      var custom=['',name,'직접 추가한 장소'];
+      if(voting){self.setState({ballot:index<0?rows.concat([custom]):rows,pick:'o'+(index<0?rows.length+1:index+1)});}
+      else{var id=index<0?rows.length:index;self.setState({customPlaces:index<0?(self.state.customPlaces||[]).concat([custom]):self.state.customPlaces,selected:selected.includes(id)?selected:selected.concat(id)});}
+      self.setState({placeText:'',speechHint:''});
+    }
     var pick = this.state.pick, counted = pick === 'any' ? 'o1' : pick;
     var base = [['purple', 'yellow'], [], []];
-    var opts = V.o.map(function (o, i) { var id = 'o' + (i + 1); var on = id === pick, mine = id === counted && pick !== 'no'; var v = base[i].slice(); if (mine) v.push('blue');
+    var opts = V.o.map(function (o, i) { var id = 'o' + (i + 1); var on = id === pick, mine = id === counted && pick !== 'no'; var v = self.state.ballot?[]:(base[i]||[]).slice(); if (mine) v.push('blue');
       return { n: String(i + 1), t: o[0], name: o[1], meta: o[2], on: on ? 'true' : 'false', voters: v.map(function (k) { return { badge: BADGE(k, 28), l: LET[k] }; }), count: v.length ? v.length + '표' : '아직 없음', pick: function () { self.setState({ pick: id }); },
         style: 'border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 8px; color: #191F28; ' + (on ? 'background: #E8F3FF; border: 2px solid #3182F6' : (mine ? 'background: #F4F9FF; border: 2px dashed #90C2FF' : 'background: #FFFFFF; border: 2px solid #FFFFFF')),
         num: 'width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; ' + (on || mine ? 'background: #3182F6; color: #FFFFFF' : 'border: 2px solid #FF8A3D; color: #B85700') }; });
     var extra = [['any', '아무 데나 좋아'], ['no', '난 패스, 먼저 갈게']].map(function (e) { var on = e[0] === pick; return { name: e[1], on: on ? 'true' : 'false', pick: function () { self.setState({ pick: e[0] }); }, style: 'height: 56px; padding: 0 20px; border-radius: 18px; font-size: 16px; font-weight: 800; ' + (on ? (e[0] === 'no' ? 'background: #FFEEEE; color: #D22030; border: 2px solid #F04452' : 'background: #E8F3FF; color: #1B64DA; border: 2px solid #3182F6') : 'background: #FFFFFF; color: #333D4B; border: 2px solid #FFFFFF') }; });
     var nm = function (i) { return V.o[i][1]; };
-    var M = { any: ['상관없음 → 1순위 ' + nm(0) + '에 1표', '“아무 데나”, “다 좋아”, “알아서 해” 모두 같은 뜻이에요'], no: ['이번엔 안 들러요', '우리 차는 경로를 유지하고 결과만 알려드려요'], o1: [nm(0) + '에 1표', '“1번”, “첫 번째”도 같은 표예요'], o2: [nm(1) + '에 1표', '“2번”, “두 번째”도 같은 표예요'], o3: [nm(2) + '에 1표', '“3번”, “세 번째”도 같은 표예요'] };
+    var M = { any: ['상관없음 → 1순위 ' + nm(0) + '에 1표', '“아무 데나”, “다 좋아”, “알아서 해” 모두 같은 뜻이에요'], no: ['이번엔 안 들러요', '우리 차는 경로를 유지하고 결과만 알려드려요'], };
+    V.o.forEach(function(row,i){M['o'+(i+1)]=[row[1]+'에 1표',(i+1)+'번 후보'];});
+    var chosen=(V.o[Number(pick.slice(1))-1]||V.o[0])[1];
+    // 퀵 드랍 투표 결과 (보낸 차가 받는 알림)
+    this.applyPoll=function(){var r=self.state.pollResult;if(!r)return;self.setState({pollWait:null,pollResult:null});go('decided',{ballot:r.rows,aiKind:r.kind,pick:'o1',destinationPoll:false})();};
+    var PW=this.state.pollWait, PR=this.state.pollResult, pollTally=[], pollWinner='', pollHead='', pollSub='';
+    if(PW && !PR){nav.toast=true;nav.toastText=recipientName(PW.target)+' 투표 진행 중 · 결과가 오면 알려드려요';}
+    if(PR){
+      var voters=pickList(PR.target); if(!voters.length) voters=['b','c','d'];
+      var VK={b:'purple',c:'teal',d:'yellow'}, n=PR.rows.length;
+      var choice=voters.map(function(k,i){return n<2?0:(i===voters.length-1&&voters.length>2?1:0);});
+      pollTally=PR.rows.map(function(row,i){
+        var who=voters.filter(function(_,j){return choice[j]===i;}), win=i===0;
+        return {i:String(i+1),name:row[1],meta:row[0]?row[0]+' · '+row[2]:row[2],count:who.length+'표',
+          voters:who.map(function(k){return {badge:BADGE(VK[k],26),l:LET[VK[k]]};}),
+          row:'display: flex; align-items: center; gap: 12px; border-radius: 18px; padding: 12px 14px; '+(win?'background: #E8F3FF; border: 2px solid #3182F6':'background: #F9FAFB; border: 2px solid #F9FAFB'),
+          bar:'display: block; height: 100%; border-radius: 4px; width: '+Math.round(who.length/voters.length*100)+'%; background: '+(win?'#3182F6':'#B0B8C1'),
+          num:'width: 30px; height: 30px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; '+(win?'background: #3182F6; color: #FFFFFF':'background: #E5E8EB; color: #4E5968')};
+      });
+      pollWinner=PR.rows[0][1];
+      var lc=pollWinner.charCodeAt(pollWinner.length-1)-0xAC00, jong=lc>=0&&lc<11172?lc%28:0;
+      pollHead=pollWinner+((jong===0||jong===8)?'로':'으로')+' 정해졌어요';
+      pollSub=recipientName(PR.target)+' · '+voters.length+'대 중 '+choice.filter(function(c){return c===0;}).length+'대가 골랐어요';
+    }
+    if(screen==='decided' && this.state.ballot){nav.way=chosen;nav.wayEta='';nav.toastText=chosen+' 경유지로 결정됐어요';}
     var eggSpun = this.state.eggSpun;
-    var eggWheel = 'width: 170px; height: 170px; transition: transform 2.6s cubic-bezier(0.17, 0.67, 0.21, 1); transform: rotate(' + (eggSpun ? 1200 : 0) + 'deg)';
+    var segments=V.o.map(function(_,i){
+      var step=2*Math.PI/V.o.length,start=i*step-Math.PI/2,end=start+step,mid=start+step/2;
+      return {label:i+1,color:['#3182F6','#FF8A3D','#11A08D','#8B5CF6','#F5B82E'][i%5],lab:'position: absolute; left: '+(50+29*Math.cos(mid))+'%; top: '+(50+29*Math.sin(mid))+'%; transform: translate(-50%,-50%); color: #FFFFFF; font-size: 24px; font-weight: 900; line-height: 1',path:V.o.length===1?'':'M0 0L'+100*Math.cos(start)+' '+100*Math.sin(start)+'A100 100 0 0 1 '+100*Math.cos(end)+' '+100*Math.sin(end)+'Z'};
+    });
+    var eggWheel = 'position: relative; width: 170px; height: 170px; border-radius: 50%; box-shadow: 0 6px 16px rgba(25,31,40,0.18); transition: transform 2.6s cubic-bezier(0.17, 0.67, 0.21, 1); transform: rotate(' + (eggSpun ? 1440-360*((this.state.draw||0)+0.5)/V.o.length : 0) + 'deg)';
 
     // 노래
-    var SONGS = [['바다로 가자', '드라이브 밴드'], ['여름 고속도로', '파란 하늘'], ['휴게소 블루스', '호두과자 트리오'], ['강릉 가는 길', '동해선']];
-    var songs = SONGS.map(function (s, i) { var on = i === self.state.song; return { i: String(i + 1), n: s[0], a: s[1] + (i === 0 ? ' · 지금 재생 중' : ''), tag: on ? '보낼 곡' : '', on: on ? 'true' : 'false', pick: function () { self.setState({ song: i }); }, row: 'display: flex; align-items: center; gap: 14px; padding: 12px 0; border: none; border-bottom: 1px solid #F2F4F6; background: transparent', tile: 'width: 48px; height: 48px; border-radius: 14px; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 800; ' + (on ? 'background: #D6336C; color: #FFFFFF' : 'background: #FFF0F5; color: #D6336C'), check: on ? 'font-size: 13px; font-weight: 800; color: #FFFFFF; background: #D6336C; border-radius: 999px; padding: 5px 10px' : 'display: none' }; });
+    var songs = SONGS.map(function (s, i) { var on = i === self.state.song; return { i: String(i + 1), n: s[0], a: s[1] + (i === ownTrack ? ' · 지금 재생 중' : ''), tag: on ? '보낼 곡' : '', on: on ? 'true' : 'false', pick: function () { self.setState({ song: i }); }, row: 'display: flex; align-items: center; gap: 14px; padding: 12px 0; border: none; border-bottom: 1px solid #F2F4F6; background: transparent', tile: 'width: 48px; height: 48px; border-radius: 14px; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 800; ' + (on ? 'background: #D6336C; color: #FFFFFF' : 'background: #FFF0F5; color: #D6336C'), check: on ? 'font-size: 13px; font-weight: 800; color: #FFFFFF; background: #D6336C; border-radius: 999px; padding: 5px 10px' : 'display: none' }; });
 
     // 게임
     var gm = this.state.game;
-    var GL = [['omok', '오목', '5개 먼저 잇기', '●', '삼촌 차', 'purple'], ['chess', '체스', '차 대 차 1:1', '♞', '이모 차', 'teal'], ['quiz', '초성 퀴즈', '4대 다 같이', 'ㅊ', '크루 전체', 'yellow'], ['local', '지역 퀴즈', 'AI가 지금 위치로 출제', '?', '크루 전체', 'yellow']];
+    var GL = [['omok', '오목', '5개 먼저 잇기', '●', (vehicle.purple), 'purple'], ['chess', '체스', '차 대 차 1:1', '♞', (vehicle.teal), 'teal'], ['quiz', '초성 퀴즈', '4대 다 같이', 'ㅊ', '크루 전체', 'yellow'], ['local', '지역 퀴즈', 'AI가 지금 위치로 출제', '?', '크루 전체', 'yellow']];
     var cur = GL.filter(function (g) { return g[0] === gm; })[0];
-    var VS = { all: ['크루 전체', 'gray', '3대 다 같이'], b: ['삼촌 차', 'purple', '1:1'], c: ['이모 차', 'teal', '1:1'], d: ['민지 차', 'yellow', '1:1'] };
+    var VS = { all: ['크루 전체', 'gray', '3대 다 같이'], b: [(vehicle.purple), 'purple', '1:1'], c: [(vehicle.teal), 'teal', '1:1'], d: [(vehicle.yellow), 'yellow', '1:1'] };
     var solo = gm === 'omok' || gm === 'chess';
-    var vsKey = this.state.vs || ({ b: 'b', d: 'd' })[this.state.target] || (solo ? (gm === 'omok' ? 'b' : 'c') : 'all');
+    var vsKey = this.state.vs || (picked.length === 1 ? picked[0] : null) || (solo ? (gm === 'omok' ? 'b' : 'c') : 'all');
     if (solo && vsKey === 'all') vsKey = gm === 'omok' ? 'b' : 'c';
     var vsList = (solo ? ['b', 'c', 'd'] : ['all', 'b', 'c', 'd']).map(function (k) { var on = k === vsKey; return { n: VS[k][0], l: k === 'all' ? 'blue' : VS[k][1], badge: 'width: 40px; height: 27px; flex: none; overflow: visible', on: on ? 'true' : 'false', pick: function () { self.setState({ vs: k, gameSent: false }); },
       style: 'height: 46px; padding: 0 14px 0 8px; border-radius: 999px; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; ' + (on ? 'background: #E8F3FF; color: #1B64DA; border: 2px solid #3182F6' : 'background: #F2F4F6; color: #333D4B; border: 2px solid #F2F4F6') }; });
@@ -750,44 +1162,96 @@ class Component extends DCLogic {
     var QZ = gm === 'local' ? { hint: '지금 지나는 이천은 무엇으로 유명할까요?', tiles: ['이천', '?'], ans: ['쌀', '귤', '인삼', '굴비'], right: '쌀' } : { hint: '휴게소에서 파는 간식 · 먼저 맞히는 차가 점수!', tiles: ['ㅎ', 'ㄷ', 'ㄱ', 'ㅈ'], ans: ['호두과자', '핫도그', '회오리감자', '핫바'], right: '호두과자' };
     var quiz = { hint: QZ.hint, tiles: QZ.tiles, ans: QZ.ans.map(function (t) { var isR = t === QZ.right, ch = qp === t; return { t: t, pick: function () { self.setState({ quizPick: t }); }, style: 'height: 70px; border-radius: 18px; font-size: 21px; font-weight: 800; ' + (!qp ? 'background: #F2F4F6; color: #191F28; border: 2px solid #F2F4F6' : isR ? 'background: #E8F3FF; color: #1B64DA; border: 2px solid #3182F6' : ch ? 'background: #FFEEEE; color: #D22030; border: 2px solid #F04452' : 'background: #F9FAFB; color: #8B95A1; border: 2px solid #F9FAFB') }; }) };
 
-    var etas = [['blue', '아빠 차 (나)', '9km', '14:32'], ['purple', '삼촌 차', '15km', '14:34'], ['yellow', '민지 차', '주유 먼저', '14:35'], ['teal', '이모 차', '패스 · 경포해변에서 합류', '계속']].map(function (e) { return { img: IMG[e[0]], badge: BADGE(e[0]), l: LET[e[0]], n: e[1], m: e[2], t: e[3] }; });
+    var etas = [['blue', (vehicle.blue+' (나)'), '9km', '14:32'], ['purple', (vehicle.purple), '15km', '14:34'], ['yellow', (vehicle.yellow), '주유 먼저', '14:35'], ['teal', (vehicle.teal), '패스 · 경포해변에서 합류', '계속']].map(function (e) { return { img: IMG[e[0]], badge: BADGE(e[0]), l: LET[e[0]], n: e[1], m: e[2], t: e[3] }; });
     var lanes = [['purple', '1위 94', 80, 38], ['blue', '2위 91 · 나', 66, 86], ['teal', '3위 86', 52, 50], ['yellow', '4위 83', 38, 100]].map(function (l, i) { return { img: IMG[l[0]], badge: BADGE(l[0]), l: LET[l[0]], tag: l[1], pos: 'position: absolute; left: ' + l[2] + '%; top: ' + l[3] + 'px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: ' + (l[3]), tagStyle: 'font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; ' + (l[1].indexOf('나') > -1 ? 'background: #3182F6; color: #FFFFFF' : i === 0 ? 'background: #E8F3FF; color: #1B64DA' : 'background: #FFFFFF; color: #191F28') }; });
-    var live = [['1', 'purple', '삼촌 차', '급정거 0', 94], ['2', 'blue', '아빠 차 (나)', '과속 1회', 91], ['3', 'teal', '이모 차', '급제동 2회', 86], ['4', 'yellow', '민지 차', '급가속 2회', 83]].map(function (l, i) { return { rank: l[0], img: IMG[l[1]], badge: BADGE(l[1]), l: LET[l[1]], n: l[2], note: l[3], s: l[4], row: 'display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 14px; ' + (i === 1 ? 'background: #E8F3FF' : '') }; });
-    var podium = [['blue', '아빠 차', '2위', 91, 130, false], ['purple', '삼촌 차', '1위', 94, 180, true], ['teal', '이모 차', '3위', 86, 96, false]].map(function (p, i) { return { img: IMG[p[0]], badge: BADGE(p[0], 72), l: LET[p[0]], n: p[1], rank: p[2], s: p[3], crown: p[5], anim: 'width: ' + (p[5] ? 170 : 140) + 'px; ' + bob(i), block: 'width: 100%; height: ' + p[4] + 'px; border-radius: 22px 22px 0 0; background: ' + (p[5] ? '#3182F6' : '#E8F3FF') + '; display: flex; flex-direction: column; align-items: center; justify-content: center', rankS: 'font-size: 15px; font-weight: 800; color: ' + (p[5] ? '#FFFFFF' : '#1B64DA'), scoreS: 'font-size: ' + (p[5] ? 52 : 40) + 'px; font-weight: 800; line-height: 1.1; color: ' + (p[5] ? '#FFFFFF' : '#191F28') }; });
+    var live = [['1', 'purple', (vehicle.purple), '급정거 0', 94], ['2', 'blue', (vehicle.blue+' (나)'), '과속 1회', 91], ['3', 'teal', (vehicle.teal), '급제동 2회', 86], ['4', 'yellow', (vehicle.yellow), '급가속 2회', 83]].map(function (l, i) { return { rank: l[0], img: IMG[l[1]], badge: BADGE(l[1]), l: LET[l[1]], n: l[2], note: l[3], s: l[4], row: 'display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 14px; ' + (i === 1 ? 'background: #E8F3FF' : '') }; });
+    // 시상대 · 2위 1위 3위 4위 (토너먼트 단상)
+    var PODIUM = [['blue', vehicle.blue, 2, 91, 150], ['purple', vehicle.purple, 1, 94, 200], ['teal', vehicle.teal, 3, 86, 110], ['yellow', vehicle.yellow, 4, 83, 74]];
+    var BLOCK = { 1: ['#3182F6', '#FFFFFF', '#FFFFFF'], 2: ['#90C2FF', '#FFFFFF', '#FFFFFF'], 3: ['#E8F3FF', '#1B64DA', '#191F28'], 4: ['#F2F4F6', '#4E5968', '#333D4B'] };
+    function podiumOf(scale, badge) { return PODIUM.map(function (p) { var first = p[2] === 1, c = BLOCK[p[2]];
+      return { badge: BADGE(p[0], badge * (first ? 1.15 : p[2] === 4 ? 0.85 : 1)), l: LET[p[0]], n: p[1], rank: p[2] + '위', s: p[3], crown: first,
+        block: 'width: 100%; height: ' + Math.round(p[4] * scale) + 'px; border-radius: ' + Math.round(20 * scale) + 'px ' + Math.round(20 * scale) + 'px 0 0; background: ' + c[0] + '; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px',
+        rankS: 'font-size: ' + Math.round(15 * Math.max(scale, 0.8)) + 'px; font-weight: 800; color: ' + c[1],
+        scoreS: 'font-size: ' + Math.round((first ? 52 : 40) * scale) + 'px; font-weight: 800; line-height: 1.05; color: ' + c[2] }; }); }
+    var podium = podiumOf(1, 64), podiumMini = podiumOf(0.6, 44);
     var CC = ['#3182F6', '#FF8A3D', '#11A08D', '#FFD02B', '#8B5CF6', '#F04452'];
     var CC = ['#3182F6', '#FF8A3D', '#11A08D', '#F5B82E', '#8B5CF6', '#F04452']; var confetti = []; for (var ci = 0; ci < 14; ci++) confetti.push('position: absolute; top: 0; left: ' + (5 + ci * 6.8) + '%; width: 10px; height: 14px; border-radius: 3px; background: ' + CC[ci % 6] + '; animation: cdConfetti ' + (2.4 + (ci % 4) * 0.5) + 's linear infinite; animation-delay: -' + (ci * 0.37) + 's; opacity: 0.85');
-    var T = [['삼촌 차', '0', '0', '0', '-'], ['아빠 차', '1', '1', '1', '-'], ['이모 차', '2', '2', '0', '-'], ['민지 차', '2', '1', '1', '+5']];
+    var T = [[(vehicle.purple), '0', '0', '0', '-'], [(vehicle.blue), '1', '1', '1', '-'], [(vehicle.teal), '2', '2', '0', '-'], [(vehicle.yellow), '2', '1', '1', '+5']];
     var table = []; T.forEach(function (row) { row.forEach(function (v, j) { table.push({ v: v, s: j === 0 ? 'font-weight: 800' : (j === 4 && v !== '-' ? 'color: #0B7F5A; font-weight: 800' : '') }); }); });
     var ads = [['푸', '덕평 푸드코트', '0.2km · 휴게소 안', '10%', '#E8F3FF', '#1B64DA'], ['호', '천안 호두과자점', '0.1km · 디저트', '1+1', '#FFF4E6', '#C25A00'], ['국', '오늘의 국밥', '0.3km · 한식', '₩2,000', '#E6F8F4', '#0B7F6F']].map(function (a) { return { ini: a[0], n: a[1], m: a[2], b: a[3], tile: tile(a[4], a[5]) }; });
     var lot = ['blue', 'purple', 'yellow', 'teal', 'gray'].map(function (c, i) { return { img: IMG[c], badge: BADGE(c), l: LET[c], anim: 'width: 92px; margin-left: -18px; ' + bob(i) }; });
     var crews = [['주말 드라이브 동호회', '3대'], ['양양 서핑 크루', '4대'], ['혼자 온 차', '1대']].map(function (c) { return { n: c[0], m: c[1] }; });
 
     var meKey = screen === 'fuelMe' ? 'yellow' : (screen === 'vote' || screen === 'songGet' ? 'purple' : 'blue');
-    var meLabel = screen === 'fuelMe' ? '민지 차' : (screen === 'vote' || screen === 'songGet' ? '삼촌 차' : '내 차');
+    var meLabel = screen === 'fuelMe' ? (vehicle.yellow) : (screen === 'vote' || screen === 'songGet' ? (vehicle.purple) : '내 차');
 
     return {
       go: G, is: is, nav: nav, rail: rail, meBadge: BADGE(meKey, 40), meL: LET[meKey], meLabel: meLabel, members: members,
       results: [{ n: '강릉 경포해변', m: '강원 강릉시 강문동 · 해수욕장', d: '230km' }, { n: '경포대', m: '강원 강릉시 저동 · 명승지', d: '231km' }, { n: '경포호수광장', m: '강원 강릉시 · 공원', d: '229km' }, { n: '경포해변 공영주차장', m: '강원 강릉시 · 주차장', d: '230km' }],
       favs: [{ n: '속초 중앙시장', m: '최근 목적지' }, { n: '집', m: '즐겨찾기' }, { n: '회사', m: '즐겨찾기' }],
       code: ['4', '8', '2', '9', '1', '7'], keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '말로', '0', '지우기'],
-      driveTitle: screen === 'fuelThem' ? '민지 차 소식이 왔어요' : '모두 잘 오고 있어요',
-      board: board, crew: crew, quick: quick, racers: racers, weekly: weekly,
+      driveTitle: screen === 'fuelThem' ? (vehicle.yellow+' 소식이 왔어요') : '모두 잘 오고 있어요',
+      positions:positions,board: board, crew: crew, quick: quick, racers: racers, weekly: weekly,
+      vehicle:vehicle,renaming:!!this.state.renameId,renameLabel:vehicle[this.state.renameId],renameText:this.state.renameText||'',changeName:function(e){self.setState({renameText:e.target.value});},saveName:saveName,closeName:function(){self.setState({renameId:null});},voicePage:screen==='voiceMemo',listenPage:screen==='listenMemo',receivedUrl:this.state.receivedUrl||'',memoUrl:this.state.memoUrl||'',hasRecording:!!this.state.memoUrl,waitingMic:this.state.memoPhase==='waiting',micRecording:this.state.memoPhase==='recording',micIdle:this.state.memoPhase!=='recording',
+      micStyle:'width: 132px; height: 132px; border: none; border-radius: 50%; color: #FFFFFF; display: flex; align-items: center; justify-content: center; '+(this.state.memoPhase==='recording'?'background: #F04452; animation: cdRec 1.4s ease-out infinite':'background: #6A4CF0; box-shadow: 0 12px 28px rgba(106,76,240,0.35)'),
+      noRecording:!this.state.memoUrl,memoSendStyle:'height: 68px; padding: 0 34px; border-radius: 20px; border: none; font-size: 18px; font-weight: 800; '+(this.state.memoUrl?'background: #6A4CF0; color: #FFFFFF':'background: #E5E8EB; color: #8B95A1; cursor: default'),
+      renameBadge:BADGE(this.state.renameId||'blue',44),renameL:LET[this.state.renameId||'blue'],
+      arrivedOpen:screen==='score'&&!!this.state.arrived,openArrived:function(){self.setState({arrived:true});},closeArrived:function(){self.setState({arrived:false});},
+      recordLabel:this.state.memoPhase==='recording'?'녹음 마치기':this.state.memoUrl?'다시 녹음하기':'눌러서 녹음하기',memoStatus:this.state.memoHint||'최대 1분까지 목소리를 담아 보내요.',recordMemo:function(){self.recordMemo();},sendMemo:function(){
+        if(!self.pendingUrl)return;
+        var msg={audio:self.pendingUrl,target:tgt};self.pendingUrl=null;
+        go('drive',{messages:[msg].concat(self.state.messages||[]),feedback:recipient+'에 음성 메시지를 보냈어요.'})();
+      },arrow:more?"‹":"›",pageLabel:more?"이전 장소 유형":"다른 장소 유형",turnPlaces:function(){self.setState({morePlaces:!more});},composer:screen==='ai'||popup, feedback:this.state.feedback, decision:this.state.ballot?chosen:'덕평자연휴게소',
+      composeWrap:popup?'position: absolute; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; background: rgba(25,31,40,0.32)':'display: flex; flex: 1; min-height: 0',
+      composeRole:popup?'dialog':'region',
+      composePanel:'display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; '+(popup?'width: 620px; max-height: 86%; padding: 26px; background: #FFFFFF; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: cdPop 0.35s ease-out':'width: 100%; flex: 1; min-height: 0'),
+      composePage:!popup,quickPopupOn:popup,addChipBg:popup?'#F2F4F6':'#FFFFFF',
+      composeSub:popup?('퀵 드랍 · 보낼 곳을 골라요 · '+recipient):(AI[ak].quote+' · 받는 차 '+recipient),
+      composeTitleStyle:'font-weight: 800; letter-spacing: -0.02em; font-size: '+(popup?24:30)+'px',
+      sendPollStyle:'flex: none; height: '+(popup?64:76)+'px; border-radius: 22px; border: none; font-size: '+(popup?18:21)+'px; font-weight: 800; '+(selected.length?'background: #3182F6; color: #FFFFFF':'background: #E5E8EB; color: #8B95A1; cursor: default'),
+      sendPollText:selected.length?('이 '+selected.length+'곳으로 투표 보내기'):'후보를 골라주세요',
+      closeCompose:popup?G.drive:G.drop, recipient:recipient,places:places,placeCount:selected.length,noPlaces:!selected.length,addPlace:function(e){e.preventDefault();var field=e.currentTarget.elements.namedItem('place');addName(field.value);field.value='';},speakPlace:function(){self.dictatePlace();},placeText:this.state.placeText||'',hasPlace:!!this.state.placeText,confirmPlace:function(){addName(self.state.placeText||'');},speechHint:this.state.speechHint||'',
+      sendPoll:sendPoll,
+      editingQuick:screen==='quickEdit',quickOptions:quickOptions,quickN:String(draft.length),quickHint:this.state.quickHint||'',
+      editQuick:function(){self.setState({screen:'quickEdit',quickDraft:saved.slice(),quickHint:''});},
+      saveQuick:function(){
+        try{localStorage.setItem('cardrop.quick.v1',JSON.stringify(draft));}catch(_){}
+        self.setState({screen:'drive',quickIds:draft.slice(),quickDraft:null,quickHint:''});
+      },
       fuelBanner: screen === 'fuelThem', fuelText: fuelText, fuelSub: fuelSub, fuelAsk: !fuel,
       fuelJoin: function () { self.setState({ fuel: 'join' }); }, fuelPass: function () { self.setState({ fuel: 'pass' }); },
       tabs: tabs, inboxItems: inboxItems,
-      songHead: '아빠 차가 노래를 보냈어요', songAsk: !this.state.songOk, songDone: this.state.songOk, songAccept: function () { self.setState({ songOk: true }); },
+      sharedTitle:SONGS[this.state.song][0],sharedArtist:SONGS[this.state.song][1],songHead: (vehicle.blue+'가 노래를 보냈어요'), songAsk: !this.state.songOk, songDone: this.state.songOk, songAccept: function () { self.setState({ songOk: true,purpleTrack:self.state.song });if(followed==='purple'&&peerTracks.purple!==self.state.song)self.playFollow('purple',self.state.song); },
       fuelCar: { badge: BADGE('yellow', 110), l: 'yellow' }, fuelStep0: fs === 0, fuelStep1: fs === 1, fuelMeTitle: fs === 0 ? '연료가 얼마 안 남았어요' : 'AI가 주유소 3곳을 골랐어요',
       fuelNotify: function () { self.setState({ fuelStep: 1, fuelAlone: false }); }, fuelAlone: function () { self.setState({ fuelStep: 1, fuelAlone: true }); },
       stations: stations, fuelCta: alone ? '여기로 혼자 다녀오기' : '여기로 정하고 일행에게 알리기', fuelSend: alone ? G.drive : G.fuelThem,
-      targets: targets, kinds: kinds, shouts: shouts, shoutPicked: SH[this.state.shout], ai: ai,
+      targets: targets, kinds: kinds, shouts: shouts, noPhrase:!phrases.length,disableShout:!phrases.length||!!editing,shoutButton:phrases.length?'“'+phrases[selectedPhrase]+'” 보내기':'문구를 추가해주세요',
+      phraseEditing:!!editing,phraseHeading:editing==='new'?'새 한마디':'선택한 한마디 편집',canDeletePhrase:editing==='edit',phraseText:this.state.phraseText||'',phraseError:this.state.phraseError||'',
+      newPhrase:()=>self.setState({phraseMode:'new',phraseText:'',phraseError:''}),
+      editPhrase:()=>self.setState({phraseMode:'edit',phraseText:phrases[selectedPhrase],phraseError:''}),
+      cancelPhrase:()=>self.setState({phraseMode:null,phraseError:''}),
+      changePhrase:e=>self.setState({phraseText:e.target.value,phraseError:''}),
+      savePhrase:function(e){
+        e.preventDefault();var value=(self.state.phraseText||'').trim().slice(0,80);
+        if(!value||phrases.some((t,i)=>t===value&&(editing!=='edit'||i!==selectedPhrase))){self.setState({phraseError:value?'이미 있는 문구예요.':'문구를 입력해주세요.'});return;}
+        var next=phrases.slice(),index=editing==='edit'?selectedPhrase:next.length;next[index]=value;commitPhrases(next,index);
+      },
+      deletePhrase:function(){if(editing==='edit')commitPhrases(phrases.filter((_,i)=>i!==selectedPhrase),Math.min(selectedPhrase,phrases.length-2));},
+      sendShout:function(){if(!editing&&phrases.length)go('drive',{messages:[{phrase:phrases[selectedPhrase],target:tgt}].concat(self.state.messages||[]),feedback:recipient+'에 한마디를 보냈어요.'})();}, ai: ai,
       vote: { tag: V.tag, title: V.title, sub: V.sub }, opts: opts, extra: extra, interpret: M[pick][0], interpretSub: M[pick][1],
-      eggOpen: this.state.eggOpen, eggToggle: function () { self.setState({ eggOpen: !self.state.eggOpen, eggSpun: false }); }, eggWheel: eggWheel,
-      eggResult: eggSpun ? '돌림판이 2번 ' + nm(1) + '을(를) 골랐어요' : '못 고르겠으면 돌려봐요',
-      eggCta: eggSpun ? '내 표로 넣기' : '돌리기', eggAction: function () { if (!self.state.eggSpun) self.setState({ eggSpun: true }); else self.setState({ pick: 'o2', eggOpen: false, eggSpun: false }); },
+      eggOpen: this.state.eggOpen && V.o.length > 1, canSpin: V.o.length > 1, eggToggle: function () { self.setState({ eggOpen: !self.state.eggOpen, eggSpun: false }); }, eggWheel: eggWheel, segments:segments,
+      eggResult: eggSpun ? '돌림판이 ' + nm(this.state.draw||0) + '을(를) 골랐어요' : '못 고르겠으면 돌려봐요',
+      eggCta: eggSpun ? '내 표로 넣기' : '돌리기', eggAction: function () { if (!self.state.eggSpun) self.setState({ eggSpun: true, draw:Math.floor(Math.random()*V.o.length) }); else self.setState({ pick: 'o'+((self.state.draw||0)+1), eggOpen: false, eggSpun: false }); },
+      followCars:followCars,following:!!followed,ownTrack:SONGS[ownTrack].join(' · '),followStatus:this.state.musicError||(followed?vehicle[followed]+' 음악을 따라듣고 있어요':'따라들을 차량을 골라주세요'),
+      dropMode:!this.state.followMode,followMode:!!this.state.followMode,musicSubtitle:this.state.followMode?'일행 차량에서 재생 중인 곡을 내 차에서 들어요':'일행에게 함께 듣고 싶은 곡을 보내요',
+      stopFollow:function(){self.stopFollow();},openFollow:function(){self.setState({followMode:true});},openMusicDrop:function(){self.setState({followMode:false,song:ownTrack});},
       songs: songs, songPicked: SONGS[this.state.song][0] + ' · ' + SONGS[this.state.song][1],
       etas: etas, gameList: gameList, g: { omok: gm === 'omok', chess: gm === 'chess', quiz: gm === 'quiz' || gm === 'local' }, gameVs: VS[vsKey][0], gameVsBadge: BADGE(vsKey === 'all' ? 'blue' : VS[vsKey][1], 44), gameVsL: LET[vsKey === 'all' ? 'blue' : VS[vsKey][1]], vsList: vsList, vsLabel: solo ? '1:1 상대' : '누구랑 할까요', gameSend: function () { self.setState({ gameSent: true }); }, gameSendText: gSent ? VS[vsKey][0] + '에 도전장 보냈어요 ✓' : VS[vsKey][0] + '에 도전장 드랍', gameSendStyle: 'margin-top: auto; height: 64px; border-radius: 20px; border: none; font-size: 16px; font-weight: 800; ' + (gSent ? 'background: #E8F3FF; color: #1B64DA' : 'background: #3182F6; color: #FFFFFF'), gameTurn: gm === 'omok' || gm === 'chess' ? '내 차례 · 0:24' : '3 / 10 문제',
       omok: omok, chess: chess, quiz: quiz,
-      lanes: lanes, live: live, podium: podium, confetti: confetti, table: table, ads: ads, lot: lot, crews: crews
+      lanes: lanes, live: live, podium: podium, podiumMini: podiumMini,
+      pollOpen:!!PR, pollTally:pollTally, pollHead:pollHead, pollSub:pollSub,
+      pollApply:function(){clearTimeout(self.pollTimer);var r=self.state.pollResult;if(!r)return;self.setState({pollWait:null,pollResult:null});go('decided',{ballot:r.rows,aiKind:r.kind,pick:'o1',destinationPoll:false})();},
+      pollSkip:function(){clearTimeout(self.pollTimer);self.setState({pollWait:null,pollResult:null,feedback:'경로는 그대로예요 · 일행에게 안 들른다고 알렸어요'});}, confetti: confetti, table: table, ads: ads, lot: lot, crews: crews
     };
   }
 }

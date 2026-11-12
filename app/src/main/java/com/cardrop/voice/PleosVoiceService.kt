@@ -42,6 +42,9 @@ class PleosVoiceService(context: Context) : VoiceService {
     private val _lastSpoken = MutableStateFlow<String?>(null)
     override val lastSpoken: StateFlow<String?> = _lastSpoken
 
+    private val _listening = MutableStateFlow(false)
+    override val listening: StateFlow<Boolean> = _listening
+
     // Speaking. The queue and these flags are only touched on the main thread.
     private val speaker: TextToSpeech? = attempt("create text-to-speech") {
         TextToSpeech(context.applicationContext, TtsMode.ON_DEVICE)
@@ -163,6 +166,7 @@ class PleosVoiceService(context: Context) : VoiceService {
             queue.clear() // don't let the microphone hear our own voice
             attempt("stop speaking") { speaker?.stop() }
         }
+        _listening.value = true
         return try {
             withTimeoutOrNull(LISTEN_TIMEOUT_MS) { recognizeOnce(recognizer) }
                 .also { Log.d(TAG, if (it == null) "nothing heard" else "heard: $it") }
@@ -172,6 +176,8 @@ class PleosVoiceService(context: Context) : VoiceService {
             // The 04 voice button has no error handling of its own, so never throw from here.
             Log.w(TAG, "could not listen", e)
             null
+        } finally {
+            _listening.value = false
         }
     }
 
@@ -202,7 +208,12 @@ class PleosVoiceService(context: Context) : VoiceService {
 
             override fun onUpdatedEpdData(on: Long, off: Long) = Unit
             override fun onUpdatedRms(rms: Double) = Unit
-            override fun onEndedRecognition() = finish(latest)
+
+            override fun onEndedRecognition() {
+                // Pleos sends the final sentence a few ms *after* this (seen on the emulator), so wait
+                // briefly for it; without one, use the last partial text.
+                main.postDelayed({ finish(latest) }, FINAL_TEXT_WAIT_MS)
+            }
 
             override fun onError(errorType: SttError) {
                 Log.w(TAG, "speech recognition error: $errorType")
@@ -234,6 +245,7 @@ class PleosVoiceService(context: Context) : VoiceService {
     private companion object {
         const val TAG = "CarDropVoice"
         const val LISTEN_TIMEOUT_MS = 15_000L
+        const val FINAL_TEXT_WAIT_MS = 1_000L
         const val MAX_SPEAK_MS = 20_000L
     }
 }

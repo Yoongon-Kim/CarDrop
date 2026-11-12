@@ -16,6 +16,12 @@ interface VoiceService {
     /** The last sentence spoken, so the UI can show it as a caption. */
     val lastSpoken: StateFlow<String?>
 
+    /**
+     * True while the microphone is listening: from [listen] until a sentence is heard, nothing is
+     * heard, or the time limit ends it. The UI shows a "듣고 있어요…" caption meanwhile.
+     */
+    val listening: StateFlow<Boolean>
+
     fun speak(text: String)
 
     /**
@@ -30,13 +36,21 @@ class FakeVoiceService : VoiceService {
     private val _lastSpoken = MutableStateFlow<String?>(null)
     override val lastSpoken: StateFlow<String?> = _lastSpoken
 
+    private val _listening = MutableStateFlow(false)
+    override val listening: StateFlow<Boolean> = _listening
+
     override fun speak(text: String) {
         Log.i("CarDropVoice", "speak: $text")
         _lastSpoken.value = text
     }
 
     override suspend fun listen(placeName: Boolean): String? {
-        delay(1_200)
+        _listening.value = true
+        try {
+            delay(1_200)
+        } finally {
+            _listening.value = false
+        }
         return if (placeName) "평창휴게소" else "배고파"
     }
 }

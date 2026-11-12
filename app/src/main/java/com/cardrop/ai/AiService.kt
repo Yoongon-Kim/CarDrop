@@ -14,10 +14,10 @@ import kotlinx.coroutines.delay
 /**
  * Owner: lead.
  *
- * Every judgment CarDrop makes. The real version calls the Claude API (key in local.properties,
- * `cardrop.claudeApiKey`) and asks for JSON so the app can parse the answer:
- * - Haiku 5.5 for readIntent and polishMessage (fast)
- * - Sonnet 5.5 for recommend and localQuiz
+ * Every judgment CarDrop makes. [ClaudeAiService] is the real version (Claude API, key in
+ * local.properties `cardrop.claudeApiKey`): Haiku 5.5 for readIntent and polishMessage (fast),
+ * Sonnet 5.5 for recommend and localQuiz. [FakeAiService] answers when there is no key, and
+ * whenever a Claude call fails ([FallbackAiService]).
  */
 interface AiService {
     /** "배고파" -> FOOD, "화장실 급해" -> REST, "기름 없어" -> FUEL. */

@@ -15,6 +15,13 @@ val localProps = Properties().apply {
 fun localFlag(key: String): Boolean = localProps.getProperty(key)?.trim() == "true"
 fun localString(key: String): String = localProps.getProperty(key)?.trim().orEmpty()
 
+// Kotlin copies BuildConfig values into the code that reads them, and an incremental build can keep
+// the old copy after local.properties changes (a new key still looked empty). So any change to
+// local.properties recompiles all Kotlin code.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    inputs.file(rootProject.file("local.properties")).withPropertyName("localProperties").optional()
+}
+
 android {
     namespace = "com.cardrop"
     compileSdk = 35
@@ -55,6 +62,7 @@ android {
 dependencies {
     implementation(libs.vehicle.sdk)
     implementation(libs.maplibre.android) // in-app navigator map (navi/NavMap.kt)
+    implementation(libs.anthropic.java) // real AiService (ai/ClaudeAiService.kt), approved by the lead 2026-11-13
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

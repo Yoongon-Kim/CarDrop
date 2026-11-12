@@ -83,7 +83,9 @@ class AiViewModel(
         _picker.value = PickerState(loading = true)
         loadJob = viewModelScope.launch {
             _picker.value = try {
-                val picks = ai.recommend(topic, TripContext(currentCrew, route.positions.value, vehicle.snapshot.value))
+                // A new destination comes from the destination list; stops come from the rest stops.
+                val pool = if (topic == DropTopic.DESTINATION) DemoData.destinations else DemoData.restStops
+                val picks = ai.recommend(topic, TripContext(currentCrew, route.positions.value, vehicle.snapshot.value, pool))
                 PickerState(pick = PlacePick.fromAi(picks))
             } catch (e: CancellationException) {
                 throw e // the screen asked again; that newer request wins

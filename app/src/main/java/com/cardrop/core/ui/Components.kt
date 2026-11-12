@@ -99,16 +99,30 @@ fun CdCard(
 }
 
 @Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    /** Blue by default; [CdColors.Violet] on social screens (board 09). */
+    containerColor: Color = CdColors.Blue,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 64.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = CdColors.Blue),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
         contentPadding = PaddingValues(horizontal = 24.dp),
     ) {
-        Text(text, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.White)
+        Text(
+            text,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = CdColors.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

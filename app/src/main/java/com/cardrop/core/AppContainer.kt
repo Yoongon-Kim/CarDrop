@@ -6,6 +6,8 @@ import com.cardrop.ai.AiService
 import com.cardrop.ai.ClaudeAiService
 import com.cardrop.ai.FakeAiService
 import com.cardrop.ai.FallbackAiService
+import com.cardrop.ai.PhraseStore
+import com.cardrop.ai.PrefsPhraseStore
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.core.model.Place
@@ -93,6 +95,8 @@ class AppContainer(context: Context) {
      * captions only, and the mic always hears "배고파" (good for rehearsing without speaking).
      */
     val voice: VoiceService = if (BuildConfig.USE_REAL_VOICE) PleosVoiceService(context) else FakeVoiceService()
+    /** Board 09's phrases, kept on this device. */
+    val phrases: PhraseStore = PrefsPhraseStore(context)
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice)
 

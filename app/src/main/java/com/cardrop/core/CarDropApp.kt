@@ -61,7 +61,7 @@ fun CarDropApp(container: AppContainer) {
         DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai)
     }
     val aiVm: AiViewModel = viewModel {
-        AiViewModel(container.ai, container.crew, container.route, container.vehicle, container.voice)
+        AiViewModel(container.ai, container.crew, container.route, container.vehicle, container.voice, container.phrases)
     }
 
     var socialMessage by remember { mutableStateOf<String?>(null) }
@@ -133,7 +133,17 @@ fun CarDropApp(container: AppContainer) {
                 onPickTopic = { topic, toCarIds -> navigator.go(Screen.AiRecommend(topic, toCarIds)) },
                 onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
             )
-            is Screen.Shout -> ShoutScreen(aiVm, screen.initialText, screen.toCarIds, onSent = { navigator.switchTab(Screen.Drive) })
+            is Screen.Shout -> ShoutScreen(
+                vm = aiVm,
+                initialText = screen.initialText,
+                toCarIds = screen.toCarIds,
+                onBack = navigator::back,
+                onSent = {
+                    // The design's feedback after sending, shown as a quiet caption for a few seconds.
+                    socialMessage = "${aiVm.recipientLabel(screen.toCarIds)}에 한마디를 보냈어요"
+                    navigator.switchTab(Screen.Drive)
+                },
+            )
             is Screen.AiRecommend -> AiRecommendScreen(aiVm, screen.topic, screen.toCarIds, onBack = navigator::back) { drop ->
                 navigator.go(Screen.Vote(drop.id))
             }

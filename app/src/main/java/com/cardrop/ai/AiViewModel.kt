@@ -3,6 +3,7 @@ package com.cardrop.ai
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cardrop.core.demo.DemoData
+import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
@@ -29,6 +30,7 @@ class AiViewModel(
     private val route: RouteSimulator,
     private val vehicle: VehicleRepository,
     private val voice: VoiceService,
+    private val phraseStore: PhraseStore,
 ) : ViewModel() {
 
     sealed interface Loadable<out T> {
@@ -56,6 +58,32 @@ class AiViewModel(
 
     private val _picker = MutableStateFlow(PickerState(loading = true))
     val picker: StateFlow<PickerState> = _picker
+
+    /** Everything board 09 shows. */
+    data class ShoutState(
+        val phrases: List<String> = emptyList(),
+        /** The chosen phrase's index, or [SPOKEN] for what the driver said. */
+        val selected: Int = 0,
+        /** What the driver said (04's 말로 제안해요, or board 09's voice row), polished by the AI. */
+        val spoken: String? = null,
+        /** True while listening, or while the AI polishes what was said. */
+        val hearing: Boolean = false,
+        /** The open phrase editor, or null when it's closed. */
+        val editor: PhraseEditor? = null,
+    ) {
+        /** What the send button sends, or null when there's nothing to send. */
+        val chosenText: String? get() = if (selected == SPOKEN) spoken else phrases.getOrNull(selected)
+
+        companion object {
+            const val SPOKEN = -1
+        }
+    }
+
+    /** Board 09's editor. [editing] is the index being changed, or null for a new phrase. */
+    data class PhraseEditor(val editing: Int?, val text: String, val error: String? = null)
+
+    private val _shout = MutableStateFlow(ShoutState(phrases = ShoutPhrases.fromSaved(phraseStore.load())))
+    val shout: StateFlow<ShoutState> = _shout
 
     private val _quiz = MutableStateFlow<Loadable<QuizQuestion>>(Loadable.Loading)
     val quiz: StateFlow<Loadable<QuizQuestion>> = _quiz
@@ -219,12 +247,119 @@ class AiViewModel(
         }
     }
 
-    /** Board 09: polish a message with the AI, then send it to [toCarIds] as a silent SOCIAL drop. */
-    fun sendShout(raw: String, polish: Boolean, toCarIds: List<String>, onSent: () -> Unit) {
+    /** Board 09 opens. [initialText] is what the driver said on 04, if anything; the AI polishes it. */
+    fun openShout(initialText: String) {
+        _shout.update {
+            it.copy(editor = null, spoken = null, selected = it.selected.coerceIn(0, maxOf(0, it.phrases.size - 1)))
+        }
+        if (initialText.isNotBlank()) {
+            _shout.update { it.copy(hearing = true) }
+            viewModelScope.launch { polishSpoken(initialText) }
+        }
+    }
+
+    fun selectPhrase(index: Int) {
+        _shout.update { it.copy(selected = index, editor = null) }
+    }
+
+    fun selectSpoken() {
+        _shout.update { if (it.spoken == null) it else it.copy(selected = ShoutState.SPOKEN, editor = null) }
+    }
+
+    /** "문구 추가": an empty editor for a new phrase. */
+    fun newPhrase() {
+        _shout.update { it.copy(editor = PhraseEditor(editing = null, text = "")) }
+    }
+
+    /** "선택한 문구 고치기": the editor with the chosen phrase in it. */
+    fun editPhrase() {
+        _shout.update { state ->
+            val text = state.phrases.getOrNull(state.selected) ?: return@update state
+            state.copy(editor = PhraseEditor(editing = state.selected, text = text))
+        }
+    }
+
+    fun changePhrase(text: String) {
+        _shout.update { state -> state.editor?.let { state.copy(editor = it.copy(text = text, error = null)) } ?: state }
+    }
+
+    fun cancelPhrase() {
+        _shout.update { it.copy(editor = null) }
+    }
+
+    /** "저장": saves the editor's text, or shows why it can't be saved. */
+    fun savePhrase() {
+        val state = _shout.value
+        val editor = state.editor ?: return
+        when (val result = ShoutPhrases.save(state.phrases, editor.editing, editor.text)) {
+            is ShoutPhrases.SaveResult.Problem -> _shout.value = state.copy(editor = editor.copy(error = result.message))
+            is ShoutPhrases.SaveResult.Saved -> keepPhrases(result)
+        }
+    }
+
+    /** "삭제": deletes the phrase being edited. */
+    fun deletePhrase() {
+        val state = _shout.value
+        val index = state.editor?.editing ?: return
+        keepPhrases(ShoutPhrases.delete(state.phrases, index))
+    }
+
+    private fun keepPhrases(saved: ShoutPhrases.SaveResult.Saved) {
+        phraseStore.save(saved.phrases)
+        _shout.update { it.copy(phrases = saved.phrases, selected = saved.selected, editor = null) }
+    }
+
+    /** Board 09 "직접 말해서 보내기": listen, then the AI polishes what was said into the chosen phrase. */
+    fun listenForShout() {
+        if (_shout.value.hearing) return
+        _shout.update { it.copy(hearing = true, editor = null) }
         viewModelScope.launch {
-            val text = if (polish) ai.polishMessage(raw) else raw
-            crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text, toCarIds = toCarIds))
-            onSent()
+            try {
+                val heard = voice.listen()
+                if (!heard.isNullOrBlank()) polishSpoken(heard)
+            } finally {
+                _shout.update { it.copy(hearing = false) }
+            }
+        }
+    }
+
+    private suspend fun polishSpoken(raw: String) {
+        val text = try {
+            ai.polishMessage(raw)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            raw // send the driver's own words rather than nothing
+        }
+        _shout.update { it.copy(spoken = text, selected = ShoutState.SPOKEN, hearing = false) }
+    }
+
+    /** Board 09 "“…” 보내기": sends the chosen phrase to [toCarIds] as a silent SOCIAL drop. */
+    fun sendChosenShout(toCarIds: List<String>, onSent: () -> Unit) {
+        val state = _shout.value
+        if (state.editor != null || state.hearing) return
+        val text = state.chosenText ?: return
+        sendShout(text, polish = false, toCarIds = toCarIds, onSent = onSent)
+    }
+
+    /** A car to name in board 09's example sentence: the purple car (삼촌 차 in the demo crew). */
+    fun exampleCarName(): String {
+        val others = crew.crew.value?.cars.orEmpty().filter { it.id != crew.myCarId }
+        return (others.firstOrNull { it.color == CarColor.PURPLE } ?: others.firstOrNull())?.name ?: "일행 차"
+    }
+
+    /** Sends [raw] (polished by the AI first if [polish]) to [toCarIds] as a silent SOCIAL drop. */
+    fun sendShout(raw: String, polish: Boolean, toCarIds: List<String>, onSent: () -> Unit) {
+        if (sending) return
+        sending = true // a second tap must not send the message twice
+        viewModelScope.launch {
+            try {
+                val text = if (polish) ai.polishMessage(raw) else raw
+                crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text, toCarIds = toCarIds))
+                onSent()
+            } finally {
+                sending = false
+            }
         }
     }
 

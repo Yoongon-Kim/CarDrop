@@ -39,8 +39,10 @@ class ClaudeAiService(
     private val client: AnthropicClient by lazy {
         AnthropicOkHttpClient.builder()
             .apiKey(apiKey)
-            .timeout(Duration.ofSeconds(15)) // a driver is waiting; the fake answers if this runs out
-            .maxRetries(1)
+            // A driver is waiting: one try of at most 10 s (real answers took 2.5-3.6 s), then the
+            // fake answers. With retries, a dropped connection made board 10 wait 30 s.
+            .timeout(Duration.ofSeconds(10))
+            .maxRetries(0)
             .build()
     }
 

@@ -43,6 +43,12 @@ data class TripContext(
 )
 
 /**
+ * Destinations and cafés (by the destination beach) sit at the end of the trip, so they aren't
+ * filtered down to the stops every car still has ahead on the highway.
+ */
+internal fun DropTopic.isNearDestination(): Boolean = this == DropTopic.DESTINATION || this == DropTopic.CAFE
+
+/**
  * Keyword rules and canned answers, with a short delay so loading states are visible.
  * [stopsAhead] filters the pool to places every car still has ahead (AppContainer.stopsAhead).
  */
@@ -57,6 +63,7 @@ class FakeAiService(
             listOf("배고", "밥", "식사", "먹").any { it in text } -> DropTopic.FOOD
             listOf("기름", "주유", "연료").any { it in text } -> DropTopic.FUEL
             listOf("화장실", "쉬", "휴게소", "졸려").any { it in text } -> DropTopic.REST
+            listOf("커피", "카페").any { it in text } -> DropTopic.CAFE
             listOf("목적지", "바꾸").any { it in text } -> DropTopic.DESTINATION
             else -> DropTopic.MESSAGE
         }
@@ -68,10 +75,16 @@ class FakeAiService(
         val reasons = when (topic) {
             DropTopic.FOOD -> listOf("4대 모두 20분 안에 도착", "평점 4.6 · 대기 짧음", "한우 맛집")
             DropTopic.FUEL -> listOf("남은 연료로 갈 수 있어요", "가장 저렴한 휘발유", "충전소도 있어요")
+            DropTopic.CAFE -> listOf("목적지에서 1.5km", "강문해변 바로 앞", "안목 커피거리에 있어요")
             else -> listOf("4대 모두 지나가는 길", "도착 시간 차이 5분", "넓은 주차장")
         }
-        // Only stops every car still has ahead: a 2-minute vote must end before anyone passes them.
-        val ahead = stopsAhead(context.pool).ifEmpty { context.pool.takeLast(3) }
+        // Stops on the way: only those every car still has ahead (a 2-minute vote must end before
+        // anyone passes them). Destinations and cafés are near the end of the trip: all of them.
+        val ahead = if (topic.isNearDestination()) {
+            context.pool
+        } else {
+            stopsAhead(context.pool).ifEmpty { context.pool.takeLast(3) }
+        }
         return ahead.take(3).mapIndexed { i, place ->
             Candidate(id = place.id, place = place, reason = reasons[i], detourMinutes = 2 + i * 3)
         }

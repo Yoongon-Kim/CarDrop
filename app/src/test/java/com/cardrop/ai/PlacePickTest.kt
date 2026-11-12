@@ -69,8 +69,15 @@ class PlacePickTest {
     }
 
     @Test
+    fun cafesCanBeFoundByName() {
+        val withCafes = known + DemoData.cafes
+        assertEquals("cafe-anmok-bossanova", findKnownPlace("보사노바", withCafes)?.id)
+        assertEquals("cafe-gangmun-starbucks", findKnownPlace("강문 스타벅스", withCafes)?.id)
+    }
+
+    @Test
     fun unknownOrTooShortNamesFindNothing() {
-        assertNull(findKnownPlace("스타벅스", known))
+        assertNull(findKnownPlace("투썸플레이스", known + DemoData.cafes))
         assertNull(findKnownPlace("휴게소", known))
         assertNull(findKnownPlace("덕", known))
         assertNull(findKnownPlace("  ", known))

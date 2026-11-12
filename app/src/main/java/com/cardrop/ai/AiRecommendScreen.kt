@@ -401,7 +401,8 @@ private fun DropTopic.placeNoun(): String = when (this) {
     DropTopic.FOOD -> "음식점"
     DropTopic.FUEL -> "주유소"
     DropTopic.DESTINATION -> "목적지"
-    DropTopic.MESSAGE -> "장소"
+    DropTopic.CAFE -> "카페"
+    DropTopic.MESSAGE, DropTopic.CUSTOM -> "장소"
 }
 
 /** What the driver said to start this drop, shown above the title. */
@@ -409,7 +410,9 @@ private fun DropTopic.driverQuote(): String = when (this) {
     DropTopic.REST -> "“휴게소 들렀다 가자”"
     DropTopic.FOOD -> "“배고픈데 뭐 먹고 가자”"
     DropTopic.FUEL -> "“주유하고 가자”"
+    DropTopic.CAFE -> "“커피 한잔하고 가자”"
     DropTopic.DESTINATION -> "“목적지 바꾸자”"
+    DropTopic.CUSTOM -> "직접 제안"
     DropTopic.MESSAGE -> "“여기 들르자”"
 }
 

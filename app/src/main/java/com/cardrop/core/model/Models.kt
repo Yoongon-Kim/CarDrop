@@ -51,7 +51,19 @@ fun Crew.recipientLabel(toCarIds: List<String>, myCarId: String): String {
  */
 enum class DropKind { DECISION, SOCIAL }
 
-enum class DropTopic { REST, FOOD, FUEL, DESTINATION, MESSAGE }
+enum class DropTopic {
+    REST,
+    FOOD,
+    FUEL,
+    DESTINATION,
+    MESSAGE,
+
+    /** 카페: the AI picks from cafés near the destination (DemoData.cafes). */
+    CAFE,
+
+    /** 직접 추가: no AI picks; the driver adds the places for the vote. */
+    CUSTOM,
+}
 
 data class Candidate(
     val id: String,

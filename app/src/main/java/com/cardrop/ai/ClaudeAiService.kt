@@ -50,7 +50,7 @@ class ClaudeAiService(
         parseIntent(askFast(INTENT_PROMPT, utterance, intentSchema), utterance)
 
     override suspend fun recommend(topic: DropTopic, context: TripContext): List<Candidate> {
-        val places = if (topic == DropTopic.DESTINATION) {
+        val places = if (topic.isNearDestination()) {
             context.pool
         } else {
             stopsAhead(context.pool).ifEmpty { context.pool.takeLast(3) }
@@ -106,7 +106,8 @@ class ClaudeAiService(
     }
 
     private val intentSchema = jsonSchema(
-        "topic" to mapOf("type" to "string", "enum" to DropTopic.entries.map { it.name }),
+        // CUSTOM (직접 추가) is a button on board 08, not something a driver says.
+        "topic" to mapOf("type" to "string", "enum" to DropTopic.entries.filter { it != DropTopic.CUSTOM }.map { it.name }),
         "confidence" to mapOf("type" to "number"),
         "message" to STRING,
     )
@@ -153,6 +154,7 @@ class ClaudeAiService(
             - REST: a break, a toilet, a rest stop, or they feel sleepy or tired.
             - FOOD: they are hungry or want to eat.
             - FUEL: low on fuel or charge, or they want a gas station or charger.
+            - CAFE: they want coffee or a café.
             - DESTINATION: they want the whole group to go somewhere else.
             - MESSAGE: anything else; it is a message for the other cars.
             confidence: from 0 to 1, how sure you are.
@@ -174,7 +176,7 @@ class ClaudeAiService(
             - Every car must get there comfortably: mind the car with the least fuel and the driver
               who has been driving longest.
             - Prefer places that fit the topic: a good rest stop for REST, good food for FOOD, a gas
-              station for FUEL.
+              station for FUEL, a pleasant café for CAFE.
             For each place give placeId, reason and detourMinutes. reason is Korean, at most 25
             characters, and says why the place suits the group, for example "4대 모두 15분 안 · 주유 가능".
             detourMinutes is how many minutes the stop adds to the trip, not counting the stop

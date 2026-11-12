@@ -66,7 +66,7 @@ class AiViewModel(
     val vehicleSnapshot: StateFlow<VehicleSnapshot> = vehicle.snapshot
 
     /** Places a driver may add by name on board 10. They have a location, so they can become a waypoint. */
-    private val knownPlaces: List<Place> = DemoData.restStops + DemoData.destinations
+    private val knownPlaces: List<Place> = DemoData.restStops + DemoData.cafes + DemoData.destinations
 
     private var loadJob: Job? = null
     private var listenJob: Job? = null
@@ -81,11 +81,18 @@ class AiViewModel(
             _picker.value = PickerState(aiError = "먼저 크루를 만들거나 참여해 주세요")
             return
         }
+        if (topic == DropTopic.CUSTOM) {
+            _picker.value = PickerState() // 직접 추가: no AI picks, the driver adds the places
+            return
+        }
         _picker.value = PickerState(loading = true)
         loadJob = viewModelScope.launch {
             _picker.value = try {
-                // A new destination comes from the destination list; stops come from the rest stops.
-                val pool = if (topic == DropTopic.DESTINATION) DemoData.destinations else DemoData.restStops
+                val pool = when (topic) {
+                    DropTopic.DESTINATION -> DemoData.destinations
+                    DropTopic.CAFE -> DemoData.cafes
+                    else -> DemoData.restStops
+                }
                 val picks = ai.recommend(topic, TripContext(currentCrew, route.positions.value, vehicle.snapshot.value, pool))
                 PickerState(pick = PlacePick.fromAi(picks))
             } catch (e: CancellationException) {
@@ -187,7 +194,7 @@ class AiViewModel(
     private fun findPlace(name: String): Place? =
         findKnownPlace(name, _picker.value.pick.candidates.map { it.place } + knownPlaces)
 
-    private fun unknownPlace(name: String) = "‘$name’의 위치를 찾지 못했어요. 경로 위 휴게소 이름을 넣어 주세요."
+    private fun unknownPlace(name: String) = "‘$name’의 위치를 찾지 못했어요. 휴게소나 카페 이름을 넣어 주세요."
 
     /** Board 04 "말로 제안해요": listen, read the intent, then open the right screen. */
     fun suggestByVoice(onTopic: (DropTopic) -> Unit, onMessage: (String) -> Unit) {
@@ -228,5 +235,7 @@ class AiViewModel(
         DropTopic.FUEL -> "어디서 주유할까요?"
         DropTopic.DESTINATION -> "목적지를 바꿀까요?"
         DropTopic.MESSAGE -> "한마디"
+        DropTopic.CAFE -> "어느 카페에 들를까요?"
+        DropTopic.CUSTOM -> "어디에 들를까요?"
     }
 }

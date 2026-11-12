@@ -72,8 +72,11 @@ class AiViewModel(
     private var listenJob: Job? = null
     private var sending = false
 
-    /** Board 10: ask the AI for candidates. They all start ticked. */
-    fun loadCandidates(topic: DropTopic) {
+    /**
+     * Board 10: ask the AI for candidates. They all start ticked. The AI plans for the cars that
+     * take part: this car and [toCarIds] (all cars when it goes to the whole crew).
+     */
+    fun loadCandidates(topic: DropTopic, toCarIds: List<String> = emptyList()) {
         loadJob?.cancel()
         listenJob?.cancel()
         val currentCrew = crew.crew.value
@@ -93,7 +96,12 @@ class AiViewModel(
                     DropTopic.CAFE -> DemoData.cafes
                     else -> DemoData.restStops
                 }
-                val picks = ai.recommend(topic, TripContext(currentCrew, route.positions.value, vehicle.snapshot.value, pool))
+                val involved = if (toCarIds.isEmpty()) {
+                    currentCrew
+                } else {
+                    currentCrew.copy(cars = currentCrew.cars.filter { it.id == crew.myCarId || it.id in toCarIds })
+                }
+                val picks = ai.recommend(topic, TripContext(involved, route.positions.value, vehicle.snapshot.value, pool))
                 PickerState(pick = PlacePick.fromAi(picks))
             } catch (e: CancellationException) {
                 throw e // the screen asked again; that newer request wins

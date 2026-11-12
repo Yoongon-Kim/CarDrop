@@ -74,7 +74,7 @@ fun AiRecommendScreen(
     onBack: () -> Unit,
     onSent: (Drop) -> Unit,
 ) {
-    LaunchedEffect(topic) { vm.loadCandidates(topic) }
+    LaunchedEffect(topic, toCarIds) { vm.loadCandidates(topic, toCarIds) }
     PlacePicker(
         vm = vm,
         topic = topic,
@@ -135,7 +135,7 @@ private fun PlacePicker(
         onAddTyped = { if (vm.addTypedPlace(typed)) typed = "" },
         onListen = vm::listenForPlace,
         onConfirmHeard = vm::confirmHeardPlace,
-        onRetry = { vm.loadCandidates(topic) },
+        onRetry = { vm.loadCandidates(topic, toCarIds) },
         onSend = { vm.sendVote(topic, toCarIds, onSent) },
     )
 }

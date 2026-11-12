@@ -46,8 +46,10 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - `core/navigation/DropRouting.kt` opens the vote / fuel / decision screens when a drop arrives.
 - `drive/TripCoordinator.kt` runs all the time: crew destination or a finished vote -> route.
 - `core/model/Models.kt` holds the shared data types. Ask the lead before changing them.
-- Shared UI: `core/ui/Components.kt` (`ScreenHeader`, `CdCard`, `PrimaryButton`, `Pill`, ...) and
-  `core/ui/theme/Theme.kt` (`CdColors` = the design's colours). Use these instead of raw Material styling.
+- Shared UI: `core/ui/Components.kt` (`ScreenHeader`, `CdCard`, `PrimaryButton`, `Pill`, `BackButton`,
+  `CdChip`, `CdTextField`, `StatusText`, `ErrorText`, ...), `core/ui/Icons.kt` (`CdIcons`, the design's line
+  icons) and `core/ui/theme/Theme.kt` (`CdColors` = the design's colours). Use these instead of raw Material
+  styling. `core/ui/ComponentsPreview.kt` shows the controls in Android Studio's preview.
 - `TodoNote("...")` marks unbuilt parts of a screen. Remove it when the part is done.
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).

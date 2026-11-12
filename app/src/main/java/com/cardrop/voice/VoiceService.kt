@@ -18,8 +18,12 @@ interface VoiceService {
 
     fun speak(text: String)
 
-    /** Listens for one sentence. Returns null when nothing was heard. */
-    suspend fun listen(): String?
+    /**
+     * Listens for one sentence. Returns null when nothing was heard.
+     * [placeName] = true when we expect only a place name (board 10 "말해서 추가"); the real version
+     * can tell the recognizer to expect a short phrase (RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH).
+     */
+    suspend fun listen(placeName: Boolean = false): String?
 }
 
 class FakeVoiceService : VoiceService {
@@ -31,8 +35,8 @@ class FakeVoiceService : VoiceService {
         _lastSpoken.value = text
     }
 
-    override suspend fun listen(): String? {
+    override suspend fun listen(placeName: Boolean): String? {
         delay(1_200)
-        return "배고파"
+        return if (placeName) "평창휴게소" else "배고파"
     }
 }

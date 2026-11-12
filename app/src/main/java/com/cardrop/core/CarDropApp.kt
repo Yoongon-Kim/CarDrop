@@ -144,12 +144,17 @@ fun CarDropApp(container: AppContainer) {
     }
 }
 
-/** Shows what the voice just said (fake voice has no sound) and quiet social messages. */
+/**
+ * Shows when the microphone is listening, what the voice just said (the fake voice has no sound),
+ * and quiet social messages.
+ */
 @Composable
 private fun Captions(container: AppContainer, socialMessage: String?) {
+    val listening by container.voice.listening.collectAsStateWithLifecycle()
     val spoken by container.voice.lastSpoken.collectAsStateWithLifecycle()
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopEnd) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+            if (listening) Caption("마이크 · 듣고 있어요… 말씀하세요")
             spoken?.let { Caption("음성 · $it") }
             socialMessage?.let { Caption("소셜 · $it") }
         }

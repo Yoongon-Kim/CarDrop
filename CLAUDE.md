@@ -109,8 +109,13 @@ Use it to rehearse the 시연 on one emulator.
 - Call `initialize()` before any other SDK call: `addEventListener()` first crashes the app.
 - `Mode.ON_DEVICE` needs no app registration. `HYBRID` (the SDK default) and `SERVER` need Pleos Playground
   app credentials through `registerApp(...)`.
-- On the emulator, speaking works (you hear it on the computer). Listening hears nothing unless Extended
-  controls > Microphone > "Virtual microphone uses host audio input" is on; then it stops after 15 s.
+- On the emulator, speaking works (you hear it on the computer). Listening needs, after every emulator
+  start, Extended controls > Microphone > "Virtual microphone uses host audio input" (or
+  `adb emu avd hostmicon`), and macOS must allow Android Studio to use the microphone. Without them it
+  hears nothing and stops after 15 s. It hears everything near the computer, including other people.
+- While listening, a "마이크 · 듣고 있어요…" caption shows at the top right until it stops.
+- Pleos sends the final sentence a few ms after "recognition ended", so `PleosVoiceService` waits up to 1 s
+  for it; otherwise it would keep only the partial text.
 - Logs: `adb logcat -s CarDropVoice`.
 - adb on this image: apps run as Android user 10, so use `--user 10`, e.g.
   `adb shell pm grant --user 10 com.cardrop <permission>` and `adb shell am start --user 10 -n com.cardrop/.MainActivity`.

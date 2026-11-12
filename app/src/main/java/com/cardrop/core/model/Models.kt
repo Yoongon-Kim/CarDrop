@@ -36,6 +36,16 @@ data class Crew(
 )
 
 /**
+ * Who a drop goes to, as the screens say it (design board 08): "크루 전체", or the chosen cars'
+ * names in crew order, e.g. "삼촌 차 · 민지 차". Choosing every other car counts as the whole crew.
+ */
+fun Crew.recipientLabel(toCarIds: List<String>, myCarId: String): String {
+    val others = cars.filterNot { it.id == myCarId }
+    val chosen = others.filter { it.id in toCarIds }
+    return if (chosen.isEmpty() || chosen.size == others.size) "크루 전체" else chosen.joinToString(" · ") { it.name }
+}
+
+/**
  * DECISION drops are spoken aloud and need an answer (vote).
  * SOCIAL drops show on screen only, silently (design rule: 소셜 드랍은 화면에만).
  */
@@ -66,9 +76,17 @@ data class Drop(
     val deadlineMillis: Long,
     /** Set once the vote is over. */
     val decidedCandidateId: String? = null,
+    /** The cars it was sent to besides the sender (board 08 "받는 차"). Empty = the whole crew. */
+    val toCarIds: List<String> = emptyList(),
 ) {
     val isDecided: Boolean get() = decidedCandidateId != null
     val decidedCandidate: Candidate? get() = candidates.firstOrNull { it.id == decidedCandidateId }
+
+    /** True when [carId] takes part: the sender, a receiver, or any car when it went to the whole crew. */
+    fun isFor(carId: String): Boolean = toCarIds.isEmpty() || carId == fromCarId || carId in toCarIds
+
+    /** The cars whose answers count in a vote: those that take part, in crew order. */
+    fun voterIds(crewCarIds: List<String>): List<String> = crewCarIds.filter(::isFor)
 }
 
 enum class Gear { PARK, DRIVE, REVERSE, NEUTRAL, UNKNOWN }

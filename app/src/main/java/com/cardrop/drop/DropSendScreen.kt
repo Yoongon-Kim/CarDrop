@@ -14,51 +14,65 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
-import com.cardrop.core.ui.TodoNote
 import com.cardrop.crew.CrewViewModel
 
 /**
  * Board 08 드랍 보내기 · Owner: Member A.
- * Picking a decision topic opens board 10 (AI candidates); 한마디 opens board 09.
+ * Choose the receiving cars (크루 전체, or one or more cars), then what to send: a decision topic
+ * opens board 10 (AI candidates), 한마디 opens board 09. Both get the chosen cars (empty = whole crew).
  */
 @Composable
 fun DropSendScreen(
     vm: CrewViewModel,
-    onPickTopic: (DropTopic) -> Unit,
-    onShout: () -> Unit,
+    onPickTopic: (topic: DropTopic, toCarIds: List<String>) -> Unit,
+    onShout: (toCarIds: List<String>) -> Unit,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
-    var target by remember { mutableStateOf("all") }
+    val others = crew?.cars.orEmpty().filterNot { it.isMe }
+    // The chosen cars; empty = 크루 전체. Choosing every car switches back to 크루 전체.
+    var picked by remember { mutableStateOf(emptySet<String>()) }
+    val toCarIds = others.map { it.id }.filter { it in picked }
 
     ScreenColumn {
         ScreenHeader(eyebrow = "누르면 바로 다음 단계로 넘어가요", title = "누구에게 보낼까요?")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            CdCard(modifier = Modifier.weight(1f), selected = target == "all", onClick = { target = "all" }) {
+            CdCard(modifier = Modifier.weight(1f), selected = picked.isEmpty(), onClick = { picked = emptySet() }) {
                 Text("크루 전체", style = MaterialTheme.typography.titleMedium)
             }
-            crew?.cars.orEmpty().filterNot { it.isMe }.forEach { car ->
-                CdCard(modifier = Modifier.weight(1f), selected = target == car.id, onClick = { target = car.id }) {
+            others.forEach { car ->
+                CdCard(
+                    modifier = Modifier.weight(1f),
+                    selected = car.id in picked,
+                    onClick = {
+                        val next = if (car.id in picked) picked - car.id else picked + car.id
+                        picked = if (next.size == others.size) emptySet() else next
+                    },
+                ) {
                     CarBadge(car, size = 36)
                     Text(car.name, style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
-        TodoNote("한 차에만 보내기는 DropDraft에 대상 차 목록이 필요해요")
+        Text(
+            "받는 차 · ${crew?.recipientLabel(toCarIds, vm.myCarId) ?: "크루 전체"} · 여러 대를 고를 수 있어요",
+            style = MaterialTheme.typography.labelMedium,
+        )
 
         Text("무엇을 보낼까요?", style = MaterialTheme.typography.titleLarge)
         Text("결정 드랍 · 음성으로 안내돼요", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            TopicCard("휴게소 가자", "AI가 3곳 추천", Modifier.weight(1f)) { onPickTopic(DropTopic.REST) }
-            TopicCard("밥 먹자", "식당 · 휴게소 맛집", Modifier.weight(1f)) { onPickTopic(DropTopic.FOOD) }
-            TopicCard("주유하자", "가는 길 주유소", Modifier.weight(1f)) { onPickTopic(DropTopic.FUEL) }
+            TopicCard("휴게소 가자", "AI가 3곳 추천", Modifier.weight(1f)) { onPickTopic(DropTopic.REST, toCarIds) }
+            TopicCard("밥 먹자", "식당 · 휴게소 맛집", Modifier.weight(1f)) { onPickTopic(DropTopic.FOOD, toCarIds) }
+            TopicCard("주유하자", "가는 길 주유소", Modifier.weight(1f)) { onPickTopic(DropTopic.FUEL, toCarIds) }
         }
         Text("소셜 드랍 · 화면에만 조용히", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            TopicCard("일행에게 한마디", "자주 쓰는 말", Modifier.weight(1f), onClick = onShout)
+            TopicCard("일행에게 한마디", "자주 쓰는 말", Modifier.weight(1f)) { onShout(toCarIds) }
             TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f)) {}
             TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
         }

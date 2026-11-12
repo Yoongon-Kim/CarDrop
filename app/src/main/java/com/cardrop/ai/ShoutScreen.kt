@@ -20,9 +20,12 @@ import com.cardrop.core.ui.ScreenHeader
 
 private val presets = listOf("곧 도착해요", "먼저 가세요", "천천히 와요", "휴게소에서 봐요")
 
-/** Board 09 일행에게 한마디 · Owner: lead. Sent as a SOCIAL drop: on screen only, never spoken. */
+/**
+ * Board 09 일행에게 한마디 · Owner: lead. Sent as a SOCIAL drop: on screen only, never spoken.
+ * [toCarIds]: the cars chosen on board 08; empty = the whole crew.
+ */
 @Composable
-fun ShoutScreen(vm: AiViewModel, initialText: String = "", onSent: () -> Unit) {
+fun ShoutScreen(vm: AiViewModel, initialText: String = "", toCarIds: List<String> = emptyList(), onSent: () -> Unit) {
     var text by remember { mutableStateOf(initialText) }
 
     ScreenColumn {
@@ -30,7 +33,10 @@ fun ShoutScreen(vm: AiViewModel, initialText: String = "", onSent: () -> Unit) {
         Text("자주 쓰는 한마디", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             presets.forEach { preset ->
-                CdCard(modifier = Modifier.weight(1f), onClick = { vm.sendShout(preset, polish = false, onSent = onSent) }) {
+                CdCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { vm.sendShout(preset, polish = false, toCarIds = toCarIds, onSent = onSent) },
+                ) {
                     Text(preset, style = MaterialTheme.typography.titleMedium)
                 }
             }
@@ -45,9 +51,9 @@ fun ShoutScreen(vm: AiViewModel, initialText: String = "", onSent: () -> Unit) {
         PrimaryButton(
             "AI가 다듬어서 보내기",
             enabled = text.isNotBlank(),
-            onClick = { vm.sendShout(text, polish = true, onSent = onSent) },
+            onClick = { vm.sendShout(text, polish = true, toCarIds = toCarIds, onSent = onSent) },
             modifier = Modifier.fillMaxWidth(),
         )
-        Text("받는 차 · 크루 전체", style = MaterialTheme.typography.bodyMedium)
+        Text("받는 차 · ${vm.recipientLabel(toCarIds)}", style = MaterialTheme.typography.bodyMedium)
     }
 }

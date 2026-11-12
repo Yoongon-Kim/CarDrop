@@ -26,10 +26,13 @@ sealed interface Screen {
     data object Inbox : Screen
     /** 08 드랍 보내기 · Member A */
     data object DropSend : Screen
-    /** 09 일행에게 한마디 · lead. [initialText] comes from a voice suggestion. */
-    data class Shout(val initialText: String = "") : Screen
-    /** 10 AI 추천 · lead */
-    data class AiRecommend(val topic: DropTopic) : Screen
+    /**
+     * 09 일행에게 한마디 · lead. [initialText] comes from a voice suggestion. [toCarIds]: the cars chosen
+     * on board 08; empty = the whole crew.
+     */
+    data class Shout(val initialText: String = "", val toCarIds: List<String> = emptyList()) : Screen
+    /** 10 AI 추천 · lead. [toCarIds]: the cars chosen on board 08; empty = the whole crew. */
+    data class AiRecommend(val topic: DropTopic, val toCarIds: List<String> = emptyList()) : Screen
     /** 11 투표 · Member A */
     data class Vote(val dropId: String) : Screen
     /** 14 결정 · Member B */

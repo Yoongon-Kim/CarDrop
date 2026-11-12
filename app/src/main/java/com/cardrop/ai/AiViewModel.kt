@@ -9,6 +9,7 @@ import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
 import com.cardrop.core.model.QuizQuestion
 import com.cardrop.core.model.VehicleSnapshot
+import com.cardrop.core.model.recipientLabel
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.drive.RouteSimulator
@@ -149,8 +150,15 @@ class AiViewModel(
         }
     }
 
-    /** Board 10 "이 N곳으로 투표 보내기": only the ticked places go into the vote. */
-    fun sendVote(topic: DropTopic, onSent: (Drop) -> Unit) {
+    /** "크루 전체", or the names of [toCarIds], for the "받는 차" lines on boards 09 and 10. */
+    fun recipientLabel(toCarIds: List<String>): String =
+        crew.crew.value?.recipientLabel(toCarIds, crew.myCarId) ?: "크루 전체"
+
+    /**
+     * Board 10 "이 N곳으로 투표 보내기": only the ticked places go into the vote, sent to [toCarIds]
+     * (empty = the whole crew).
+     */
+    fun sendVote(topic: DropTopic, toCarIds: List<String>, onSent: (Drop) -> Unit) {
         val pick = _picker.value.pick
         val chosen = pick.selected
         if (chosen.isEmpty() || sending) return
@@ -164,6 +172,7 @@ class AiViewModel(
                         title = topicTitle(topic),
                         message = if (chosen.any { pick.isAdded(it.id) }) "후보 ${chosen.size}곳" else "AI가 고른 ${chosen.size}곳",
                         candidates = chosen,
+                        toCarIds = toCarIds,
                     ),
                 )
                 voice.speak("${topicTitle(topic)} 투표를 보냈어요")
@@ -195,11 +204,11 @@ class AiViewModel(
         }
     }
 
-    /** Board 09: polish a message with the AI, then send it as a silent SOCIAL drop. */
-    fun sendShout(raw: String, polish: Boolean, onSent: () -> Unit) {
+    /** Board 09: polish a message with the AI, then send it to [toCarIds] as a silent SOCIAL drop. */
+    fun sendShout(raw: String, polish: Boolean, toCarIds: List<String>, onSent: () -> Unit) {
         viewModelScope.launch {
             val text = if (polish) ai.polishMessage(raw) else raw
-            crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text))
+            crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text, toCarIds = toCarIds))
             onSent()
         }
     }

@@ -63,14 +63,22 @@ import com.cardrop.core.ui.theme.CdColors
 
 /**
  * Board 10 AI 추천 (휴게소 · 식사 · 주유) · Owner: lead.
- * The AI's places plus any the driver adds. The ticked ones go into a vote (board 11).
+ * The AI's places plus any the driver adds. The ticked ones go into a vote (board 11), sent to
+ * [toCarIds], the cars chosen on board 08 (empty = the whole crew).
  */
 @Composable
-fun AiRecommendScreen(vm: AiViewModel, topic: DropTopic, onBack: () -> Unit, onSent: (Drop) -> Unit) {
+fun AiRecommendScreen(
+    vm: AiViewModel,
+    topic: DropTopic,
+    toCarIds: List<String>,
+    onBack: () -> Unit,
+    onSent: (Drop) -> Unit,
+) {
     LaunchedEffect(topic) { vm.loadCandidates(topic) }
     PlacePicker(
         vm = vm,
         topic = topic,
+        toCarIds = toCarIds,
         popup = false,
         onClose = onBack,
         onSent = onSent,
@@ -88,7 +96,15 @@ fun QuickDropPicker(vm: AiViewModel, topic: DropTopic, onClose: () -> Unit, onSe
     LaunchedEffect(topic) { vm.loadCandidates(topic) }
     BackHandler(onBack = onClose)
     PopupFrame {
-        PlacePicker(vm = vm, topic = topic, popup = true, onClose = onClose, onSent = onSent, modifier = Modifier)
+        PlacePicker(
+            vm = vm,
+            topic = topic,
+            toCarIds = emptyList(), // a quick drop always goes to the whole crew
+            popup = true,
+            onClose = onClose,
+            onSent = onSent,
+            modifier = Modifier,
+        )
     }
 }
 
@@ -97,6 +113,7 @@ fun QuickDropPicker(vm: AiViewModel, topic: DropTopic, onClose: () -> Unit, onSe
 private fun PlacePicker(
     vm: AiViewModel,
     topic: DropTopic,
+    toCarIds: List<String>,
     popup: Boolean,
     onClose: () -> Unit,
     onSent: (Drop) -> Unit,
@@ -104,10 +121,10 @@ private fun PlacePicker(
 ) {
     val state by vm.picker.collectAsStateWithLifecycle()
     var typed by rememberSaveable(topic) { mutableStateOf("") }
+    val recipients = vm.recipientLabel(toCarIds)
     PlacePickerContent(
         title = pickerTitle(topic, state),
-        // TODO(lead): the cars picked on 08 instead of "크루 전체" (step 3, 받는 차).
-        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · 크루 전체" else "${topic.driverQuote()} · 받는 차 크루 전체",
+        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · $recipients" else "${topic.driverQuote()} · 받는 차 $recipients",
         state = state,
         typed = typed,
         popup = popup,
@@ -119,7 +136,7 @@ private fun PlacePicker(
         onListen = vm::listenForPlace,
         onConfirmHeard = vm::confirmHeardPlace,
         onRetry = { vm.loadCandidates(topic) },
-        onSend = { vm.sendVote(topic, onSent) },
+        onSend = { vm.sendVote(topic, toCarIds, onSent) },
     )
 }
 

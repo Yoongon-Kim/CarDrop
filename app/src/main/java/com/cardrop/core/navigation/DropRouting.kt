@@ -28,6 +28,8 @@ fun DropRoutingEffect(
         val seenDecided = mutableSetOf<String>()
         crew.drops.collect { drops ->
             for (drop in drops) {
+                // A drop sent only to other cars (board 08 "받는 차") never shows up on this car.
+                if (!drop.isFor(crew.myCarId)) continue
                 val fromOther = drop.fromCarId != crew.myCarId
                 val sender = crew.crew.value?.cars?.firstOrNull { it.id == drop.fromCarId }?.name ?: "일행"
 

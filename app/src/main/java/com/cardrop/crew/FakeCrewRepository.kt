@@ -134,6 +134,7 @@ class FakeCrewRepository(
             candidates = draft.candidates,
             createdAtMillis = created,
             deadlineMillis = created + draft.voteSeconds * 1_000L,
+            toCarIds = draft.toCarIds,
         )
     }
 
@@ -150,7 +151,8 @@ class FakeCrewRepository(
     private fun botVote(dropId: String, bot: Car, rank: Int, except: String?) {
         if (bot.id == except) return
         updateDrop(dropId) { drop ->
-            if (drop.isDecided) return@updateDrop drop
+            // A bot only answers drops that were sent to it.
+            if (drop.isDecided || !drop.isFor(bot.id)) return@updateDrop drop
             val candidate: Candidate = drop.candidates.getOrNull(rank) ?: drop.candidates.firstOrNull()
                 ?: return@updateDrop drop
             drop.copy(votes = drop.votes + (bot.id to candidate.id))
@@ -163,10 +165,12 @@ class FakeCrewRepository(
         val time = now()
         _drops.update { list ->
             list.map { drop ->
+                // Only the sender and the cars it was sent to count in the vote.
+                val voters = drop.voterIds(carIds)
                 if (drop.kind == DropKind.DECISION && !drop.isDecided && drop.candidates.isNotEmpty() &&
-                    VoteRules.isOver(drop, carIds, time)
+                    VoteRules.isOver(drop, voters, time)
                 ) {
-                    drop.copy(decidedCandidateId = VoteRules.winner(drop, carIds))
+                    drop.copy(decidedCandidateId = VoteRules.winner(drop, voters))
                 } else {
                     drop
                 }

@@ -130,11 +130,11 @@ fun CarDropApp(container: AppContainer) {
             }
             Screen.DropSend -> DropSendScreen(
                 vm = crewVm,
-                onPickTopic = { topic -> navigator.go(Screen.AiRecommend(topic)) },
-                onShout = { navigator.go(Screen.Shout()) },
+                onPickTopic = { topic, toCarIds -> navigator.go(Screen.AiRecommend(topic, toCarIds)) },
+                onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
             )
-            is Screen.Shout -> ShoutScreen(aiVm, screen.initialText, onSent = { navigator.switchTab(Screen.Drive) })
-            is Screen.AiRecommend -> AiRecommendScreen(aiVm, screen.topic, onBack = navigator::back) { drop ->
+            is Screen.Shout -> ShoutScreen(aiVm, screen.initialText, screen.toCarIds, onSent = { navigator.switchTab(Screen.Drive) })
+            is Screen.AiRecommend -> AiRecommendScreen(aiVm, screen.topic, screen.toCarIds, onBack = navigator::back) { drop ->
                 navigator.go(Screen.Vote(drop.id))
             }
             is Screen.Vote -> VoteScreen(crewVm, screen.dropId)

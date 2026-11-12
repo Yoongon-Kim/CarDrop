@@ -35,7 +35,8 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
     val drops by vm.drops.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
     val drop = drops.firstOrNull { it.id == dropId } ?: return
-    val carCount = crew?.cars?.size ?: 0
+    // Only the sender and the cars it was sent to answer this vote.
+    val carCount = drop.voterIds(crew?.cars?.map { it.id }.orEmpty()).size
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(dropId) {

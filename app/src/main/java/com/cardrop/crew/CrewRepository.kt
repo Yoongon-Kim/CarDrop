@@ -49,4 +49,6 @@ data class DropDraft(
     val candidates: List<Candidate> = emptyList(),
     /** Design board 11 shows a 2-minute vote. */
     val voteSeconds: Int = 120,
+    /** The cars to send it to besides this one (board 08 "받는 차"). Empty = the whole crew. */
+    val toCarIds: List<String> = emptyList(),
 )

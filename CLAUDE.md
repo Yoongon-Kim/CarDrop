@@ -53,8 +53,11 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - `TodoNote("...")` marks unbuilt parts of a screen. Remove it when the part is done.
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).
-- Board 10: a driver can add only places the app knows (`findKnownPlace` in `ai/PlacePick.kt`), because a
-  voted place needs a location to become a waypoint. A real place search can replace this later.
+- Board 10: a driver can add only places the app knows (`findKnownPlace` in `ai/PlacePick.kt`: rest stops,
+  cafés, destinations), because a voted place needs a location to become a waypoint. A real place search
+  can replace this later. 직접 추가 (`DropTopic.CUSTOM`) opens board 10 with no AI picks.
+- Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
+  wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 
 ## Design boards
 
@@ -150,7 +153,8 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
   (OpenStreetMap data, no key; keep the attribution text). Needs internet; without the style it falls back
   to a plain background. MapLibre 13.1+ needs Kotlin 2.2, so stay on 13.0.x unless Kotlin is upgraded.
 - AI and DEMO-panel candidates come from `AppContainer.stopsAhead`: stops near the live route at least
-  25 km ahead, so a 2-minute vote ends before the car passes the stop.
+  25 km ahead, so a 2-minute vote ends before the car passes the stop. Cafés (`DemoData.cafes`, real places
+  from OpenStreetMap near 경포해변) and destinations are near the end of the trip and skip this filter.
 - `drive/DemoRoute.kt` + `drive/DemoRouteData.kt` - the baked 244 km trip (OSRM, `tools/bake_route.py`).
   Used by `tools/drive_gps.py` and, with `cardrop.navApp=naver`, by `ScriptedRouteSimulator`.
 

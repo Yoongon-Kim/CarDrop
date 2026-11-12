@@ -9,6 +9,7 @@ import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
 import com.cardrop.core.model.QuizQuestion
 import com.cardrop.core.model.VehicleSnapshot
+import com.cardrop.core.model.recipientLabel
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.drive.RouteSimulator
@@ -65,14 +66,17 @@ class AiViewModel(
     val vehicleSnapshot: StateFlow<VehicleSnapshot> = vehicle.snapshot
 
     /** Places a driver may add by name on board 10. They have a location, so they can become a waypoint. */
-    private val knownPlaces: List<Place> = DemoData.restStops + DemoData.destinations
+    private val knownPlaces: List<Place> = DemoData.restStops + DemoData.cafes + DemoData.destinations
 
     private var loadJob: Job? = null
     private var listenJob: Job? = null
     private var sending = false
 
-    /** Board 10: ask the AI for candidates. They all start ticked. */
-    fun loadCandidates(topic: DropTopic) {
+    /**
+     * Board 10: ask the AI for candidates. They all start ticked. The AI plans for the cars that
+     * take part: this car and [toCarIds] (all cars when it goes to the whole crew).
+     */
+    fun loadCandidates(topic: DropTopic, toCarIds: List<String> = emptyList()) {
         loadJob?.cancel()
         listenJob?.cancel()
         val currentCrew = crew.crew.value
@@ -80,12 +84,24 @@ class AiViewModel(
             _picker.value = PickerState(aiError = "먼저 크루를 만들거나 참여해 주세요")
             return
         }
+        if (topic == DropTopic.CUSTOM) {
+            _picker.value = PickerState() // 직접 추가: no AI picks, the driver adds the places
+            return
+        }
         _picker.value = PickerState(loading = true)
         loadJob = viewModelScope.launch {
             _picker.value = try {
-                // A new destination comes from the destination list; stops come from the rest stops.
-                val pool = if (topic == DropTopic.DESTINATION) DemoData.destinations else DemoData.restStops
-                val picks = ai.recommend(topic, TripContext(currentCrew, route.positions.value, vehicle.snapshot.value, pool))
+                val pool = when (topic) {
+                    DropTopic.DESTINATION -> DemoData.destinations
+                    DropTopic.CAFE -> DemoData.cafes
+                    else -> DemoData.restStops
+                }
+                val involved = if (toCarIds.isEmpty()) {
+                    currentCrew
+                } else {
+                    currentCrew.copy(cars = currentCrew.cars.filter { it.id == crew.myCarId || it.id in toCarIds })
+                }
+                val picks = ai.recommend(topic, TripContext(involved, route.positions.value, vehicle.snapshot.value, pool))
                 PickerState(pick = PlacePick.fromAi(picks))
             } catch (e: CancellationException) {
                 throw e // the screen asked again; that newer request wins
@@ -149,8 +165,15 @@ class AiViewModel(
         }
     }
 
-    /** Board 10 "이 N곳으로 투표 보내기": only the ticked places go into the vote. */
-    fun sendVote(topic: DropTopic, onSent: (Drop) -> Unit) {
+    /** "크루 전체", or the names of [toCarIds], for the "받는 차" lines on boards 09 and 10. */
+    fun recipientLabel(toCarIds: List<String>): String =
+        crew.crew.value?.recipientLabel(toCarIds, crew.myCarId) ?: "크루 전체"
+
+    /**
+     * Board 10 "이 N곳으로 투표 보내기": only the ticked places go into the vote, sent to [toCarIds]
+     * (empty = the whole crew).
+     */
+    fun sendVote(topic: DropTopic, toCarIds: List<String>, onSent: (Drop) -> Unit) {
         val pick = _picker.value.pick
         val chosen = pick.selected
         if (chosen.isEmpty() || sending) return
@@ -164,6 +187,7 @@ class AiViewModel(
                         title = topicTitle(topic),
                         message = if (chosen.any { pick.isAdded(it.id) }) "후보 ${chosen.size}곳" else "AI가 고른 ${chosen.size}곳",
                         candidates = chosen,
+                        toCarIds = toCarIds,
                     ),
                 )
                 voice.speak("${topicTitle(topic)} 투표를 보냈어요")
@@ -178,7 +202,7 @@ class AiViewModel(
     private fun findPlace(name: String): Place? =
         findKnownPlace(name, _picker.value.pick.candidates.map { it.place } + knownPlaces)
 
-    private fun unknownPlace(name: String) = "‘$name’의 위치를 찾지 못했어요. 경로 위 휴게소 이름을 넣어 주세요."
+    private fun unknownPlace(name: String) = "‘$name’의 위치를 찾지 못했어요. 휴게소나 카페 이름을 넣어 주세요."
 
     /** Board 04 "말로 제안해요": listen, read the intent, then open the right screen. */
     fun suggestByVoice(onTopic: (DropTopic) -> Unit, onMessage: (String) -> Unit) {
@@ -195,11 +219,11 @@ class AiViewModel(
         }
     }
 
-    /** Board 09: polish a message with the AI, then send it as a silent SOCIAL drop. */
-    fun sendShout(raw: String, polish: Boolean, onSent: () -> Unit) {
+    /** Board 09: polish a message with the AI, then send it to [toCarIds] as a silent SOCIAL drop. */
+    fun sendShout(raw: String, polish: Boolean, toCarIds: List<String>, onSent: () -> Unit) {
         viewModelScope.launch {
             val text = if (polish) ai.polishMessage(raw) else raw
-            crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text))
+            crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text, toCarIds = toCarIds))
             onSent()
         }
     }
@@ -219,5 +243,7 @@ class AiViewModel(
         DropTopic.FUEL -> "어디서 주유할까요?"
         DropTopic.DESTINATION -> "목적지를 바꿀까요?"
         DropTopic.MESSAGE -> "한마디"
+        DropTopic.CAFE -> "어느 카페에 들를까요?"
+        DropTopic.CUSTOM -> "어디에 들를까요?"
     }
 }

@@ -149,6 +149,31 @@ class NavigationFlowTest {
             assertEquals(2, router.requests) // a new route straight to the destination
         } finally { scope.cancel() }
     }
+    @Test fun stoppingAtTheStopShowsItAsParkedUntilTheCarDrivesOff() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            var now = 100_000L
+            val location = Location()
+            val nav = InAppNavigation(scope, location, Router(road)) { now }
+            val stop = geometry.pointAt(5.0).let { Place("yeoju", "여주휴게소", it.lat + 100 / 111_320.0, it.lng) }
+            location.fix.value = fix(4.9, now)
+            nav.setRoute(DemoData.gyeongpo, waypoint = stop)
+            yield()
+            // Stand still at the stop: after 10 seconds it counts as arrived.
+            repeat(12) {
+                now += 1_000
+                location.fix.value = GpsFix(stop.lat, stop.lng, 0.0, 90.0, now)
+                yield()
+            }
+            assertNull(nav.route.value.waypoint) // the stop is done; the route goes to the destination
+            assertEquals(stop, nav.state.value.parkedAt) // but the panel still shows it as "정차 중"
+            // Back on the motorway at 80 km/h: on the way again.
+            now += 1_000
+            location.fix.value = fix(5.1, now)
+            yield()
+            assertNull(nav.state.value.parkedAt)
+        } finally { scope.cancel() }
+    }
     @Test fun aFailedPrimaryProviderFallsBackAndCancellationDoesNot() = runBlocking {
         val backup = Router(road)
         val failing = object : RouteProvider {

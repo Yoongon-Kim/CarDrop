@@ -220,21 +220,24 @@ internal fun CrewCards(
     onMyLowFuel: (() -> Unit)?,
 ) {
     val leaderKm = positions.values.minOfOrNull { it.kmToDestination }
-    cars.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            row.forEach { car ->
-                val mine = car.id == myCarId
-                CrewCard(
-                    car = car,
-                    position = positions[car.id],
-                    leaderKm = leaderKm,
-                    fuel = if (mine) myFuel else null,
-                    rangeKm = if (mine) myRangeKm else null,
-                    onLowFuel = if (mine) onMyLowFuel else null,
-                    modifier = Modifier.weight(1f),
-                )
+    // Two columns, 10 apart both ways (the design's grid with `gap: 10px`, target 254).
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        cars.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { car ->
+                    val mine = car.id == myCarId
+                    CrewCard(
+                        car = car,
+                        position = positions[car.id],
+                        leaderKm = leaderKm,
+                        fuel = if (mine) myFuel else null,
+                        rangeKm = if (mine) myRangeKm else null,
+                        onLowFuel = if (mine) onMyLowFuel else null,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
-            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -249,7 +252,7 @@ private fun CrewCard(
     onLowFuel: (() -> Unit)?,
     modifier: Modifier,
 ) {
-    val low = fuel != null && fuel <= LOW_FUEL_PERCENT
+    val low = fuel != null && fuel < LOW_FUEL_CARD_PERCENT
     val tint = (if (car.connected) car.color else CarColor.GRAY).tint()
     val shape = RoundedCornerShape(22.dp)
     val gap = when {

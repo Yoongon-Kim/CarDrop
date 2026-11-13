@@ -176,20 +176,23 @@ fun PrimaryButton(
     /** [FontWeight.ExtraBold] = the design's 800; [FontWeight.Bold] = 700. */
     fontWeight: FontWeight = FontWeight.ExtraBold,
     horizontalPadding: Dp = 24.dp,
+    /** The greyed-out look by default; board 09 keeps its violet, fainter: `CdColors.Violet.copy(alpha = 0.5f)`. */
+    disabledContainerColor: Color = DisabledButtonBackground,
+    disabledContentColor: Color = DisabledButtonText,
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = height),
         shape = RoundedCornerShape(radius),
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor, disabledContainerColor = DisabledButtonBackground),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor, disabledContainerColor = disabledContainerColor),
         contentPadding = PaddingValues(horizontal = horizontalPadding),
     ) {
         Text(
             text,
             fontSize = fontSize,
             fontWeight = fontWeight,
-            color = if (enabled) contentColor else DisabledButtonText,
+            color = if (enabled) contentColor else disabledContentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

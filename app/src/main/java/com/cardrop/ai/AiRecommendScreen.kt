@@ -65,6 +65,7 @@ import com.cardrop.core.ui.theme.CarDropTheme
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drive.CrewTime
 import com.cardrop.drive.PlaceTimes
+import com.cardrop.drive.PlaceTrip
 import com.cardrop.navi.KeyboardRoom
 import com.cardrop.navi.PlaceSuggestion
 import com.cardrop.navi.PlaceSuggestionList
@@ -154,6 +155,7 @@ private fun PlacePicker(
         popup = popup,
         modifier = modifier,
         crewTime = { place -> times.crewTime(place, carIds) },
+        trip = times::trip,
         suggest = suggest,
         onTypedChange = {
             typed = it
@@ -179,7 +181,7 @@ private fun PlacePicker(
 
 /**
  * What board 10 draws for a given [state]. No ViewModel, so the previews below can show it. [crewTime] = how long
- * the cars that take part need to get to a place, on average (null = not known).
+ * the cars that take part need to get to a place, on average; [trip] = this car's way there (null = not known).
  */
 @Composable
 private fun PlacePickerContent(
@@ -190,6 +192,7 @@ private fun PlacePickerContent(
     popup: Boolean,
     modifier: Modifier = Modifier,
     crewTime: (Place) -> CrewTime? = { null },
+    trip: (Place) -> PlaceTrip? = { null },
     suggest: PlaceSuggestions = PlaceSuggestions(),
     onTypedChange: (String) -> Unit = {},
     onClearTyped: () -> Unit = {},
@@ -234,6 +237,7 @@ private fun PlacePickerContent(
                     selected = state.pick.isSelected(candidate.id),
                     popup = popup,
                     crewTime = crewTime(candidate.place),
+                    km = trip(candidate.place)?.kmText,
                     onToggle = { onToggle(candidate.id) },
                 )
             }
@@ -352,6 +356,8 @@ private fun PlaceRow(
     selected: Boolean,
     popup: Boolean,
     crewTime: CrewTime?,
+    /** How far it is from this car by road, e.g. "9km"; null = not known (off the route, no route yet). */
+    km: String?,
     onToggle: () -> Unit,
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -399,8 +405,13 @@ private fun PlaceRow(
                 )
                 if (aiPick && rank == 0) AiPickBadge()
             }
-            // A place the driver added: "직접 추가한 장소 · <its address>", so two 스타벅스 can be told apart.
-            val meta = if (aiPick) candidate.place.detail else joinNonBlank(candidate.reason, candidate.place.detail)
+            // The distance first, as in the target ("9km · 주유 · 푸드코트 · 산책로", line 694). A place the driver
+            // added: "직접 추가한 장소 · <its address>", so two 스타벅스 can be told apart.
+            val meta = if (aiPick) {
+                joinNonBlank(km.orEmpty(), candidate.place.detail)
+            } else {
+                joinNonBlank(km.orEmpty(), candidate.reason, candidate.place.detail)
+            }
             if (meta.isNotBlank()) {
                 Text(meta, color = CdColors.Gray600, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -530,8 +541,9 @@ private fun PlacePickerPagePreview() {
             typed = "",
             popup = false,
             modifier = Modifier.fillMaxSize().background(CdColors.Gray100).padding(horizontal = 28.dp, vertical = 24.dp),
-            // Sample times: 12분 for the first stop, then 12 minutes more for each.
+            // Sample times: 9km and 12분 for the first stop, then 24 km and 12 minutes more for each.
             crewTime = { place -> DemoData.restStops.indexOf(place).takeIf { it >= 0 }?.let { CrewTime(12.0 + it * 12, 4) } },
+            trip = { place -> DemoData.restStops.indexOf(place).takeIf { it >= 0 }?.let { PlaceTrip(9.0 + it * 24, 6.0 + it * 12) } },
         )
     }
 }

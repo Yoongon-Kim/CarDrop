@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.ui.softShadow
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drive.DriveViewModel
 import com.cardrop.drive.NavArrow
@@ -189,7 +190,7 @@ private fun Banner(banner: NavBanner) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(20.dp))
+            .softShadow(RoundedCornerShape(20.dp), Color.Black.copy(alpha = 0.15f), blur = 18.dp, y = 6.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(CdColors.NavBanner)
             .padding(horizontal = 18.dp, vertical = 16.dp),
@@ -217,7 +218,7 @@ private fun Toast(text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(14.dp))
+            .softShadow(RoundedCornerShape(14.dp), Color.Black.copy(alpha = 0.10f), blur = 18.dp, y = 6.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(CdColors.White)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -232,7 +233,11 @@ private fun Toast(text: String) {
 @Composable
 private fun Speed(kmh: Int) {
     Column(
-        modifier = Modifier.size(92.dp).shadow(10.dp, CircleShape).clip(CircleShape).background(CdColors.White),
+        modifier = Modifier
+            .size(92.dp)
+            .softShadow(CircleShape, Color.Black.copy(alpha = 0.12f), blur = 18.dp, y = 6.dp)
+            .clip(CircleShape)
+            .background(CdColors.White),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -245,7 +250,7 @@ private fun Speed(kmh: Int) {
 private fun EtaCard(state: NavPanelState, modifier: Modifier) {
     Column(
         modifier = modifier
-            .shadow(10.dp, RoundedCornerShape(20.dp))
+            .softShadow(RoundedCornerShape(20.dp), Color.Black.copy(alpha = 0.08f), blur = 18.dp, y = 6.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(CdColors.White.copy(alpha = 0.97f))
             .padding(horizontal = 16.dp, vertical = 14.dp),

@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -130,7 +131,8 @@ private fun PlacePicker(
     val recipients = vm.recipientLabel(toCarIds)
     PlacePickerContent(
         title = pickerTitle(topic, state),
-        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · $recipients" else "${topic.driverQuote()} · 받는 차 $recipients",
+        // The page shows only what the driver said (target line 409); board 08 already showed who gets it.
+        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · $recipients" else topic.driverQuote(),
         state = state,
         typed = typed,
         popup = popup,
@@ -275,18 +277,21 @@ private fun PlacePickerContent(
     }
 }
 
-/** Back button (page) or close button (pop-up), the line about who gets it, and the big title. */
+/**
+ * Back button (page) or close button (pop-up), the small line above (the page: what the driver said), and the big
+ * title. The page's is as in the target (line 409): 14px grey quote straight above a 30 / 800 title.
+ */
 @Composable
 private fun PickerHeader(title: String, subtitle: String, popup: Boolean, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         if (!popup) BackButton(onClick = onClose)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (popup) 2.dp else 0.dp)) {
             Text(subtitle, fontSize = 14.sp, color = CdColors.Gray600)
             Text(
                 title,
                 fontSize = if (popup) 24.sp else 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-0.02).em,
+                letterSpacing = if (popup) (-0.02).em else TextUnit.Unspecified,
                 color = CdColors.Ink,
             )
         }
@@ -485,7 +490,7 @@ private fun PlacePickerPagePreview() {
     CarDropTheme {
         PlacePickerContent(
             title = "AI가 휴게소 3곳을 골랐어요",
-            subtitle = "“휴게소 들렀다 가자” · 받는 차 크루 전체",
+            subtitle = "“휴게소 들렀다 가자”",
             state = previewState,
             typed = "",
             popup = false,
@@ -501,7 +506,7 @@ private fun PlaceSuggestionsPreview() {
     CarDropTheme {
         PlacePickerContent(
             title = "AI가 휴게소 3곳을 골랐어요",
-            subtitle = "“휴게소 들렀다 가자” · 받는 차 크루 전체",
+            subtitle = "“휴게소 들렀다 가자”",
             state = previewState.copy(status = null, heard = null),
             suggest = PlaceSuggestions(
                     query = "덕평",

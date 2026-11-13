@@ -156,6 +156,7 @@ private fun PlacePicker(
         modifier = modifier,
         crewTime = { place -> times.crewTime(place, carIds) },
         trip = times::trip,
+        carCount = carIds.size,
         suggest = suggest,
         onTypedChange = {
             typed = it
@@ -181,7 +182,8 @@ private fun PlacePicker(
 
 /**
  * What board 10 draws for a given [state]. No ViewModel, so the previews below can show it. [crewTime] = how long
- * the cars that take part need to get to a place, on average; [trip] = this car's way there (null = not known).
+ * the cars that take part need to get to a place, on average; [trip] = this car's way there (null = not known);
+ * [carCount] = how many cars take part.
  */
 @Composable
 private fun PlacePickerContent(
@@ -193,6 +195,7 @@ private fun PlacePickerContent(
     modifier: Modifier = Modifier,
     crewTime: (Place) -> CrewTime? = { null },
     trip: (Place) -> PlaceTrip? = { null },
+    carCount: Int = 4,
     suggest: PlaceSuggestions = PlaceSuggestions(),
     onTypedChange: (String) -> Unit = {},
     onClearTyped: () -> Unit = {},
@@ -239,6 +242,19 @@ private fun PlacePickerContent(
                     crewTime = crewTime(candidate.place),
                     km = trip(candidate.place)?.kmText,
                     onToggle = { onToggle(candidate.id) },
+                )
+            }
+            if (state.pick.aiCount > 0) {
+                // What the AI looked at (target line 420), under its picks.
+                Text(
+                    aiSawText(carCount),
+                    color = CdColors.Gray600,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (popup) CdColors.Gray100 else CdColors.White)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                 )
             }
         }
@@ -436,6 +452,14 @@ private fun PlaceRow(
 }
 
 private fun joinNonBlank(vararg parts: String): String = parts.filter { it.isNotBlank() }.joinToString(" · ")
+
+/**
+ * The card under the AI's picks: what it looked at (target line 420, "4대 모두 지나가는 경로 · …"). The number is
+ * how many cars take part; a car alone has no arrival times to compare.
+ */
+private fun aiSawText(cars: Int): String =
+    if (cars >= 2) "AI가 본 정보 · ${cars}대 모두 지나가는 경로 · 도착 시간 차이 · 연료 · 연속 운전 시간 · 리뷰 평점"
+    else "AI가 본 정보 · 지나가는 경로 · 연료 · 연속 운전 시간 · 리뷰 평점"
 
 /** The small "AI 추천" label on the AI's best place. */
 @Composable

@@ -252,7 +252,7 @@ private fun CrewCard(
     onLowFuel: (() -> Unit)?,
     modifier: Modifier,
 ) {
-    val low = fuel != null && fuel <= LOW_FUEL_PERCENT
+    val low = fuel != null && fuel < LOW_FUEL_CARD_PERCENT
     val tint = (if (car.connected) car.color else CarColor.GRAY).tint()
     val shape = RoundedCornerShape(22.dp)
     val gap = when {

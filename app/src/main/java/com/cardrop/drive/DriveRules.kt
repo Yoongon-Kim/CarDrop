@@ -4,7 +4,11 @@ import com.cardrop.core.model.Gear
 import com.cardrop.core.model.Place
 import com.cardrop.navi.GpsFix
 
+/** At or below this the car warns once and opens board 05 (FuelWarningTracker). */
 const val LOW_FUEL_PERCENT = 15
+
+/** Below this the car's crew card on board 04 turns orange ("연료 경고"), as in the design (`c[3] < 20`, target 644). */
+const val LOW_FUEL_CARD_PERCENT = 20
 
 /** Rearm after refuelling, so 15/16% jitter and screen changes cannot repeat the warning. */
 class FuelWarningTracker {

@@ -44,6 +44,8 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // Member A
+    // TODO(Member A): `if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope) else FakeCrewRepository(appScope)`
+    //  once crew/FirebaseCrewRepository.kt exists (cardrop.useRealCrew in local.properties, see CLAUDE.md).
     val crew: CrewRepository = FakeCrewRepository(appScope)
 
     // Member B

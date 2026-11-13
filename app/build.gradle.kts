@@ -15,6 +15,16 @@ val localProps = Properties().apply {
 fun localFlag(key: String): Boolean = localProps.getProperty(key)?.trim() == "true"
 fun localString(key: String): String = localProps.getProperty(key)?.trim().orEmpty()
 
+// Firebase project settings (app/google-services.json, from Member A; not committed, like local.properties).
+// The google-services plugin turns the file into Android resources that Firebase reads at startup.
+// Without the file the app still builds, but only with the fake crew.
+val hasFirebaseConfig = file("google-services.json").exists()
+if (hasFirebaseConfig) apply(plugin = "com.google.gms.google-services")
+val useRealCrew = localFlag("cardrop.useRealCrew")
+if (useRealCrew && !hasFirebaseConfig) {
+    throw GradleException("cardrop.useRealCrew=true needs app/google-services.json (ask Member A for it)")
+}
+
 // Kotlin copies BuildConfig values into the code that reads them, and an incremental build can keep
 // the old copy after local.properties changes (a new key still looked empty). So any change to
 // local.properties recompiles all Kotlin code.
@@ -34,6 +44,7 @@ android {
         versionName = "0.1.0"
 
         // Switch each area from its fake to its real implementation.
+        buildConfigField("boolean", "USE_REAL_CREW", useRealCrew.toString())
         buildConfigField("boolean", "USE_REAL_VEHICLE", localFlag("cardrop.useRealVehicle").toString())
         buildConfigField("boolean", "USE_REAL_VOICE", localFlag("cardrop.useRealVoice").toString())
         buildConfigField("String", "NAV_APP", "\"${localString("cardrop.navApp").ifEmpty { "inapp" }}\"")
@@ -68,6 +79,8 @@ dependencies {
     implementation(libs.anthropic.java) // real AiService (ai/ClaudeAiService.kt), approved by the lead 2026-11-13
     implementation(libs.pleos.tts) // real voice, speaking (voice/PleosVoiceService.kt), approved by the lead 2026-11-13
     implementation(libs.pleos.stt) // real voice, listening
+    implementation(platform(libs.firebase.bom)) // real CrewRepository (crew/FirebaseCrewRepository.kt), approved by the lead 2026-11-13
+    implementation(libs.firebase.database)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

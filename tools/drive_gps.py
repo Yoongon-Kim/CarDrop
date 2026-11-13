@@ -16,9 +16,11 @@ Usage (emulator running):
 Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
 
 --car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
-holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, or 3 minutes after
-the crew was made), read from the real crew's Firebase (crews/<code>/info/startedAt, see
-crew/FirebaseCrewRepository.kt), so every car sets off together. --no-wait drives right away (the bot crew has
+holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, every car joined, or
+3 minutes after the crew was made), read from the real crew's Firebase (crews/<code>/info/startedAt, see
+crew/FirebaseCrewRepository.kt), so every car sets off together. Every real crew has its own random code, so the
+script asks CarDrop on the emulator it drives which crew it is in (drive/TripCodeFile.kt) and follows that crew,
+also when the host makes a new one; --code 123456 sets it by hand. --no-wait drives right away (the bot crew has
 no host to wait for).
 
 --stop shows the navigator's "도착" (arrived): it needs about 10 s standing still within 300 m of the
@@ -73,20 +75,45 @@ def trip_started(url: str):
         return None
 
 
-def wait_for_host(stand_still, url: str, poll_s: float = 1.0):
-    """Calls stand_still() every poll_s seconds until the crew's trip has started."""
-    print("Waiting for the host's 출발, or 3 minutes after the crew was made (the car stands at its start). Ctrl+C to stop.")
+def device_crew_code(adb):
+    """The code of the crew CarDrop on the emulator is in (drive/TripCodeFile.kt); None before it is in a
+    real crew, or when the app's files can't be read (run-as needs the debug build)."""
+    for user in (["--user", "10"], []):  # the Pleos image runs apps as Android user 10
+        result = subprocess.run(adb + ["shell", "run-as", "com.cardrop", *user, "cat", "files/crew_code.txt"],
+                                capture_output=True, text=True)
+        code = result.stdout.strip()
+        if result.returncode == 0 and code.isdigit():
+            return code
+    return None
+
+
+def wait_for_host(stand_still, crew_code, database_url: str, poll_s: float = 1.0):
+    """Calls stand_still() every poll_s seconds until the trip of the crew that crew_code() names has started
+    (None while there is none yet; it changes when the host makes a new crew)."""
+    print("Waiting for the trip to start: the host's 출발, every car joined, or 3 minutes after the crew was made"
+          " (the car stands at its start). Ctrl+C to stop.")
     misses = 0
+    shown = ""
     while True:
         stand_still()
-        started = trip_started(url)
-        if started:
-            print("The trip started. Driving.")
-            return
-        if started is None:
-            misses += 1
-            if misses % 10 == 1:
-                print(f"  Can't read the trip start ({url}); still waiting.")
+        code = crew_code()
+        if code != shown:
+            shown, misses = code, 0
+            if code:
+                print(f"  Crew {code}: waiting for its 출발.")
+            else:
+                print("  CarDrop on the emulator is in no real crew yet: create or join one"
+                      " (bot crew: use --no-wait; or pass --code).")
+        if code:
+            url = f"{database_url}/crews/{code}/info/startedAt.json"
+            started = trip_started(url)
+            if started:
+                print("The trip started. Driving.")
+                return
+            if started is None:
+                misses += 1
+                if misses % 10 == 1:
+                    print(f"  Can't read the trip start ({url}); still waiting.")
         time.sleep(poll_s)
 
 
@@ -173,7 +200,8 @@ def main():
                         help="where to start on the route (default: the --car's start, else 40 = after 신갈JC)")
     parser.add_argument("--wait", action=argparse.BooleanOptionalAction, default=None,
                         help="stand still until the host's 출발 (default: on with --car)")
-    parser.add_argument("--code", default=None, help="crew code (default: DEMO_CREW_CODE in DemoData.kt)")
+    parser.add_argument("--code", default=None,
+                        help="crew code to wait for (default: the crew CarDrop on the emulator is in)")
     parser.add_argument("--speed", type=float, default=6.0, help="time speed-up (default 6: 10 km per minute)")
     parser.add_argument("--kmh", type=float, default=100.0, help="driving speed the GPS reports (default 100)")
     parser.add_argument("--serial", default=None, help="adb device, e.g. emulator-5554")
@@ -216,11 +244,11 @@ def main():
             sys.exit(f"adb failed: {result.stderr.strip() or result.stdout.strip()} (is the emulator running?)")
 
     if wait:
-        code = args.code or kotlin_string(PLACES_FILE, "DEMO_CREW_CODE")
-        url = f"{kotlin_string(CREW_FILE, 'DATABASE_URL')}/crews/{code}/info/startedAt.json"
+        crew_code = (lambda: args.code) if args.code else (lambda: device_crew_code(adb))
+        database_url = kotlin_string(CREW_FILE, "DATABASE_URL")
         start_lat, start_lng = point_at(points, cumulative, start_km)
         try:
-            wait_for_host(lambda: send(start_lat, start_lng, 0.0), url)
+            wait_for_host(lambda: send(start_lat, start_lng, 0.0), crew_code, database_url)
         except KeyboardInterrupt:
             print("\nStopped before the start.")
             return

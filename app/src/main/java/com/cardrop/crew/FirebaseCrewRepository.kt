@@ -98,9 +98,11 @@ class FirebaseCrewRepository(
     // ---- CrewRepository ----
 
     override suspend fun createCrew(name: String, destination: Place): Crew {
-        val code = DemoData.DEMO_CREW_CODE
+        // A new random code for every new crew (CrewCode.kt), so two hosts never share one. The other cars
+        // join with it (board 03). setValue replaces anything already there: only a leftover crew that drew
+        // the same code.
+        val code = newCrewCode()
         val ref = db.getReference("crews").child(code)
-        // A new crew replaces the old one with the same code (old drops are cleared).
         ref.setValue(
             mapOf(
                 "info" to mapOf(

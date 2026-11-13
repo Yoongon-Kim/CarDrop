@@ -16,6 +16,7 @@ import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
+import com.cardrop.drive.haversineKm
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
 import com.cardrop.navi.PlaceSuggestion
@@ -148,7 +149,8 @@ class AiViewModel(
         loadJob = viewModelScope.launch {
             _picker.value = try {
                 val pool = when (topic) {
-                    DropTopic.DESTINATION -> DemoData.destinations
+                    // Not where the crew is already going: a vote to change it must offer somewhere else.
+                    DropTopic.DESTINATION -> DemoData.destinations.filterNot { it.isNear(currentCrew.destination) }
                     DropTopic.CAFE -> DemoData.cafes
                     else -> DemoData.restStops
                 }
@@ -239,6 +241,13 @@ class AiViewModel(
         }
     }
 
+    /**
+     * The cars a drop to [toCarIds] is for, in crew order: this car and [toCarIds], or every car when it goes to
+     * the whole crew. The same cars vote on it (`Drop.voterIds`).
+     */
+    fun involvedCarIds(toCarIds: List<String>): List<String> =
+        crew.crew.value?.cars.orEmpty().map { it.id }.filter { toCarIds.isEmpty() || it == crew.myCarId || it in toCarIds }
+
     /** "크루 전체", or the names of [toCarIds], for the "받는 차" lines on boards 09 and 10. */
     fun recipientLabel(toCarIds: List<String>): String =
         crew.crew.value?.recipientLabel(toCarIds, crew.myCarId) ?: "크루 전체"
@@ -252,6 +261,7 @@ class AiViewModel(
         val chosen = pick.selected
         if (chosen.isEmpty() || sending) return
         sending = true // a second tap must not send a second vote
+        val added = chosen.count { pick.isAdded(it.id) }
         viewModelScope.launch {
             try {
                 val drop = crew.sendDrop(
@@ -259,7 +269,7 @@ class AiViewModel(
                         kind = DropKind.DECISION,
                         topic = topic,
                         title = topicTitle(topic),
-                        message = if (chosen.any { pick.isAdded(it.id) }) "후보 ${chosen.size}곳" else "AI가 고른 ${chosen.size}곳",
+                        message = voteReason(cars = involvedCarIds(toCarIds).size, aiPicks = chosen.size - added, added = added),
                         candidates = chosen,
                         toCarIds = toCarIds,
                     ),
@@ -479,9 +489,10 @@ class AiViewModel(
         return REST_STOP_TOWNS[nearest?.id] ?: "이천"
     }
 
+    /** The vote's title, the big line on board 11 (target lines 711-713). */
     fun topicTitle(topic: DropTopic): String = when (topic) {
-        DropTopic.REST -> "어느 휴게소에서 쉴까요?"
-        DropTopic.FOOD -> "어디서 밥 먹을까요?"
+        DropTopic.REST -> "어디서 쉬어갈까요?"
+        DropTopic.FOOD -> "뭐 먹고 갈까요?"
         DropTopic.FUEL -> "어디서 주유할까요?"
         DropTopic.DESTINATION -> "목적지를 바꿀까요?"
         DropTopic.MESSAGE -> "한마디"
@@ -489,6 +500,26 @@ class AiViewModel(
         DropTopic.CUSTOM -> "어디에 들를까요?"
     }
 }
+
+/**
+ * Board 11's grey line under the title: why these places are in the vote, e.g. "AI가 4대 모두 가기 좋은 곳으로
+ * 골랐어요" (target line 712). It travels in the vote drop's `message`. [cars] = how many cars take part in the
+ * vote; [aiPicks] and [added] = how many of its places the AI picked and how many the driver added on board 10.
+ * Internal (not private) only so VoteReasonTest can check it.
+ */
+internal fun voteReason(cars: Int, aiPicks: Int, added: Int): String = when {
+    added == 0 && cars >= 2 -> "AI가 ${cars}대 모두 가기 좋은 곳으로 골랐어요"
+    added == 0 -> "AI가 가기 좋은 곳으로 골랐어요"
+    aiPicks == 0 -> "직접 고른 ${added}곳 중에서 골라요"
+    else -> "AI가 고른 ${aiPicks}곳에 직접 고른 ${added}곳을 더했어요"
+}
+
+/**
+ * True when [other] is the same spot: within 1 km. The crew destination can be Kakao's place for the same beach
+ * under another id and name ("경포해변" for the app's "강릉 경포해변"), so the id alone can't tell.
+ */
+private fun Place.isNear(other: Place): Boolean =
+    id == other.id || haversineKm(GeoPoint(lat, lng), GeoPoint(other.lat, other.lng)) < 1.0
 
 /** The town each rest stop on the demo trip is in (board 15's 지역 퀴즈). 덕평 is in 이천, 문막 in 원주. */
 private val REST_STOP_TOWNS = mapOf(

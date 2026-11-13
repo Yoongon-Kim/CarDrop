@@ -133,12 +133,17 @@ fun CarDropShell(
     myCar: Car? = null,
     /** False until the crew's trip starts: the rail's 드랍, 게임 and 편지함 are greyed out until then. */
     tripStarted: Boolean = true,
+    /**
+     * Something app-only drawn low in the rail, just above [myCar]: the DEMO button. The rail is never under a
+     * screen's own content, unlike a corner of the screen, where boards pin their buttons. Null = nothing.
+     */
+    railExtra: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     DesignScale(designWidth = DESIGN_WIDTH + NAV_PANEL_WIDTH) {
         Row(modifier = Modifier.fillMaxSize().background(CdColors.Gray100)) {
             Box(modifier = Modifier.width(NAV_PANEL_WIDTH.dp).fillMaxHeight()) { navPanel() }
-            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar, tripStarted = tripStarted)
+            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar, tripStarted = tripStarted, extra = railExtra)
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 content()
                 overlay()
@@ -151,9 +156,10 @@ fun CarDropShell(
  * The design's CarDrop area is 1067 x 900 px (1600 x 900 minus the 533 px navigation third).
  * This scales the UI so 1 dp in our code = 1 design px when the window is [designWidth] x 900, and
  * grows or shrinks everything together on other windows. Write sizes straight from the design boards.
+ * Also used by the start question (core/demo/StartModeScreen.kt), shown before this shell.
  */
 @Composable
-private fun DesignScale(designWidth: Float, content: @Composable () -> Unit) {
+internal fun DesignScale(designWidth: Float, content: @Composable () -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val current = LocalDensity.current
         val scale = minOf(maxWidth.value / designWidth, maxHeight.value / DESIGN_HEIGHT)
@@ -169,7 +175,13 @@ private const val DESIGN_HEIGHT = 900f
 private const val NAV_PANEL_WIDTH = 533f
 
 @Composable
-private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?, tripStarted: Boolean) {
+private fun Rail(
+    current: Screen,
+    onTab: (Screen) -> Unit,
+    myCar: Car?,
+    tripStarted: Boolean,
+    extra: (@Composable () -> Unit)?,
+) {
     Column(
         modifier = Modifier
             .width(88.dp)
@@ -211,8 +223,10 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?, tripStar
                 Text(item.label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
+        // The rest goes to the bottom of the rail, [extra] 12 above the car (6 more than the rail's usual gap).
+        if (myCar != null || extra != null) Spacer(Modifier.weight(1f))
+        if (extra != null) Box(Modifier.padding(bottom = 6.dp)) { extra() }
         if (myCar != null) {
-            Spacer(Modifier.weight(1f))
             // The car and "내 차" sit 2 apart (the design's `gap: 2px`), closer than the rail's 6.
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 CarBadge(myCar)

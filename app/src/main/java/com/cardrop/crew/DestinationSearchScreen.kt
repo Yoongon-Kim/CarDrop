@@ -66,7 +66,7 @@ import com.cardrop.navi.PlaceSuggestionList
  * Like Kakao Map's search: typing shows the places that fit (Kakao's place search, nearby first);
  * tapping one, or enter for the top one, makes it the crew's destination. "말로 검색" puts what the
  * driver says into the box and searches it. Before typing, the app's destinations. Without a Kakao
- * key (or offline) only those can be found.
+ * key (or offline) only those can be found. Under the list, three favourites (속초 중앙시장, 집, 회사).
  */
 @Composable
 fun DestinationSearchScreen(vm: CrewViewModel, onBack: () -> Unit, onPicked: () -> Unit) {
@@ -134,6 +134,7 @@ fun DestinationSearchScreen(vm: CrewViewModel, onBack: () -> Unit, onPicked: () 
                 Text("추천 목적지", color = CdColors.Gray600, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 PlaceCard(vm.knownDestinations(), highlight = "", onPick = { pick(it.place) })
             }
+            FavouriteTiles(onPick = pick)
             // Room to scroll the last places up above the keyboard.
             Spacer(Modifier.height(KeyboardRoom))
         }
@@ -227,3 +228,49 @@ private fun SearchBox(
 
 /** Place names longer than this are cut off (the design's limit for place names). */
 private const val PLACE_NAME_MAX_LENGTH = 48
+
+/** A tile of board 02's favourites: the place, and what it is to this driver ("최근 목적지", "즐겨찾기"). */
+private data class Favourite(val place: Place, val label: String)
+
+/**
+ * Board 02's favourites under the list (design lines 170-172 and 771). Fixed for the demo, because the
+ * app doesn't remember destinations yet. 속초 중앙시장 is 속초관광수산시장 (position and address from
+ * Kakao's place search); 집 and 회사 are made-up places in Seoul.
+ */
+private val favourites = listOf(
+    Favourite(Place("fav-sokcho-market", "속초 중앙시장", 38.20454, 128.59025, "강원특별자치도 속초시 중앙로147번길 16"), "최근 목적지"),
+    Favourite(Place("fav-home", "집", 37.5560, 126.9101, "서울 마포구 망원동"), "즐겨찾기"),
+    Favourite(Place("fav-work", "회사", 37.5660, 126.9826, "서울 중구 을지로"), "즐겨찾기"),
+)
+
+/**
+ * Three white tiles in a row, 10 apart (design: 74 high, radius 20, name 17/800, grey line 13px).
+ * Tapping one makes it the crew's destination, like tapping a place in the list.
+ */
+@Composable
+private fun FavouriteTiles(onPick: (Place) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        favourites.forEach { favourite ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(74.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(CdColors.White)
+                    .clickable(role = Role.Button) { onPick(favourite.place) }
+                    .padding(horizontal = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+            ) {
+                Text(
+                    favourite.place.name,
+                    color = CdColors.Ink,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(favourite.label, color = CdColors.Gray600, fontSize = 13.sp, maxLines = 1)
+            }
+        }
+    }
+}

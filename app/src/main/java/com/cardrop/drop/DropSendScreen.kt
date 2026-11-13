@@ -1,13 +1,18 @@
 package com.cardrop.drop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,8 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Car
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.ui.CarBadge
@@ -50,37 +59,49 @@ fun DropSendScreen(
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
-    // The chosen cars; empty = 크루 전체. Choosing every car switches back to 크루 전체.
-    var picked by remember { mutableStateOf(emptySet<String>()) }
-    val toCarIds = others.map { it.id }.filter { it in picked }
+    var sendTo by remember { mutableStateOf<SendTo>(SendTo.Crew) }
+    // The cars ticked under 조합 만들기. Kept while another button is picked, so the combination comes back.
+    var mixIds by remember { mutableStateOf(emptySet<String>()) }
+    val toCarIds = sendTo.toCarIds(others, mixIds)
 
     ScreenColumn {
         // The title alone, with a ✕ at the right (target lines 364-366).
         ScreenHeader(eyebrow = null, title = "누구에게 보낼까요?", gap = 0.dp, verticalAlignment = Alignment.CenterVertically) {
             CloseButton(onClick = onClose)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            CdCard(modifier = Modifier.weight(1f), selected = picked.isEmpty(), onClick = { picked = emptySet() }) {
-                Text("크루 전체", style = MaterialTheme.typography.titleMedium)
+        // Four buttons, one of them picked (D13, target lines 368-369 and 681): 크루 전체, the first two other
+        // cars alone, and 조합 만들기 (the target doesn't draw what it opens: the app shows the per-car cards).
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            val singles = others.take(2)
+            RecipientButton("크루 전체", crewMeta(others), sendTo == SendTo.Crew, Modifier.weight(1f)) { sendTo = SendTo.Crew }
+            singles.forEach { car ->
+                val one = SendTo.OneCar(car.id)
+                RecipientButton("${car.name}만", "1대", sendTo == one, Modifier.weight(1f)) { sendTo = one }
             }
-            others.forEach { car ->
-                CdCard(
-                    modifier = Modifier.weight(1f),
-                    selected = car.id in picked,
-                    onClick = {
-                        val next = if (car.id in picked) picked - car.id else picked + car.id
-                        picked = if (next.size == others.size) emptySet() else next
-                    },
-                ) {
-                    CarBadge(car, size = 36)
-                    Text(car.name, style = MaterialTheme.typography.titleMedium)
-                }
+            repeat(2 - singles.size) { Spacer(Modifier.weight(1f)) } // keeps the four columns
+            RecipientButton("조합 만들기", "차를 골라 묶기", sendTo == SendTo.Combination, Modifier.weight(1f)) {
+                sendTo = SendTo.Combination
             }
         }
-        Text(
-            "받는 차 · ${crew?.recipientLabel(toCarIds, vm.myCarId) ?: "크루 전체"} · 여러 대를 고를 수 있어요",
-            style = MaterialTheme.typography.labelMedium,
-        )
+        if (sendTo == SendTo.Combination) {
+            // Any cars, ticked one by one (today's cards). None or all of them = the whole crew.
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                others.forEach { car ->
+                    CdCard(
+                        modifier = Modifier.weight(1f),
+                        selected = car.id in mixIds,
+                        onClick = { mixIds = if (car.id in mixIds) mixIds - car.id else mixIds + car.id },
+                    ) {
+                        CarBadge(car, size = 36)
+                        Text(car.name, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+            Text(
+                "받는 차 · ${crew?.recipientLabel(toCarIds, vm.myCarId) ?: "크루 전체"} · 여러 대를 고를 수 있어요",
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
 
         Text("무엇을 보낼까요?", style = MaterialTheme.typography.titleLarge)
         Text("결정 드랍 · 음성으로 안내돼요", style = MaterialTheme.typography.labelMedium)
@@ -100,6 +121,56 @@ fun DropSendScreen(
             TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f), onClick = onGames)
             TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
         }
+    }
+}
+
+/**
+ * Who a drop goes to (board 08, D13): the whole crew, one car alone ("삼촌 차만"), or a 조합 (combination) of
+ * cars ticked one by one.
+ */
+internal sealed interface SendTo {
+    data object Crew : SendTo
+    data class OneCar(val carId: String) : SendTo
+    data object Combination : SendTo
+}
+
+/**
+ * The cars to send to, for `Drop.toCarIds`, in crew order; empty = the whole crew. [others] = the crew's other
+ * cars, [mixIds] = the cars ticked under 조합 만들기: none or all of them is the whole crew, as before.
+ * Internal (not private) only so SendToTest can check it.
+ */
+internal fun SendTo.toCarIds(others: List<Car>, mixIds: Set<String>): List<String> {
+    val ids = others.map { it.id }
+    return when (this) {
+        SendTo.Crew -> emptyList()
+        is SendTo.OneCar -> ids.filter { it == carId } // a car that left the crew: the whole crew
+        SendTo.Combination -> ids.filter { it in mixIds }.takeIf { it.size < ids.size }.orEmpty()
+    }
+}
+
+/** 크루 전체's grey line: the other cars without "차", e.g. "삼촌 · 민지 · 이모" (target line 681). */
+internal fun crewMeta(others: List<Car>): String =
+    if (others.isEmpty()) "아직 혼자예요" else others.joinToString(" · ") { it.name.removeSuffix(" 차") }
+
+/**
+ * One of the four recipient buttons: 74 high, corners 20, the name (17 / 800) over a grey line (12px), left-aligned.
+ * The picked one is light blue with a blue edge, the others white (target line 681).
+ */
+@Composable
+private fun RecipientButton(name: String, meta: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier = modifier
+            .height(74.dp)
+            .clip(shape)
+            .background(if (selected) CdColors.BlueLight else CdColors.White)
+            .border(2.dp, if (selected) CdColors.Blue else CdColors.White, shape)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+    ) {
+        Text(name, color = CdColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(meta, color = CdColors.Gray600, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

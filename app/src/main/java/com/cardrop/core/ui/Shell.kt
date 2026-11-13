@@ -70,25 +70,22 @@ private fun Screen.railGroup(): Screen = when (this) {
 }
 
 /**
- * Layout of the whole app window. With a map app (Naver Map, ...) our window is the design's right 2/3
- * (rail + main) and the map lives outside it. With [navPanel] (the in-app navigator) our window holds
- * the whole 1600 x 900 design: navigator on the left 1/3, CarDrop on the right 2/3.
+ * Layout of the whole app window: the whole 1600 x 900 design, [navPanel] (the in-app navigator) on the
+ * left 1/3, CarDrop on the right 2/3.
  */
 @Composable
 fun CarDropShell(
     current: Screen,
     onTab: (Screen) -> Unit,
-    navPanel: (@Composable () -> Unit)?,
+    navPanel: @Composable () -> Unit,
     overlay: @Composable () -> Unit,
     /** This car, drawn at the bottom of the rail with "내 차" (as in the design). */
     myCar: Car? = null,
     content: @Composable () -> Unit,
 ) {
-    DesignScale(designWidth = if (navPanel != null) DESIGN_WIDTH + NAV_PANEL_WIDTH else DESIGN_WIDTH) {
+    DesignScale(designWidth = DESIGN_WIDTH + NAV_PANEL_WIDTH) {
         Row(modifier = Modifier.fillMaxSize().background(CdColors.Gray100)) {
-            if (navPanel != null) {
-                Box(modifier = Modifier.width(NAV_PANEL_WIDTH.dp).fillMaxHeight()) { navPanel() }
-            }
+            Box(modifier = Modifier.width(NAV_PANEL_WIDTH.dp).fillMaxHeight()) { navPanel() }
             Rail(current = current.railGroup(), onTab = onTab, myCar = myCar)
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 content()

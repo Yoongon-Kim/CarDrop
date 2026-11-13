@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * Owner: Member B. Crew positions with `cardrop.navApp=inapp`.
+ * Owner: Member B. Crew positions.
  *
  * This car = its GPS and live route ([InAppNavigation]).
  * - Real crew ([shared] set): the other cars are where their own devices say they are

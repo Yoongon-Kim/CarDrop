@@ -136,9 +136,9 @@ private fun minjiFuelInvite(container: AppContainer): DropDraft {
     )
 }
 
-/** 민지 차's distance to [place] along the live route (km); null without the in-app navigator's route. */
+/** 민지 차's distance to [place] along the live route (km); null before the navigator has a route. */
 private fun minjiKmTo(container: AppContainer, place: Place): Int? {
-    val state = container.inAppNavigation?.state?.value ?: return null
+    val state = container.inAppNavigation.state.value
     val route = state.route ?: return null
     val positions = container.route.positions.value
     val minjiBehind = (positions[DemoData.minji.id]?.kmToDestination ?: 0f) -

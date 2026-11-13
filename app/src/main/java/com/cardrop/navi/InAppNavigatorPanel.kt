@@ -49,7 +49,7 @@ import kotlinx.coroutines.delay
 /**
  * Owner: Member B.
  *
- * The navigator drawn inside CarDrop (`cardrop.navApp=inapp`): the design's left third
+ * The navigator drawn inside CarDrop: the design's left third
  * (533 x 900 design px). A real map with the live route (GPS + Kakao/OSRM) and every crew car,
  * plus the design's overlays: turn banner, CarDrop toast, speed, and the waypoint / destination card.
  * The map is Kakao's ([KakaoNavMap]) when local.properties has `cardrop.kakaoNativeKey`, else

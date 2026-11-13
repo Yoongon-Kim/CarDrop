@@ -27,15 +27,13 @@ class MainActivity : ComponentActivity() {
 
     /** The in-app navigator needs GPS; ask once, then start it. */
     private val askLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) container.inAppNavigation?.onLocationPermissionGranted()
+        if (granted) container.inAppNavigation.onLocationPermissionGranted()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val container = container
-        if (container.inAppNavigation != null &&
-            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             askLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
         setContent {

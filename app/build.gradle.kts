@@ -54,7 +54,6 @@ android {
         buildConfigField("String", "MY_CAR", "\"$myCar\"")
         buildConfigField("boolean", "USE_REAL_VEHICLE", localFlag("cardrop.useRealVehicle").toString())
         buildConfigField("boolean", "USE_REAL_VOICE", localFlag("cardrop.useRealVoice").toString())
-        buildConfigField("String", "NAV_APP", "\"${localString("cardrop.navApp").ifEmpty { "inapp" }}\"")
         buildConfigField("String", "CLAUDE_API_KEY", "\"${localString("cardrop.claudeApiKey")}\"")
         buildConfigField("String", "KAKAO_REST_KEY", "\"${localString("cardrop.kakaoRestKey")}\"")
         buildConfigField("String", "KAKAO_NATIVE_KEY", "\"${localString("cardrop.kakaoNativeKey")}\"")

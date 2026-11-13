@@ -27,6 +27,7 @@ class DriveViewModel(
     private val crewRepo: CrewRepository,
     private val ai: AiService,
     workScope: CoroutineScope? = null,
+    crewFuel: CrewFuel = CrewFuel.None,
 ) : ViewModel() {
     private val scope = workScope ?: viewModelScope
     val snapshot = vehicle.snapshot
@@ -49,6 +50,10 @@ class DriveViewModel(
         current?.takeIf { !it.isStarted && it.hostCarId != myCarId }
             ?.let { c -> c.cars.firstOrNull { it.id == c.hostCarId }?.name ?: "방장 차" }
     }.stateIn(scope, SharingStarted.Eagerly, null)
+    /** Board 04's crew cards: each car's fuel by car id, this car's from its own [snapshot] ([crewCardFuel]). */
+    val fuelByCar: StateFlow<Map<String, CarFuel>> =
+        combine(crew, snapshot, crewFuel.fuel) { current, car, others -> cardFuel(current, car, others) }
+            .stateIn(scope, SharingStarted.Eagerly, cardFuel(crew.value, snapshot.value, crewFuel.fuel.value))
     private val liveNavigation = navigation as? InAppNavigation
     private val warnings = FuelWarningTracker()
     private val _fuelWarningPending = MutableStateFlow(false)
@@ -93,6 +98,9 @@ class DriveViewModel(
         _action.value = DriveActionState()
     }
     fun skipped(dropId: String) = navigation.decisions.isSkipped(dropId)
+
+    private fun cardFuel(current: Crew?, car: VehicleSnapshot, others: Map<String, CarFuel>) =
+        crewCardFuel(current?.cars.orEmpty(), myCarId, car.carFuel(), others)
 
     private fun crewKey() = crew.value?.let { "${it.code}:${it.hostCarId}" }
     private fun requireCrew() = crew.value ?: error("크루를 먼저 만들어 주세요")

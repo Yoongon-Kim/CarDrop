@@ -86,6 +86,12 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names
   (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09, 게임 초대 15, 편지함 07.
   Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+- Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
+  another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
+  `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks
+  it (a crew just made or joined). Bot crew: 삼촌 48%, 이모 55%, 민지 23%; a bot that sent a fuel warning (the DEMO
+  panel's 민지 차) shows 12% · 85km, as on board 05. Under 20% a card turns orange ("연료 경고" + range); only this
+  car's opens board 05, once the trip has started.
 
 ## Design boards
 

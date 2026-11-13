@@ -206,17 +206,16 @@ private const val STRIP_START = 0.13f
 private const val STRIP_END = 0.86f
 
 /**
- * Board 04 "우리 일행": a card per car in its colour, with how far behind the leader it is. This car's card also
- * shows its fuel; low on fuel it turns orange ("연료 경고"), and tapping it opens board 05 ([onMyLowFuel]).
- * Other cars' fuel isn't shared yet (it needs the real crew sync).
+ * Board 04 "우리 일행": a card per car in its colour, with how far behind the leader it is and its fuel ([fuel], by
+ * car id: drive/CrewFuel.kt). Low on fuel a card turns orange ("연료 경고" and the range left); tapping this car's
+ * opens board 05 ([onMyLowFuel]).
  */
 @Composable
 internal fun CrewCards(
     cars: List<Car>,
     positions: Map<String, CarPosition>,
     myCarId: String,
-    myFuel: Int?,
-    myRangeKm: Float?,
+    fuel: Map<String, CarFuel>,
     onMyLowFuel: (() -> Unit)?,
 ) {
     val leaderKm = positions.values.minOfOrNull { it.kmToDestination }
@@ -225,14 +224,12 @@ internal fun CrewCards(
         cars.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { car ->
-                    val mine = car.id == myCarId
                     CrewCard(
                         car = car,
                         position = positions[car.id],
                         leaderKm = leaderKm,
-                        fuel = if (mine) myFuel else null,
-                        rangeKm = if (mine) myRangeKm else null,
-                        onLowFuel = if (mine) onMyLowFuel else null,
+                        fuel = fuel[car.id],
+                        onLowFuel = if (car.id == myCarId) onMyLowFuel else null,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -247,17 +244,17 @@ private fun CrewCard(
     car: Car,
     position: CarPosition?,
     leaderKm: Float?,
-    fuel: Int?,
-    rangeKm: Float?,
+    fuel: CarFuel?,
     onLowFuel: (() -> Unit)?,
     modifier: Modifier,
 ) {
-    val low = fuel != null && fuel < LOW_FUEL_CARD_PERCENT
+    val low = fuel?.isLow == true
+    val lowRangeKm = fuel?.takeIf { it.isLow }?.rangeKm
     val tint = (if (car.connected) car.color else CarColor.GRAY).tint()
     val shape = RoundedCornerShape(22.dp)
     val gap = when {
         position == null || leaderKm == null -> "위치 기다리는 중"
-        low && rangeKm != null -> "${gapText(leaderKm, position.kmToDestination)} · ${rangeKm.roundToInt()}km 주행 가능"
+        lowRangeKm != null -> "${gapText(leaderKm, position.kmToDestination)} · ${lowRangeKm}km 주행 가능"
         else -> gapText(leaderKm, position.kmToDestination)
     }
     Row(
@@ -278,11 +275,11 @@ private fun CrewCard(
         if (fuel != null) {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    if (low) "연료 경고" else "연료 $fuel%",
+                    if (low) "연료 경고" else "연료 ${fuel.percent}%",
                     fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (low) CdColors.OrangeDark else CdColors.Gray600,
                 )
                 Box(Modifier.width(74.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color.Black.copy(alpha = 0.08f))) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(fuel.coerceIn(0, 100) / 100f).background(if (low) CdColors.Orange else CdColors.Blue))
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(fuel.percent.coerceIn(0, 100) / 100f).background(if (low) CdColors.Orange else CdColors.Blue))
                 }
             }
         }

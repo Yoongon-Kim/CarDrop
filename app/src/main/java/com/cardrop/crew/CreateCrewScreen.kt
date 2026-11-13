@@ -101,7 +101,9 @@ fun CreateCrewScreen(
                 cars.forEach { car ->
                     InfoRow(
                         title = car.name,
-                        subtitle = if (car.isMe) "방장" else if (car.connected) "코드로 참여" else "초대 보냄 · 응답 기다리는 중",
+                        // The host (방장) is the car that made the crew, which isn't always this one: a car that
+                        // joined with a code sees the host's row marked, not its own.
+                        subtitle = if (car.id == crew?.hostCarId) "방장" else if (car.connected) "코드로 참여" else "초대 보냄 · 응답 기다리는 중",
                         leading = { CarBadge(car) },
                         trailing = {
                             if (car.connected) {

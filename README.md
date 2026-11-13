@@ -1,6 +1,6 @@
 CarDrop
 
-CarDrop은 여러 대의 차량으로 이동하는 일행이 경로상 경유지를 추천받고, 투표로 들를 곳을 정하며, 이동 중에도 서로 소식을 나누는 Pleos Connect용 차량 소통 앱입니다.
+CarDrop은 여러 대의 차량으로 이동하는 일행이 경로상 경유지를 추천받고, 투표로 들를 곳을 정하며, 이동 중에도 서로 소식을 나누는 Pleos Connect용 차량 Social/Communication 앱입니다.
 
 ## 빠른 실행
 
@@ -70,7 +70,7 @@ Python 3와 Android SDK의 `platform-tools`를 준비하고 `adb`를 PATH에 추
 python tools/drive_gps.py
 ```
 
-## APK 파일 위치
+## APK 파일 위치(나중에 실제 위치로 수정)
 
 소스에서 직접 빌드한 **테스트용 APK**의 위치는 `app/build/outputs/apk/debug/app-debug.apk`입니다. 저장소 루트에서 아래 명령으로 생성할 수 있습니다.
 

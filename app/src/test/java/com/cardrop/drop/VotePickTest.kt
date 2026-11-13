@@ -9,6 +9,18 @@ import org.junit.Test
 /** Board 11: what this car's pick sends, and which place it counts for. */
 class VotePickTest {
     private val candidates = listOf("a", "b", "c").map { Candidate(it, Place(it, it, 0.0, 0.0), "", 0) }
+    private val stops = listOf("덕평자연휴게소", "여주휴게소", "문막휴게소").map { Candidate(it, Place(it, it, 0.0, 0.0), "", 0) }
+
+    @Test
+    fun theAiCardSaysWhatEachPickMeans() {
+        assertEquals("덕평자연휴게소에 1표" to "“1번”, “첫 번째”도 같은 표예요", VotePick.Place("덕평자연휴게소").explain(stops))
+        assertEquals("여주휴게소에 1표" to "“2번”, “두 번째”도 같은 표예요", VotePick.Place("여주휴게소").explain(stops))
+        assertEquals(
+            "상관없음 → 1순위 덕평자연휴게소에 1표" to "“아무 데나”, “다 좋아”, “알아서 해” 모두 같은 뜻이에요",
+            VotePick.Anywhere.explain(stops),
+        )
+        assertEquals("이번엔 안 들러요" to "우리 차는 경로를 유지하고 결과만 알려드려요", VotePick.Pass.explain(stops))
+    }
 
     @Test
     fun aPlaceIsAVoteForThatPlace() {

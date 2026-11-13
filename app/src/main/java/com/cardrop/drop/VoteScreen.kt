@@ -37,7 +37,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -149,10 +152,6 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            AiTag()
-            Text("${drop.votes.size}/$carCount 응답 · 무응답은 1순위로 처리돼요", style = MaterialTheme.typography.bodyLarge)
-        }
         // The places, 3 to a row and 12 apart; a 4th and 5th place start a new row (target lines 450-456). Cards in
         // a row are as tall as the tallest, like the target's grid.
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -206,6 +205,30 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                 background = CdColors.White,
                 color = CdColors.Ink,
                 padding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+        // What this car's answer means, said by the AI: "**{1번}에 1표** · “1번”, “첫 번째”도 같은 표예요" (target
+        // lines 466, 724). White, corners 18, padding 14 x 16, the small AI tag 12 to the left of the 15px text.
+        val (meaning, aside) = pick.explain(drop.candidates)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(CdColors.White)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AiTag(small = true)
+            Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(meaning) }
+                    append(" · ")
+                    withStyle(SpanStyle(color = CdColors.Gray600)) { append(aside) }
+                },
+                color = CdColors.Ink,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f),
             )
         }
         if (canSpin && wheelOpen) {

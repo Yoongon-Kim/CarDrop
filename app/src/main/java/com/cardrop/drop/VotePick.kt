@@ -27,6 +27,21 @@ sealed interface VotePick {
     /** The place this car's vote counts for, or null for a pass. */
     fun countedId(candidates: List<Candidate>): String? = vote(candidates)?.takeIf { it != VoteRules.PASS }
 
+    /**
+     * What the AI card says about this pick: a bold part and a grey part (target lines 466 and 724), e.g.
+     * "덕평자연휴게소에 1표" and "“1번”, “첫 번째”도 같은 표예요".
+     */
+    fun explain(candidates: List<Candidate>): Pair<String, String> = when (this) {
+        is Place -> {
+            val index = candidates.indexOfFirst { it.id == candidateId }
+            val name = candidates.getOrNull(index)?.place?.name ?: "이곳"
+            "${name}에 1표" to "“${index + 1}번”, “${ordinal(index + 1)}”도 같은 표예요"
+        }
+        Anywhere -> "상관없음 → 1순위 ${candidates.firstOrNull()?.place?.name ?: "1번"}에 1표" to
+            "“아무 데나”, “다 좋아”, “알아서 해” 모두 같은 뜻이에요"
+        Pass -> "이번엔 안 들러요" to "우리 차는 경로를 유지하고 결과만 알려드려요"
+    }
+
     companion object {
         /** What the screen starts with: this car's vote if it sent one, otherwise place 1 (as the target does). */
         fun from(vote: String?, candidates: List<Candidate>): VotePick = when {
@@ -35,4 +50,14 @@ sealed interface VotePick {
             else -> candidates.firstOrNull()?.let { Place(it.id) } ?: Anywhere
         }
     }
+}
+
+/** "첫 번째", "두 번째", …: how a driver says a place's number in words. */
+private fun ordinal(number: Int): String = when (number) {
+    1 -> "첫 번째"
+    2 -> "두 번째"
+    3 -> "세 번째"
+    4 -> "네 번째"
+    5 -> "다섯 번째"
+    else -> "${number}번째"
 }

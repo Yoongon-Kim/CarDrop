@@ -14,8 +14,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 
 internal class TestCrew : CrewRepository {
-    override val myCarId = DemoData.me.id
-    override val crew = MutableStateFlow<Crew?>(Crew("123456", "test", DemoData.gyeongpo, myCarId, listOf(DemoData.me, DemoData.uncle)))
+    /** Tests can switch cars, like picking one when joining with the real crew (board 03). */
+    var carId = DemoData.me.id
+    override val myCarId: String get() = carId
+    override val crew = MutableStateFlow<Crew?>(Crew("123456", "test", DemoData.gyeongpo, DemoData.me.id, listOf(DemoData.me, DemoData.uncle)))
     override val drops = MutableStateFlow<List<Drop>>(emptyList())
     var sends = 0
     var votes = 0

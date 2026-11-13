@@ -29,12 +29,12 @@ class GuidanceTrackerTest {
     }
 
     @Test
-    fun asksForANewRouteOnceAfterThreeOffRouteReadings() {
+    fun keepsRequestingAfterThreeOffRouteReadingsUntilNavigatorCanReroute() {
         val tracker = GuidanceTracker()
         tracker.update(route, fix(3.0), waypoint = null)
         val off = (1..5).map { tracker.update(route, fix(3.1, offNorthMetres = 200.0), waypoint = null) }
         assertTrue(off.all { it.offRoute })
-        assertEquals(listOf(false, false, true, false, false), off.map { it.needsReroute })
+        assertEquals(listOf(false, false, true, true, true), off.map { it.needsReroute })
     }
 
     @Test

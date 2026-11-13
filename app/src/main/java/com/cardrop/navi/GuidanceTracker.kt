@@ -15,7 +15,7 @@ data class TrackUpdate(
     val snapped: RoutePoint?,
     val reachedWaypoint: Boolean,
     val arrived: Boolean,
-    /** True once per off-route episode: ask for a new route from here. */
+    /** True after enough off-route fixes, until a new route arrives or the car rejoins it. */
     val needsReroute: Boolean,
 )
 
@@ -74,7 +74,9 @@ class GuidanceTracker(
             snapped = if (onRoute) route.geometry.pointAt(lastKm) else null,
             reachedWaypoint = reachedWaypoint,
             arrived = onRoute && route.totalKm - lastKm < 0.05,
-            needsReroute = !onRoute && offCount == offRouteFixes && !nearWaypoint,
+            // Keep requesting until the navigator's cooldown allows a reroute. A one-shot
+            // trigger could be lost during cooldown or when a previous request failed.
+            needsReroute = !onRoute && offCount >= offRouteFixes && !nearWaypoint,
         )
     }
 }

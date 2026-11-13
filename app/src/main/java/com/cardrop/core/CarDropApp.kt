@@ -112,12 +112,13 @@ fun CarDropApp(container: AppContainer) {
                     )
                 },
             )
-            Screen.FuelMe -> FuelMeScreen(driveVm, onDone = { navigator.switchTab(Screen.Drive) })
+            Screen.FuelMe -> FuelMeScreen(driveVm, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             is Screen.FuelThem -> FuelThemScreen(
                 vm = driveVm,
                 dropId = screen.dropId,
                 carName = crewVm::carName,
                 onDone = { navigator.switchTab(Screen.Drive) },
+                voice = container.voice,
             )
             Screen.Inbox -> InboxScreen(crewVm) { drop ->
                 navigator.go(
@@ -148,7 +149,7 @@ fun CarDropApp(container: AppContainer) {
                 navigator.go(Screen.Vote(drop.id))
             }
             is Screen.Vote -> VoteScreen(crewVm, screen.dropId)
-            is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) })
+            is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             Screen.Games -> QuizScreen(aiVm)
         }
     }

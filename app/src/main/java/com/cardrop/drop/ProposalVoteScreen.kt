@@ -90,6 +90,7 @@ fun ProposalVoteScreen(
             onBack = { countering = false },
             onAskAi = null,
             onSend = { other -> vm.proposeDestination(other, toCarIds, against = drop) { onOpenVote(it.id) } },
+            answering = place, // proposing the same place again would be no other destination
         )
         return
     }
@@ -120,7 +121,13 @@ fun ProposalVoteScreen(
                         fontSize = 20.sp,
                     )
                 }
-                SecondaryButton("다른 목적지 제안하기", onClick = { countering = true }, modifier = Modifier.fillMaxWidth())
+                // White: it sits on the grey page, where the grey button would look like plain text.
+                SecondaryButton(
+                    "다른 목적지 제안하기",
+                    onClick = { countering = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = CdColors.White,
+                )
             }
             ProposalView.WAITING -> PrimaryButton(
                 if (mine) "일행의 답을 기다리는 중" else "응답했어요 · 다른 차를 기다리는 중",
@@ -141,7 +148,7 @@ fun ProposalVoteScreen(
             )
             // Turned down: go back to driving, or try another place.
             ProposalView.REJECTED -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                SecondaryButton("닫기", onClick = onClose, height = 72.dp, radius = 22.dp)
+                SecondaryButton("닫기", onClick = onClose, height = 72.dp, radius = 22.dp, containerColor = CdColors.White)
                 PrimaryButton(
                     "다른 목적지 제안하기",
                     onClick = { countering = true },
@@ -216,14 +223,9 @@ fun ProposalVoteScreen(
             voters.forEach { car -> AnswerTile(car, answerOf(drop, car.id), Modifier.weight(1f)) }
         }
         // What happens next, or how it ended.
-        val noNames = voters.filter { VoteRules.saidNo(drop, it.id) }.joinToString(" · ") { it.name }
         val (text, background, color) = when (view) {
             ProposalView.ACCEPTED -> Triple("모두 찬성했어요 · 목적지를 ${place.name.withRo()} 바꿨어요", CdColors.GreenLight, CdColors.Green)
-            ProposalView.REJECTED -> Triple(
-                if (noNames.isEmpty()) "반대가 있어 목적지는 그대로예요" else "${noNames.particle("이", "가")} 반대해서 목적지는 그대로예요",
-                CdColors.RedLight,
-                CdColors.Red,
-            )
+            ProposalView.REJECTED -> Triple(rejectedText(drop, voters, me), CdColors.RedLight, CdColors.Red)
             else -> Triple("한 대라도 반대하면 목적지는 그대로예요 · 시간 안에 답이 없으면 찬성으로 봐요", CdColors.White, CdColors.Gray600)
         }
         Text(
@@ -269,6 +271,16 @@ private fun AnswerPill(label: String, background: Color, color: Color) {
 
 /** What a car said to a proposal so far. */
 internal enum class ProposalAnswer { YES, NO, WAITING }
+
+/**
+ * The line under a turned-down proposal: who said 반대 ("민지 차가 반대해서 목적지는 그대로예요"). This car is
+ * "우리 차", as in the tag at the top: its crew name, "아빠 차 (나)", reads badly in a sentence.
+ */
+internal fun rejectedText(drop: Drop, voters: List<Car>, myCarId: String): String {
+    val names = voters.filter { VoteRules.saidNo(drop, it.id) }.map { if (it.id == myCarId) "우리 차" else it.name }
+    if (names.isEmpty()) return "반대가 있어 목적지는 그대로예요"
+    return "${names.joinToString(" · ").particle("이", "가")} 반대해서 목적지는 그대로예요"
+}
 
 /**
  * [carId]'s answer on screen. The proposer counts as 찬성 from the start (a bot proposer never writes a vote).

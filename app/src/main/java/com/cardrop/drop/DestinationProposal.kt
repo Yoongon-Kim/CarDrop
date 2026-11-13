@@ -83,8 +83,21 @@ object ProposalRules {
         else (original.toCarIds + original.fromCarId).distinct().filter { it != myCarId }
 
     /** True when [place] is where the crew is heading already: proposing it would change nothing. */
-    fun isCurrent(place: Place, destination: Place?): Boolean =
-        destination != null && (place.id == destination.id || place.name == destination.name)
+    fun isCurrent(place: Place, destination: Place?): Boolean = isSame(place, destination)
+
+    /**
+     * Why [place] can't be proposed, or null when it can: the crew is heading there already, or it is the place of
+     * [answering], the proposal this one answers ("다른 목적지 제안하기"), which this car just said 반대 to.
+     */
+    fun whyNot(place: Place, destination: Place?, answering: Place?): String? = when {
+        isCurrent(place, destination) -> "지금 가고 있는 목적지예요. 다른 곳을 골라 주세요."
+        isSame(place, answering) -> "방금 제안된 곳이에요. 다른 곳을 골라 주세요."
+        else -> null
+    }
+
+    /** The same place: the same id, or the same name (a place found again by another search gets another id). */
+    private fun isSame(place: Place, other: Place?): Boolean =
+        other != null && (place.id == other.id || place.name == other.name)
 }
 
 /**
@@ -94,6 +107,7 @@ object ProposalRules {
  * The search is board 02's (Kakao's place search, 말로 검색, the app's destinations before typing), so a proposed
  * place always has a location the navigator can drive to. [recipients] = who gets it ("크루 전체"). [onAskAi] opens
  * board 10 with the AI's three picks; null hides the button. [onSend] sends the proposal for the picked place.
+ * [answering] = the place of the proposal a "다른 목적지 제안하기" answers: it is left out like the current destination.
  */
 @Composable
 fun DestinationProposalPanel(
@@ -103,6 +117,7 @@ fun DestinationProposalPanel(
     onBack: () -> Unit,
     onAskAi: (() -> Unit)?,
     onSend: (Place) -> Unit,
+    answering: Place? = null,
 ) {
     var query by remember { mutableStateOf("") }
     // The place the driver tapped; null while searching.
@@ -156,7 +171,7 @@ fun DestinationProposalPanel(
         if (place != null) {
             ConfirmCard(
                 place = place,
-                sameAsNow = ProposalRules.isCurrent(place, current),
+                whyNot = ProposalRules.whyNot(place, current, answering),
                 sending = sending.sending,
                 error = sending.error,
                 onAgain = { picked = null },
@@ -194,8 +209,9 @@ fun DestinationProposalPanel(
                 if (suggestions.shown) {
                     PlaceSuggestionList(suggestions, onPick = { pick(it.place) })
                 } else {
-                    // Before typing: the app's destinations, without the one the crew is heading to.
-                    val known = vm.knownDestinations().filterNot { ProposalRules.isCurrent(it.place, current) }
+                    // Before typing: the app's destinations, without the one the crew is heading to (or the one
+                    // this car is answering).
+                    val known = vm.knownDestinations().filter { ProposalRules.whyNot(it.place, current, answering) == null }
                     if (known.isNotEmpty()) {
                         Text("추천 목적지", color = CdColors.Gray600, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         PlaceCard(known, highlight = "", onPick = { pick(it.place) })
@@ -210,12 +226,13 @@ fun DestinationProposalPanel(
 
 /**
  * The second step: the picked place in a white card, what happens next in grey, and 다시 고르기 / 제안 보내기.
- * It sits at the top of the screen, above where Pleos's keyboard would be.
+ * It sits at the top of the screen, above where Pleos's keyboard would be. [whyNot] = why this place can't be
+ * proposed ([ProposalRules.whyNot]); then it is said in red and 제안 보내기 is greyed out.
  */
 @Composable
 private fun ConfirmCard(
     place: Place,
-    sameAsNow: Boolean,
+    whyNot: String?,
     sending: Boolean,
     error: String?,
     onAgain: () -> Unit,
@@ -250,8 +267,8 @@ private fun ConfirmCard(
                 }
             }
         }
-        if (sameAsNow) {
-            ErrorText("지금 가고 있는 목적지예요. 다른 곳을 골라 주세요.")
+        if (whyNot != null) {
+            ErrorText(whyNot)
         } else {
             Text(
                 "받는 차가 찬성 · 반대로 답해요. 한 대라도 반대하면 목적지는 그대로예요 · 2분 안에 답이 없으면 찬성으로 봐요",
@@ -265,7 +282,7 @@ private fun ConfirmCard(
             PrimaryButton(
                 text = if (sending) "보내는 중…" else "제안 보내기",
                 onClick = onSend,
-                enabled = !sending && !sameAsNow,
+                enabled = !sending && whyNot == null,
                 modifier = Modifier.weight(1f),
             )
         }

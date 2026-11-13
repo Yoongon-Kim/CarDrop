@@ -199,7 +199,11 @@ fun PrimaryButton(
     }
 }
 
-/** The grey button next to a [PrimaryButton]. Same size options as [PrimaryButton], with today's look as defaults. */
+/**
+ * The grey button next to a [PrimaryButton]. Same size options as [PrimaryButton], with today's look as defaults.
+ * Grey is the page's own colour, so a button straight on the page (not in a white card) passes
+ * [containerColor] = `CdColors.White`, like board 11's 아무 데나 좋아 / 난 패스.
+ */
 @Composable
 fun SecondaryButton(
     text: String,
@@ -211,6 +215,7 @@ fun SecondaryButton(
     fontSize: TextUnit = 18.sp,
     fontWeight: FontWeight = FontWeight.ExtraBold,
     horizontalPadding: Dp = 24.dp,
+    containerColor: Color = CdColors.Gray100,
 ) {
     Button(
         onClick = onClick,
@@ -218,7 +223,7 @@ fun SecondaryButton(
         modifier = modifier.heightIn(min = height),
         shape = RoundedCornerShape(radius),
         colors = ButtonDefaults.buttonColors(
-            containerColor = CdColors.Gray100,
+            containerColor = containerColor,
             contentColor = CdColors.Ink2,
             disabledContainerColor = DisabledButtonBackground,
             disabledContentColor = DisabledButtonText,

@@ -125,6 +125,16 @@ class VoteRulesTest {
     }
 
     @Test
+    fun `the sender of a proposal has answered even without a vote`() {
+        // A bot's proposal, or board 10 with one destination ticked: the sender ("me") wrote no vote.
+        val d = proposal(mapOf("uncle" to "a", "minji" to "a", "aunt" to "a"))
+        assertTrue(VoteRules.isOver(d, cars, nowMillis = 0)) // everyone else said 찬성: no need to wait for the timer
+        assertEquals("a", VoteRules.winner(d, cars))
+        // In an ordinary vote the sender still has to answer.
+        assertFalse(VoteRules.isOver(drop(mapOf("uncle" to "a", "minji" to "a", "aunt" to "a")), cars, nowMillis = 0))
+    }
+
+    @Test
     fun `a no from a car the proposal was not sent to does not count`() {
         // Sent to uncle only: the voters are me and uncle.
         val d = proposal(mapOf("aunt" to VoteRules.NO)).copy(toCarIds = listOf("uncle"))

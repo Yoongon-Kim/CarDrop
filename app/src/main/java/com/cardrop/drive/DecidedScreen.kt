@@ -33,6 +33,8 @@ import kotlin.math.ceil
 /**
  * Board 14, as in the design: a blue result card ("{place}로 결정되었어요"), guidance that starts by itself after
  * 3 seconds unless the driver picks "우리 차는 안 들르기", and when each car reaches the stop ("도착 예정").
+ * A new destination (목적지 변경) has no "우리 차는 안 들르기": it is no stop on the way, and skipping it would not
+ * bring the old destination back.
  *
  * The countdown runs only with the in-app navigator ([DriveViewModel.autoStartsGuidance]). Once it has started
  * guidance the screen stays, so the arrivals can still be read; the main button then says "주행 화면으로".
@@ -116,11 +118,14 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                     containerColor = CdColors.White, contentColor = CdColors.BlueDark,
                     height = 58.dp, radius = 16.dp, fontSize = 17.sp, horizontalPadding = 8.dp,
                 )
-                PrimaryButton(
-                    "우리 차는 안 들르기", skip, Modifier.weight(1f), ready && !skipped,
-                    containerColor = CdColors.White.copy(alpha = 0.2f),
-                    height = 58.dp, radius = 16.dp, fontSize = 15.sp, fontWeight = FontWeight.Bold, horizontalPadding = 8.dp,
-                )
+                // A new destination is no stop to leave out: skipStop would only keep driving to it.
+                if (!destinationVote) {
+                    PrimaryButton(
+                        "우리 차는 안 들르기", skip, Modifier.weight(1f), ready && !skipped,
+                        containerColor = CdColors.White.copy(alpha = 0.2f),
+                        height = 58.dp, radius = 16.dp, fontSize = 15.sp, fontWeight = FontWeight.Bold, horizontalPadding = 8.dp,
+                    )
+                }
             }
         }
 
@@ -140,9 +145,13 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
             }
         }
         DriveActionFeedback(action)
-        DriveVoiceReply(voice, "“안내 시작” 또는 “우리 차는 안 들르기”라고 말해 주세요", ready,
-            setOf(DriveVoiceCommand.START, DriveVoiceCommand.SKIP)) {
-            if (it == DriveVoiceCommand.START) start() else skip()
+        if (destinationVote) {
+            DriveVoiceReply(voice, "“안내 시작”이라고 말해 주세요", ready, setOf(DriveVoiceCommand.START)) { start() }
+        } else {
+            DriveVoiceReply(voice, "“안내 시작” 또는 “우리 차는 안 들르기”라고 말해 주세요", ready,
+                setOf(DriveVoiceCommand.START, DriveVoiceCommand.SKIP)) {
+                if (it == DriveVoiceCommand.START) start() else skip()
+            }
         }
     }
 }

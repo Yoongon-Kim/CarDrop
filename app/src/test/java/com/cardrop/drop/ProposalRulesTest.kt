@@ -1,5 +1,7 @@
 package com.cardrop.drop
 
+import com.cardrop.core.model.Car
+import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
@@ -73,6 +75,26 @@ class ProposalRulesTest {
         assertTrue(ProposalRules.isCurrent(gyeongpo.copy(id = "kakao-123"), gyeongpo))
         assertFalse(ProposalRules.isCurrent(sokcho, gyeongpo))
         assertFalse(ProposalRules.isCurrent(sokcho, null))
+    }
+
+    @Test
+    fun `a counter-proposal can't go to the current destination or the place it answers`() {
+        assertEquals("지금 가고 있는 목적지예요. 다른 곳을 골라 주세요.", ProposalRules.whyNot(gyeongpo, gyeongpo, answering = null))
+        // 다른 목적지 제안하기 on 삼촌's 속초 proposal: 속초 again would be no other destination.
+        assertEquals("방금 제안된 곳이에요. 다른 곳을 골라 주세요.", ProposalRules.whyNot(sokcho.copy(id = "kakao-9"), gyeongpo, sokcho))
+        assertEquals(null, ProposalRules.whyNot(Place("surfy", "양양 서피비치", 38.03, 128.71), gyeongpo, sokcho))
+    }
+
+    @Test
+    fun `a turned-down proposal says who said no, this car as 우리 차`() {
+        val dad = Car("dad", "아빠 차 (나)", CarColor.BLUE, isMe = true)
+        val minji = Car("minji", "민지 차", CarColor.YELLOW)
+        val aunt = Car("aunt", "이모 차", CarColor.TEAL)
+        val voters = listOf(dad, minji, aunt)
+        val byMe = proposal(votes = mapOf("dad" to VoteRules.NO), decided = VoteRules.REJECTED)
+        assertEquals("우리 차가 반대해서 목적지는 그대로예요", rejectedText(byMe, voters, myCarId = "dad"))
+        val byTwo = proposal(votes = mapOf("minji" to VoteRules.NO, "aunt" to VoteRules.NO), decided = VoteRules.REJECTED)
+        assertEquals("민지 차 · 이모 차가 반대해서 목적지는 그대로예요", rejectedText(byTwo, voters, myCarId = "dad"))
     }
 
     @Test

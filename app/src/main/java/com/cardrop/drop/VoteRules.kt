@@ -53,8 +53,16 @@ object VoteRules {
      * soon as one car says 반대: nothing can save it after that.
      */
     fun isOver(drop: Drop, carIds: List<String>, nowMillis: Long): Boolean =
-        nowMillis >= drop.deadlineMillis || carIds.all { it in drop.votes } ||
+        nowMillis >= drop.deadlineMillis || carIds.all { answered(drop, it) } ||
             (isProposal(drop) && carIds.any { saidNo(drop, it) })
+
+    /**
+     * True when [carId] answered. The car that sent a proposal answered by sending it (찬성), even without a vote
+     * in `Drop.votes`: a bot's proposal and a board 10 vote with one place have none, and board 11 gives that car
+     * no buttons. Without this, such a proposal would wait for the timer even when everyone said 찬성.
+     */
+    private fun answered(drop: Drop, carId: String): Boolean =
+        carId in drop.votes || (isProposal(drop) && carId == drop.fromCarId)
 
     /**
      * Returns the winning candidate id, or null if the drop has no candidates. Cars that passed are left out.

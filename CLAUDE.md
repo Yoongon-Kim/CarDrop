@@ -79,11 +79,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
-  lines 302-344): four slots, all empty (dashed "추가") until the driver fills them. 편집 or an empty slot opens
-  퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in the order ticked; 노래, 같이 켜기
-  and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`, SharedPreferences). A tile
-  opens what it names (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09,
-  게임 초대 15, 편지함 07. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+  lines 302-344): four slots. Until the driver saves their own list they hold 휴게소 and 주유 and two dashed "추가"
+  (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays
+  empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in
+  the order ticked; 노래, 같이 켜기 and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`,
+  SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names
+  (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09, 게임 초대 15, 편지함 07.
+  Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
 
 ## Design boards
 

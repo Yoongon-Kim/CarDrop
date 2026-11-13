@@ -28,9 +28,17 @@ class QuickDropsTest {
     }
 
     @Test
-    fun nothingSavedMeansFourEmptySlots() {
-        assertEquals(emptyList<QuickDrop>(), QuickDrops(MemoryStore()).chosen.value)
-        assertEquals(emptyList<QuickDrop>(), QuickDropRules.decode(""))
+    fun nothingSavedMeansRestAndFuelThenTwoEmptySlots() {
+        assertEquals(listOf(REST, FUEL), QuickDrops(MemoryStore()).chosen.value)
+    }
+
+    @Test
+    fun aListTheDriverEmptiedStaysEmpty() {
+        val store = MemoryStore()
+        QuickDrops(store).save(emptyList())
+        assertEquals("", store.saved)
+        // The next start doesn't bring 휴게소 and 주유 back.
+        assertEquals(emptyList<QuickDrop>(), QuickDrops(store).chosen.value)
     }
 
     @Test

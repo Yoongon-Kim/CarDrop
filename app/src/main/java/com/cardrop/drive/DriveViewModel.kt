@@ -201,7 +201,9 @@ class DriveViewModel(
                 crewRepo.sendDrop(DropDraft(
                     kind = DropKind.DECISION, topic = DropTopic.FUEL,
                     title = "연료가 부족해요 · 같이 주유할까요?",
-                    message = "연료 ${car.fuelPercent ?: "—"}% · 주행 가능 ${car.rangeKm?.toInt() ?: "—"}km · ${place.name}$distance",
+                    // Board 06's top line, as in the design (244): "민지 차 · 주행 가능 85km · 덕평 주유소 9km"
+                    // (the banner puts the car's name in front).
+                    message = "주행 가능 ${car.rangeKm?.toInt() ?: "—"}km · ${place.name}$distance",
                     candidates = listOf(chosen.candidate),
                 ))
             } else {

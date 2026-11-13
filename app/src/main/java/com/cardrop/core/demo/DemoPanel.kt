@@ -38,6 +38,7 @@ import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
+import com.cardrop.drop.ProposalRules
 import com.cardrop.vehicle.FakeVehicleRepository
 import kotlin.math.roundToInt
 
@@ -106,6 +107,15 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                                 candidates = demoCandidates(container),
                             ),
                         )
+                    }
+                }
+                // A destination proposal from a bot (board 11's 찬성 / 반대 / 다른 목적지 제안하기), added by Member A:
+                // 속초 해수욕장, or another known destination when the crew is heading there already.
+                DemoButton("삼촌 차 목적지 제안 받기") {
+                    val now = crew?.destination
+                    val others = DemoData.destinations.filterNot { ProposalRules.isCurrent(it, now) }
+                    (others.firstOrNull { it.id == "sokcho" } ?: others.firstOrNull())?.let { place ->
+                        crewRepo.injectDrop(DemoData.uncle, ProposalRules.draft(place, toCarIds = emptyList()))
                     }
                 }
                 DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }

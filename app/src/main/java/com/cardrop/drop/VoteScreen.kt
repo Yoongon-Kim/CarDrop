@@ -81,6 +81,9 @@ import kotlinx.coroutines.flow.StateFlow
  * stays here, and the button becomes 결과 보기 ([onOpenResult], board 14).
  * [placeTimes] (AppContainer.placeTimes) says how far each place is from this car and how long it takes.
  * [onPass] makes this car skip the stop, as board 14's "우리 차는 안 들르기" does: a pass keeps its route.
+ *
+ * A destination proposal (one place, 찬성 / 반대) has its own screen here: [ProposalVoteScreen]. [onOpenVote] opens
+ * the counter-proposal it can send, [onClose] goes back to 홈 after a proposal was turned down.
  */
 @Composable
 fun VoteScreen(
@@ -89,11 +92,18 @@ fun VoteScreen(
     placeTimes: StateFlow<PlaceTimes>,
     onPass: (dropId: String) -> Unit,
     onOpenResult: (dropId: String) -> Unit,
+    onOpenVote: (dropId: String) -> Unit,
+    onClose: () -> Unit,
 ) {
     val drops by vm.drops.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
     val times by placeTimes.collectAsStateWithLifecycle()
     val drop = drops.firstOrNull { it.id == dropId } ?: return
+    if (VoteRules.isProposal(drop)) {
+        // One new destination to say 찬성 or 반대 to, not places to choose between.
+        ProposalVoteScreen(vm, drop, onOpenResult = onOpenResult, onOpenVote = onOpenVote, onClose = onClose)
+        return
+    }
     val cars = crew?.cars.orEmpty()
     // Only the sender and the cars it was sent to answer this vote.
     val carCount = drop.voterIds(cars.map { it.id }).size

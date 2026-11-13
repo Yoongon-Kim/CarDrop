@@ -53,6 +53,7 @@ import com.cardrop.drive.QuickDropEditScreen
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
 import com.cardrop.drop.InboxScreen
+import com.cardrop.drop.VoteRules
 import com.cardrop.drop.VoteScreen
 import com.cardrop.navi.InAppNavigatorPanel
 import kotlinx.coroutines.delay
@@ -195,7 +196,9 @@ fun CarDropApp(container: AppContainer) {
             Screen.Inbox -> Box(modifier = Modifier.fillMaxSize()) {
                 driveScreen(null)
                 InboxScreen(crewVm, onClose = navigator::back, isSkipped = driveVm::skipped) { drop ->
-                    navigator.go(inboxScreenFor(drop))
+                    // A destination proposal that was turned down decided no place, so board 14 has nothing to
+                    // show: it opens on board 11, which says who said 반대.
+                    navigator.go(if (VoteRules.rejected(drop)) Screen.Vote(drop.id) else inboxScreenFor(drop))
                 }
             }
             Screen.DropSend -> DropSendScreen(
@@ -204,6 +207,8 @@ fun CarDropApp(container: AppContainer) {
                 onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
                 onGames = { navigator.go(Screen.Games) },
                 onClose = { navigator.switchTab(Screen.Drive) },
+                // 목적지 변경: the proposal just sent opens on board 11, where the answers come in.
+                onProposalSent = { drop -> navigator.go(Screen.Vote(drop.id)) },
             )
             is Screen.Shout -> ShoutScreen(
                 vm = aiVm,
@@ -225,6 +230,9 @@ fun CarDropApp(container: AppContainer) {
             is Screen.Vote -> VoteScreen(
                 crewVm, screen.dropId, placeTimes = container.placeTimes, onPass = container.navigation.decisions::skip,
                 onOpenResult = { navigator.go(Screen.Decided(it)) },
+                // A destination proposal: its counter-proposal opens as a new vote; 닫기 after a 반대 goes to 홈.
+                onOpenVote = { navigator.go(Screen.Vote(it)) },
+                onClose = { navigator.switchTab(Screen.Drive) },
             )
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             Screen.Games -> {

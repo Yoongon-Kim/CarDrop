@@ -78,6 +78,15 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
     is no longer offered on screen.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
+- 목적지 변경 is a proposal, not an AI vote (Member A, 2026-11-14; not on the design board): board 08's tile opens
+  "어디로 제안할까요?" on the same screen (`drop/DestinationProposal.kt`, board 02's place search), then "여기로 제안을
+  보낼까요?" sends a DESTINATION drop with one place (`ProposalRules.draft`). The receivers get board 11 as
+  `drop/ProposalVoteScreen.kt`: 찬성 / 반대 / 다른 목적지 제안하기 (the same search; it says 반대 first). Rules in
+  `VoteRules`: `isProposal` = a DESTINATION drop with exactly one place; one 반대 (`VoteRules.NO`) ends it at once
+  with `decidedCandidateId = VoteRules.REJECTED`, which is no candidate, so `decidedCandidate` is null and the
+  navigator and board 14 leave it alone; no 반대 by the end = the place wins as in any vote (silent cars count as
+  찬성). "AI 추천 받기" on the search still opens board 10 with three picks, as does saying "목적지 바꾸자". The DEMO
+  panel's "삼촌 차 목적지 제안 받기" stages the receiving side with the bot crew.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
   lines 302-344): four slots, all empty (dashed "추가") until the driver fills them. 편집 or an empty slot opens
   퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in the order ticked; 노래, 같이 켜기

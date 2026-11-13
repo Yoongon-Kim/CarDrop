@@ -299,7 +299,7 @@ internal data class InboxRowText(
  * - a vote: "아빠 차: 어디서 쉬어갈까요?", and while it is open "덕평 · 여주 · 문막 · 1:48 남음";
  * - a fuel invite: its own title, and "같이 갈지 아직 안 골랐어요" while this car hasn't answered;
  * - a 한마디: "삼촌 차: “천천히 와요~”" over "일행에게 한마디";
- * - a finished decision: what was decided.
+ * - a finished decision: what was decided; a destination proposal that was turned down says so.
  * The sender's name goes in front of the title unless the title already starts with it (the DEMO panel's invite:
  * "민지 차 연료가 부족해요 · 같이 갈래요?").
  */
@@ -308,6 +308,8 @@ internal fun inboxRowText(drop: Drop, senderName: String, status: DropStatus, no
     val open = if (status == DropStatus.NEEDS_ANSWER) TagLook.NEEDS_ANSWER else TagLook.DONE
     return when {
         status == DropStatus.SOCIAL -> InboxRowText("소셜 · 한마디", TagLook.SOCIAL, "$senderName: “${drop.title}”", "일행에게 한마디")
+        // A destination proposal one car said 반대 to: nothing was decided, the destination stays.
+        VoteRules.rejected(drop) -> InboxRowText("결정 · 완료", TagLook.DONE, title, "반대가 있어 목적지는 그대로예요")
         status == DropStatus.DECIDED ->
             InboxRowText("결정 · 완료", TagLook.DONE, title, drop.decidedCandidate?.let { "결정: ${it.place.name}" } ?: "결정됐어요")
         drop.topic == DropTopic.FUEL ->

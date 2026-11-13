@@ -144,9 +144,10 @@ fun DestinationSearchScreen(vm: CrewViewModel, onBack: () -> Unit, onPicked: () 
  * that empties the box (an app extra) and 말로 검색 inside the box. Its edge stays blue, with a soft blue
  * glow under it (`box-shadow: 0 8px 20px rgba(49,130,246,0.15)`): this screen is for typing, so the box
  * is what to look at. Without a voice service ([onListen] = null) there is no 말로 검색.
+ * Internal (not private): the destination proposal's search (drop/DestinationProposal.kt) uses the same box.
  */
 @Composable
-private fun SearchBox(
+internal fun SearchBox(
     query: String,
     onQueryChange: (String) -> Unit,
     focus: FocusRequester,

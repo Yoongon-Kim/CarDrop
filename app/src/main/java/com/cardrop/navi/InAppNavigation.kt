@@ -13,8 +13,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
@@ -91,6 +95,10 @@ class InAppNavigation(
 
     private val _state = MutableStateFlow(NavigatorState())
     val state: StateFlow<NavigatorState> = _state
+
+    /** [NavigatorState.parkedAt] alone, so a screen that names the stop (board 15) isn't redrawn on every GPS reading. */
+    val parkedAt: StateFlow<Place?> = _state.map { it.parkedAt }.distinctUntilChanged()
+        .stateIn(scope, SharingStarted.Eagerly, null)
 
     // Room for a few events, so a slow listener never holds up the GPS.
     private val _waypointEvents = MutableSharedFlow<WaypointEvent>(extraBufferCapacity = 8)

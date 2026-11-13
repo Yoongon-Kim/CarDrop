@@ -174,7 +174,12 @@ fun CarDropApp(container: AppContainer) {
             }
             is Screen.Vote -> VoteScreen(crewVm, screen.dropId)
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
-            Screen.Games -> QuizScreen(aiVm)
+            Screen.Games -> {
+                // For the eyebrow "덕평자연휴게소 · 4대 모두 정차": the stop this car is parked at, and the crew's messages.
+                val stop by container.inAppNavigation.parkedAt.collectAsStateWithLifecycle()
+                val drops by driveVm.drops.collectAsStateWithLifecycle()
+                QuizScreen(aiVm, stop = stop, drops = drops)
+            }
         }
     }
 }

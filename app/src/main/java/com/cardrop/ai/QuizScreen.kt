@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
+import com.cardrop.core.model.Crew
+import com.cardrop.core.model.Drop
+import com.cardrop.core.model.Place
 import com.cardrop.core.model.QuizQuestion
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
@@ -31,6 +34,8 @@ import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.drive.StopNews
+import com.cardrop.navi.WaypointResult
 
 /**
  * Board 15 게임 (정차 중) · Owner: lead. Laid out like the design: the games on the left with "도전장 드랍", and on the
@@ -38,7 +43,13 @@ import com.cardrop.core.ui.theme.CdColors
  * chess). It opens only in P; a game paused in D carries on at the next stop.
  */
 @Composable
-fun QuizScreen(vm: AiViewModel) {
+fun QuizScreen(
+    vm: AiViewModel,
+    /** The crew's stop this car is parked at (the navigator's `parkedAt`); null = parked somewhere else. */
+    stop: Place? = null,
+    /** This car's drops, for who else said "…에 도착했어요" there. */
+    drops: List<Drop> = emptyList(),
+) {
     val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
     val quiz by vm.quiz.collectAsStateWithLifecycle()
     val round by vm.round.collectAsStateWithLifecycle()
@@ -46,7 +57,7 @@ fun QuizScreen(vm: AiViewModel) {
     LaunchedEffect(snapshot.isParked) { if (snapshot.isParked) vm.ensureQuiz() }
 
     ScreenColumn {
-        ScreenHeader(eyebrow = "정차 중 · 크루 전체", title = "일행이랑 한 판 할까요?") {
+        ScreenHeader(eyebrow = gameEyebrow(stop, crew, vm.myCarId, drops), title = "일행이랑 한 판 할까요?") {
             Pill("P · 정차 중에만 열려요")
         }
         if (!snapshot.isParked) {
@@ -83,6 +94,20 @@ fun QuizScreen(vm: AiViewModel) {
             }
         }
     }
+}
+
+/**
+ * Board 15's eyebrow (target 506): at the crew's stop, its name and how many cars stopped there, e.g.
+ * "덕평자연휴게소 · 4대 모두 정차" or "덕평자연휴게소 · 2대 정차". The other cars count once they said
+ * "…에 도착했어요" ([StopNews]) since the vote for that stop; this car counts because it is parked there.
+ * Anywhere else: "정차 중 · 크루 전체". Internal so GameEyebrowTest can check it.
+ */
+internal fun gameEyebrow(stop: Place?, crew: Crew?, myCarId: String, drops: List<Drop>): String {
+    if (stop == null || crew == null) return "정차 중 · 크루 전체"
+    val votedAt = drops.filter { it.decidedCandidate?.place?.id == stop.id }.maxOfOrNull { it.createdAtMillis } ?: 0L
+    val stopped = StopNews.results(drops, stop, sinceMillis = votedAt).filterValues { it == WaypointResult.ARRIVED }.keys + myCarId
+    val count = crew.cars.count { it.id in stopped }
+    return if (count == crew.cars.size) "${stop.name} · ${count}대 모두 정차" else "${stop.name} · ${count}대 정차"
 }
 
 /** One game in the left column: its icon tile, name and what it is. */

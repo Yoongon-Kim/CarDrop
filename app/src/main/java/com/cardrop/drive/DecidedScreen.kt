@@ -13,7 +13,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -122,8 +127,15 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
         // drops: the crew's "도착했어요" / "지나쳤어요" messages change the list too.
         val arrivals = remember(drop, drops, positions, route, crew, skipped) { vm.arrivals(drop) }
         if (arrivals.isNotEmpty()) {
-            CdCard(Modifier.fillMaxWidth()) {
-                Text("도착 예정", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+            // Padding 16 x 22 and no gap: the rows bring their own space and lines (target lines 497-499).
+            CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 16.dp), gap = 0.dp) {
+                Text(
+                    "도착 예정",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CdColors.Ink,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
                 arrivals.forEach { ArrivalRow(it) }
             }
         }
@@ -135,19 +147,37 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
     }
 }
 
-/** One car in "도착 예정": the car, its name and status, and when it gets there. */
+/**
+ * One car in "도착 예정": the car, its name with its status right after it in smaller grey text, and when it gets
+ * there; 6 above and below, with a thin line under every row (target line 499).
+ */
 @Composable
 private fun ArrivalRow(arrival: Arrival) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val line = 1.dp.toPx()
+                drawLine(CdColors.Gray100, Offset(0f, size.height - line / 2), Offset(size.width, size.height - line / 2), line)
+            }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         CarBadge(arrival.car)
-        Row(
+        Text(
+            buildAnnotatedString {
+                append(arrival.car.name)
+                append(" ")
+                withStyle(SpanStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = CdColors.Gray600)) {
+                    append(arrival.status)
+                }
+            },
+            fontSize = 16.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = CdColors.Ink,
             modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(arrival.car.name, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
-            Text(arrival.status, fontSize = 13.sp, color = CdColors.Gray600)
-        }
+        )
         Text(arrival.time, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
     }
 }

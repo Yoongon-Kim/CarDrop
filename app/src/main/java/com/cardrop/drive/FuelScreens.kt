@@ -116,9 +116,9 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
             }
             DriveActionFeedback(action)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Always the design's hint (344); the 말로 답하기 chip next to it comes only with the real voice.
                 Text(
-                    if (listener != null) "“응”, “알려줘”라고 말해도 돼요 · 어느 쪽이든 AI가 주유소를 골라드려요"
-                    else "어느 쪽이든 AI가 주유소를 골라드려요",
+                    "“응”, “알려줘”라고 말해도 돼요 · 어느 쪽이든 AI가 주유소를 골라드려요",
                     fontSize = 13.sp, color = CdColors.Gray600, modifier = Modifier.weight(1f),
                 )
                 if (listener != null) {

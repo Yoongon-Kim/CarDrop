@@ -93,7 +93,7 @@ private fun SharedControlsPreview() {
                 AiTag()
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                listOf(CdIcons.Back, CdIcons.Close, CdIcons.Plus, CdIcons.Pencil, CdIcons.Mic, CdIcons.Check).forEach {
+                listOf(CdIcons.Back, CdIcons.Close, CdIcons.Plus, CdIcons.Pencil, CdIcons.Mic, CdIcons.Check, CdIcons.Flag).forEach {
                     Icon(it, contentDescription = null, tint = CdColors.Ink2)
                 }
                 Icon(CdIcons.Search, contentDescription = null, tint = CdColors.Blue, modifier = Modifier.size(26.dp))

@@ -54,6 +54,8 @@ object CdIcons {
     )
     /** 한마디 (a speech bubble). */
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
+    /** 목적지 변경 (a flag): board 08's tile, target line 657 (`dest`). */
+    val Flag = lineIcon("Flag", strokeWidth = 2.2f, "M4 22V4M4 4h12l-2 4 2 4H4")
     /**
      * A magnifier (board 02's search box, target line 156: 26 px, blue). The design's
      * `<circle cx="11" cy="11" r="7">` is written here as two half circles.

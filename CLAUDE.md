@@ -71,8 +71,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   - Board 10 "다른 곳을 직접 입력": the suggestions replace the list until the box is empty; tapping one (or 추가 =
     the top one) puts it in the list, ticked. 말해서 추가 takes the top result for what was heard. Known places
     here: rest stops, cafés, destinations. A searched place that is an AI pick under a longer name
-    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). 직접 추가 (`DropTopic.CUSTOM`) opens board 10
-    with no AI picks.
+    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). Board 08 has no 카페 or 직접 추가 tile (D11):
+    any place is added here, and 카페 comes up by voice ("커피"). `DropTopic.CUSTOM` (board 10 with no AI picks)
+    is no longer offered on screen.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 

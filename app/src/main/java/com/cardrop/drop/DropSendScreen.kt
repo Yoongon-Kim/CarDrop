@@ -121,11 +121,6 @@ fun DropSendScreen(
                 TopicCard("밥 먹자", "식당 · 휴게소 맛집", Modifier.weight(1f)) { onPickTopic(DropTopic.FOOD, toCarIds) }
                 TopicCard("주유하자", "가는 길 주유소", Modifier.weight(1f)) { onPickTopic(DropTopic.FUEL, toCarIds) }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                TopicCard("카페 가자", "경포 근처 카페", Modifier.weight(1f)) { onPickTopic(DropTopic.CAFE, toCarIds) }
-                TopicCard("직접 추가", "원하는 곳을 골라요", Modifier.weight(1f)) { onPickTopic(DropTopic.CUSTOM, toCarIds) }
-                Spacer(Modifier.weight(1f)) // keeps the cards the same width as the row above
-            }
         }
         TopicGroup("소셜 드랍 · 화면에만 조용히", CdColors.VioletDark, CdColors.VioletLight) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {

@@ -3,7 +3,9 @@ package com.cardrop.navi
 import com.cardrop.core.model.NavRoute
 import com.cardrop.core.model.Place
 import com.cardrop.drive.TripDecisions
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * Owner: Member B.
@@ -36,4 +38,13 @@ interface NavigationHandoff {
 
     /** Opens the navigation app on the current route. Returns false if it could not open. */
     fun launch(): Boolean
+
+    /**
+     * This car stopped at the waypoint or drove past it (the stop is then off the route). Only the
+     * in-app navigator knows; an external map app reports nothing.
+     */
+    val waypointEvents: Flow<WaypointEvent> get() = emptyFlow()
 }
+
+/** What this car did at [place], the crew's stop. */
+data class WaypointEvent(val place: Place, val result: WaypointResult)

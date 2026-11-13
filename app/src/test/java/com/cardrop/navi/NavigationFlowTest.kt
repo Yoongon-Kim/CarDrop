@@ -70,6 +70,33 @@ class NavigationFlowTest {
             assertEquals(2, router.requests)
         } finally { scope.cancel() }
     }
+    @Test fun drivingPastTheStopTakesItOffTheRouteAndTellsListeners() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            var now = 100_000L
+            val location = Location()
+            val router = Router(road)
+            val nav = InAppNavigation(scope, location, router) { now }
+            val events = mutableListOf<WaypointEvent>()
+            scope.launch { nav.waypointEvents.collect { events += it } }
+            val stop = geometry.pointAt(5.0).let { Place("yeoju", "여주휴게소", it.lat + 100 / 111_320.0, it.lng) }
+            location.fix.value = fix(4.0, now)
+            nav.setRoute(DemoData.gyeongpo, waypoint = stop)
+            yield()
+            assertEquals(1, router.requests)
+            var km = 4.0
+            while (km < 6.0) {
+                now += 1_000
+                km += 80.0 / 3600 // the fix() speed, 80 km/h
+                location.fix.value = fix(km, now)
+                yield()
+            }
+            assertEquals(listOf(WaypointEvent(stop, WaypointResult.PASSED)), events)
+            assertNull(nav.route.value.waypoint)
+            assertEquals("여주휴게소를 지나쳤어요 · 목적지로 안내해요", nav.route.value.lastAction)
+            assertEquals(2, router.requests) // a new route straight to the destination
+        } finally { scope.cancel() }
+    }
     @Test fun aFailedPrimaryProviderFallsBackAndCancellationDoesNot() = runBlocking {
         val backup = Router(road)
         val failing = object : RouteProvider {

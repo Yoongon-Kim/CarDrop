@@ -141,7 +141,8 @@ GPS position, live routes, rerouting, turn guidance. Only the GPS input is simul
 
 **Run the demo car:** start the emulator and the app, then
 `python3 tools/drive_gps.py` (drives the 영동고속도로 from km 40 at 6x speed, 1 GPS fix per second via
-`adb emu geo fix`; `--speed 1` for real time, `--start-km`, `--gpx` for Extended controls). The emulator's
+`adb emu geo fix`; `--speed 1` for real time, `--start-km`, `--gpx` for Extended controls,
+`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). The emulator's
 own route player can't make Korean routes (Google has no driving directions in Korea). Grant location
 when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permission.ACCESS_FINE_LOCATION`).
 
@@ -150,8 +151,13 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
 - `navi/GpsLocation.kt` - Android GPS (1 fix/s). The emulator reports bearing 0, so direction comes from movement.
 - `navi/InAppNavigation.kt` - the navigator (`NavigationHandoff`): asks for a route from the GPS position to
   the crew destination via the voted waypoint; asks again when the destination / waypoint changes, when
-  the car leaves the route (60 m, 3 fixes) and after the waypoint is reached (600 m). Rules in
+  the car leaves the route (60 m, 3 fixes) and once the car is done with the waypoint. Rules in
   `navi/GuidanceTracker.kt` (unit tested).
+- Waypoint done: **도착** = within 300 m and under 20 km/h for 10 s; **지나침** = came within 600 m, then
+  more than 800 m away without stopping (the motorway passes rest stops 70-100 m from their map point, so
+  distance alone can't tell them apart). Either one takes the stop off the route, shows the CarDrop toast,
+  and `drive/TripCoordinator.kt` says it aloud and sends the crew a SOCIAL drop ("…에 도착했어요" /
+  "…를 지나쳤어요"). Board 14 "도착 예정" still marks a car "도착했어요" by distance alone (0.3 km).
 - Routing: `navi/KakaoDirections.kt` (Kakao Mobility, Korean data + traffic + Korean turn texts; key
   `cardrop.kakaoRestKey`, free for non-commercial use up to 10,000 requests/day), then
   `navi/OsrmDirections.kt` (public OSRM server, no key, no traffic, no uptime promise) as backup.

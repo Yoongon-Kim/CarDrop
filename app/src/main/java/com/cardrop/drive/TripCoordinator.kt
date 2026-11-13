@@ -4,8 +4,12 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
+import com.cardrop.core.text.particle
 import com.cardrop.crew.CrewRepository
+import com.cardrop.crew.DropDraft
 import com.cardrop.navi.NavigationHandoff
+import com.cardrop.navi.WaypointEvent
+import com.cardrop.navi.WaypointResult
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -19,6 +23,7 @@ import kotlinx.coroutines.launch
  * - the crew destination changes -> record it as the route (the driver opens the map app)
  * - the crew forms -> start moving the cars on the route
  * - a vote ends -> record the winner as the waypoint and say it aloud
+ * - this car stops at the waypoint or drives past it -> say it aloud and tell the crew
  */
 class TripCoordinator(
     private val scope: CoroutineScope,
@@ -32,6 +37,7 @@ class TripCoordinator(
     fun start() {
         if (job?.isActive == true) return
         job = scope.launch {
+            launch { navigation.waypointEvents.collect(::onWaypoint) }
             var previousKey: String? = null
             var previousCars = emptyList<String>()
             var previousDestination: Place? = null
@@ -67,6 +73,21 @@ class TripCoordinator(
                 }
             }
         }
+    }
+
+    /**
+     * The driver hears it; the other cars get a quiet on-screen message (a SOCIAL drop, never spoken),
+     * shown as e.g. "아빠 차 · 여주휴게소에 도착했어요".
+     */
+    private suspend fun onWaypoint(event: WaypointEvent) {
+        val name = event.place.name
+        val (spoken, forCrew) = when (event.result) {
+            WaypointResult.ARRIVED -> "${name}에 도착했어요" to "${name}에 도착했어요"
+            WaypointResult.PASSED ->
+                "${name.particle("을", "를")} 지나쳤어요. 목적지로 안내할게요" to "${name.particle("을", "를")} 지나쳤어요"
+        }
+        runCatching { voice.speak(spoken) }
+        runCatching { crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = forCrew)) }
     }
 
     private fun involved(drop: Drop): Boolean = drop.topic != DropTopic.FUEL ||

@@ -1,7 +1,10 @@
 package com.cardrop.drive
 
 import com.cardrop.core.demo.DemoData
+import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
+import com.cardrop.navi.WaypointEvent
+import com.cardrop.navi.WaypointResult
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -15,6 +18,23 @@ class TripCoordinatorTest {
         val voice = TestVoice()
         val coordinator = TripCoordinator(scope, crew, route, nav, voice)
         try { coordinator.start(); block(scope, crew, nav, route, voice, coordinator) } finally { scope.cancel() }
+    }
+
+    @Test fun stoppingAtTheStopIsSpokenAndToldToTheCrew() = runScenario { _, crew, nav, _, voice, _ ->
+        nav.waypointEvents.emit(WaypointEvent(DemoData.restStops[1], WaypointResult.ARRIVED))
+        yield()
+        assertEquals("여주휴게소에 도착했어요", voice.spoken.last())
+        val sent = crew.drops.value.single()
+        assertEquals(DropKind.SOCIAL, sent.kind) // on screen only, never spoken on the other cars
+        assertEquals("여주휴게소에 도착했어요", sent.title)
+        assertTrue(sent.toCarIds.isEmpty()) // the whole crew
+    }
+
+    @Test fun drivingPastTheStopIsSpokenAndToldToTheCrew() = runScenario { _, crew, nav, _, voice, _ ->
+        nav.waypointEvents.emit(WaypointEvent(DemoData.restStops[1], WaypointResult.PASSED))
+        yield()
+        assertEquals("여주휴게소를 지나쳤어요. 목적지로 안내할게요", voice.spoken.last())
+        assertEquals("여주휴게소를 지나쳤어요", crew.drops.value.single().title)
     }
 
     @Test fun aFinishedVoteReroutesOnceWithoutLaunchingAnExternalApp() = runScenario { _, crew, nav, _, voice, coordinator ->

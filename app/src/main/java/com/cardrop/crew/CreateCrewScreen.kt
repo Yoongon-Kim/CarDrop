@@ -33,6 +33,7 @@ import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.TightLetterSpacing
 
 /** Board 01 크루 만들기 (방장) · Owner: Member A. */
 @Composable
@@ -49,7 +50,14 @@ fun CreateCrewScreen(
     var shareStatus by remember { mutableStateOf<String?>(null) }
 
     ScreenColumn {
-        ScreenHeader(eyebrow = "출발 전 · 정차 중", title = "함께 갈 차를 모아요") {
+        // Design lines 95-97: eyebrow 15px, title 32/800 with letter-spacing -0.02em.
+        ScreenHeader(
+            eyebrow = "출발 전 · 정차 중",
+            title = "함께 갈 차를 모아요",
+            eyebrowSize = 15.sp,
+            titleSize = 32.sp,
+            titleLetterSpacing = TightLetterSpacing,
+        ) {
             SecondaryButton("받은 코드로 참여", onClick = onJoinWithCode)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {

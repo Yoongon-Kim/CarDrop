@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -96,15 +97,18 @@ internal class LastItemAtBottom(private val gap: Dp) : Arrangement.Vertical {
     }
 }
 
-/** The left menu ("rail") from the design. 기록 (safety race) is cut for week 1, so 편지함 takes its place. */
-private data class RailItem(val label: String, val icon: ImageVector, val screen: Screen)
+/**
+ * The left menu ("rail") from the design. 기록 (safety race) is cut for week 1, so 편지함 takes its place.
+ * [needsTrip]: greyed out until the crew's trip starts (the host's 출발): drops, games and the inbox come with it.
+ */
+private data class RailItem(val label: String, val icon: ImageVector, val screen: Screen, val needsTrip: Boolean = false)
 
 private val railItems = listOf(
     RailItem("홈", CdIcons.Home, Screen.Drive),
-    RailItem("드랍", CdIcons.Send, Screen.DropSend),
+    RailItem("드랍", CdIcons.Send, Screen.DropSend, needsTrip = true),
     RailItem("크루", CdIcons.Crew, Screen.CreateCrew),
-    RailItem("게임", CdIcons.Game, Screen.Games),
-    RailItem("편지함", CdIcons.Inbox, Screen.Inbox),
+    RailItem("게임", CdIcons.Game, Screen.Games, needsTrip = true),
+    RailItem("편지함", CdIcons.Inbox, Screen.Inbox, needsTrip = true),
 )
 
 private fun Screen.railGroup(): Screen = when (this) {
@@ -127,12 +131,19 @@ fun CarDropShell(
     overlay: @Composable () -> Unit,
     /** This car, drawn at the bottom of the rail with "내 차" (as in the design). */
     myCar: Car? = null,
+    /** False until the crew's trip starts: the rail's 드랍, 게임 and 편지함 are greyed out until then. */
+    tripStarted: Boolean = true,
+    /**
+     * Something app-only drawn low in the rail, just above [myCar]: the DEMO button. The rail is never under a
+     * screen's own content, unlike a corner of the screen, where boards pin their buttons. Null = nothing.
+     */
+    railExtra: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     DesignScale(designWidth = DESIGN_WIDTH + NAV_PANEL_WIDTH) {
         Row(modifier = Modifier.fillMaxSize().background(CdColors.Gray100)) {
             Box(modifier = Modifier.width(NAV_PANEL_WIDTH.dp).fillMaxHeight()) { navPanel() }
-            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar)
+            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar, tripStarted = tripStarted, extra = railExtra)
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 content()
                 overlay()
@@ -145,9 +156,10 @@ fun CarDropShell(
  * The design's CarDrop area is 1067 x 900 px (1600 x 900 minus the 533 px navigation third).
  * This scales the UI so 1 dp in our code = 1 design px when the window is [designWidth] x 900, and
  * grows or shrinks everything together on other windows. Write sizes straight from the design boards.
+ * Also used by the start question (core/demo/StartModeScreen.kt), shown before this shell.
  */
 @Composable
-private fun DesignScale(designWidth: Float, content: @Composable () -> Unit) {
+internal fun DesignScale(designWidth: Float, content: @Composable () -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val current = LocalDensity.current
         val scale = minOf(maxWidth.value / designWidth, maxHeight.value / DESIGN_HEIGHT)
@@ -163,7 +175,13 @@ private const val DESIGN_HEIGHT = 900f
 private const val NAV_PANEL_WIDTH = 533f
 
 @Composable
-private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
+private fun Rail(
+    current: Screen,
+    onTab: (Screen) -> Unit,
+    myCar: Car?,
+    tripStarted: Boolean,
+    extra: (@Composable () -> Unit)?,
+) {
     Column(
         modifier = Modifier
             .width(88.dp)
@@ -188,12 +206,14 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
         }
         railItems.forEach { item ->
             val on = item.screen == current
+            val enabled = tripStarted || !item.needsTrip
             Column(
                 modifier = Modifier
                     .size(64.dp)
+                    .alpha(if (enabled) 1f else 0.4f) // like the greyed-out quick drops on board 04
                     .clip(RoundedCornerShape(18.dp))
                     .background(if (on) CdColors.BlueLight else CdColors.White)
-                    .clickable { onTab(item.screen) },
+                    .clickable(enabled = enabled) { onTab(item.screen) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 // Icon and label centred, 4 apart (the design's `gap: 4px`).
                 verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
@@ -203,8 +223,10 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
                 Text(item.label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
+        // The rest goes to the bottom of the rail, [extra] 12 above the car (6 more than the rail's usual gap).
+        if (myCar != null || extra != null) Spacer(Modifier.weight(1f))
+        if (extra != null) Box(Modifier.padding(bottom = 6.dp)) { extra() }
         if (myCar != null) {
-            Spacer(Modifier.weight(1f))
             // The car and "내 차" sit 2 apart (the design's `gap: 2px`), closer than the rail's 6.
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 CarBadge(myCar)

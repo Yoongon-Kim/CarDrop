@@ -31,6 +31,7 @@ import com.cardrop.ai.AiViewModel
 import com.cardrop.ai.QuizScreen
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
+import com.cardrop.core.demo.DemoRailButton
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
 import com.cardrop.core.navigation.DropRoutingEffect
@@ -55,6 +56,9 @@ import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteScreen
 import com.cardrop.navi.InAppNavigatorPanel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 
 /**
  * Owner: lead. Wires every screen to its ViewModel and to the navigator.
@@ -68,7 +72,7 @@ fun CarDropApp(container: AppContainer) {
             container.crew, container.placeSearch, container::myPosition, container.voice, container.destinationTrip,
         ) }
     val driveVm: DriveViewModel = viewModel {
-        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai, tripStart = container.tripStart)
+        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai)
     }
     val aiVm: AiViewModel = viewModel {
         AiViewModel(
@@ -93,9 +97,22 @@ fun CarDropApp(container: AppContainer) {
     ) { socialMessage = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
+    // The trip just started (the host's 출발, every car joined, or the 3 minutes for joining are over): board 01 gives way to
+    // board 04, on the host and on a car that looked at the crew. Only the change counts (drop(1)): a new activity
+    // with the trip already started keeps the screen the driver chose.
+    LaunchedEffect(container.crew) {
+        container.crew.crew.map { it?.isStarted == true }.distinctUntilChanged().drop(1).collect { started ->
+            if (started && (navigator.current == Screen.CreateCrew || navigator.current == Screen.DestinationSearch)) {
+                navigator.switchTab(Screen.Drive)
+            }
+        }
+    }
+
     val crewNow by container.crew.crew.collectAsStateWithLifecycle()
     val myCar = crewNow?.cars?.firstOrNull { it.id == container.crew.myCarId }
         ?: Car(container.crew.myCarId, "내 차", CarColor.BLUE, isMe = true)
+    // The DEMO panel: its button sits in the rail (so it never covers a screen's bottom buttons), the panel over the screen.
+    var demoOpen by remember { mutableStateOf(false) }
 
     CarDropShell(
         current = navigator.current,
@@ -103,9 +120,11 @@ fun CarDropApp(container: AppContainer) {
         navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)
-            DemoPanel(container)
+            DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },
         myCar = myCar,
+        tripStarted = crewNow?.isStarted == true,
+        railExtra = { DemoRailButton(onClick = { demoOpen = !demoOpen }) },
     ) {
         // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
         val driveScreen: @Composable (FuelInvite?) -> Unit = { invite ->
@@ -134,8 +153,10 @@ fun CarDropApp(container: AppContainer) {
                 onSearchDestination = { navigator.go(Screen.DestinationSearch) },
                 onJoinWithCode = { navigator.go(Screen.JoinCrew) },
                 onDepart = {
+                    // The host's 출발: the cars that joined start with this one, the missing ones are left out.
+                    // After the start the button only leads back to board 04 (both calls then do nothing).
                     driveVm.startGuidance()
-                    container.tripStart.start() // the cars that joined start with this one (real crew)
+                    crewVm.startTrip()
                     navigator.switchTab(Screen.Drive)
                 },
             )
@@ -146,7 +167,7 @@ fun CarDropApp(container: AppContainer) {
                 onBack = navigator::back,
             ) { stop ->
                 // Before the host's 출발 this car waits on board 04; TripCoordinator starts it with the host.
-                if (container.tripStart.started.value) driveVm.startGuidance()
+                if (container.crew.crew.value?.isStarted == true) driveVm.startGuidance()
                 // "…들렀다 가기": where this car was heading becomes the waypoint on the way to the crew's
                 // destination. After startGuidance, so the navigator's last message is about the stop.
                 val crewDestination = container.crew.crew.value?.destination
@@ -181,6 +202,8 @@ fun CarDropApp(container: AppContainer) {
                 vm = crewVm,
                 onPickTopic = { topic, toCarIds -> navigator.go(Screen.AiRecommend(topic, toCarIds)) },
                 onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
+                onGames = { navigator.go(Screen.Games) },
+                onClose = { navigator.switchTab(Screen.Drive) },
             )
             is Screen.Shout -> ShoutScreen(
                 vm = aiVm,
@@ -193,10 +216,16 @@ fun CarDropApp(container: AppContainer) {
                     navigator.switchTab(Screen.Drive)
                 },
             )
-            is Screen.AiRecommend -> AiRecommendScreen(aiVm, screen.topic, screen.toCarIds, onBack = navigator::back) { drop ->
+            is Screen.AiRecommend -> AiRecommendScreen(
+                aiVm, screen.topic, screen.toCarIds, placeTimes = container.placeTimes, onBack = navigator::back,
+            ) { drop ->
                 navigator.go(Screen.Vote(drop.id))
             }
-            is Screen.Vote -> VoteScreen(crewVm, screen.dropId)
+            // A pass (난 패스) keeps this car's route: the navigator skips the stop, like 14's "우리 차는 안 들르기".
+            is Screen.Vote -> VoteScreen(
+                crewVm, screen.dropId, placeTimes = container.placeTimes, onPass = container.navigation.decisions::skip,
+                onOpenResult = { navigator.go(Screen.Decided(it)) },
+            )
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             Screen.Games -> {
                 // For the eyebrow "덕평자연휴게소 · 4대 모두 정차": the stop this car is parked at, and the crew's messages.
@@ -210,7 +239,7 @@ fun CarDropApp(container: AppContainer) {
 
 /**
  * Top right, below the screen header: the card for this car getting to the crew's stop (stopped / drove past).
- * Bottom right, just above the DEMO button (so they don't cover the screen header): the black captions
+ * Bottom right, a little up from the corner (so they don't cover the screen header): the black captions
  * for the microphone listening, what the voice just said (the fake voice has no sound; fades out after
  * a few seconds), and quiet social messages.
  */
@@ -238,7 +267,7 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
             StopNoticeCard(stopNotice, navRoute.waypoint)
         }
         Column(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = CAPTIONS_ABOVE_DEMO),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = CAPTIONS_FROM_BOTTOM),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -251,8 +280,11 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
     }
 }
 
-/** Room for the DEMO button (about 40 dp tall) in the same corner, plus a small gap. */
-private val CAPTIONS_ABOVE_DEMO = 50.dp
+/**
+ * How far up from the corner the captions sit: where they were above the DEMO button, which is in the rail now.
+ * While they show (a few seconds), they still cover the right end of a button pinned to the bottom.
+ */
+private val CAPTIONS_FROM_BOTTOM = 50.dp
 
 /**
  * The stop card's distance from the top, inside the 16 dp around the captions: a screen header ends about

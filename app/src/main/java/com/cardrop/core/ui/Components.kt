@@ -479,10 +479,27 @@ fun InfoRow(
     }
 }
 
-/** "AI" tag used wherever the AI wrote something. */
+/**
+ * "AI" tag used wherever the AI wrote something. The default is today's round pill (14sp); `small = true` is
+ * the small square-ish tag on board 11's AI card (target line 466: 12px / 800, white on #3182F6, radius 6,
+ * padding 3 x 7).
+ */
 @Composable
-fun AiTag() {
-    Pill("AI", background = CdColors.Blue, color = CdColors.White)
+fun AiTag(small: Boolean = false) {
+    if (!small) {
+        Pill("AI", background = CdColors.Blue, color = CdColors.White)
+        return
+    }
+    Text(
+        text = "AI",
+        color = CdColors.White,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(CdColors.Blue)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
 }
 
 /** Placeholder for parts of a screen that are not built yet. Delete it once the part exists. */

@@ -26,10 +26,22 @@ interface CrewRepository {
     /** All drops in the crew, oldest first. Votes and decisions update in place. */
     val drops: StateFlow<List<Drop>>
 
+    /** Board 01: a new crew with this car as its host. The other cars have 3 minutes to join (`Crew.joinDeadlineMillis`). */
     suspend fun createCrew(name: String, destination: Place): Crew
 
-    /** Returns null when no crew uses this code. */
+    /**
+     * Returns null when no crew uses this code. Throws [CrewClosedException] when the crew's trip started without
+     * this car (it didn't join in time). A car that was in the trip can join again, e.g. after its app restarted.
+     */
     suspend fun joinCrew(code: String): Crew?
+
+    /**
+     * The trip starts for the whole crew: the host's 출발 (board 01), or by itself (TripCoordinator) once every car
+     * has joined or the join deadline has passed. The cars that haven't joined yet are left out
+     * (`JoinRules.missingCars`): they drop out of [crew] on every device.
+     * Does nothing when the trip has started already.
+     */
+    suspend fun startTrip()
 
     suspend fun setDestination(destination: Place)
 
@@ -42,6 +54,9 @@ interface CrewRepository {
 
     fun leaveCrew()
 }
+
+/** [CrewRepository.joinCrew]: the crew set off without this car, which didn't join within 3 minutes. */
+class CrewClosedException : Exception("이미 출발한 크루예요")
 
 /** What a car fills in before sending a drop. The repository adds ids and timestamps. */
 data class DropDraft(

@@ -57,7 +57,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - After a place or car name, pick the particle with `core/text/Korean.kt`: `name.particle("을", "를")`,
   `particle("이", "가")`, `name.withRo()` (로/으로). Never hard-code 를/는/가/로 after a name ("경포해변로").
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
-  never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).
+  never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
+  난 패스 is a vote with the value `VoteRules.PASS`: it counts for no place and the vote doesn't wait for that car,
+  so `carId in drop.votes` means "answered", not "chose a place".
 - Place search (boards 02 and 10), like Kakao Map's: typing shows the places that fit (Kakao Local keyword
   search, `navi/KakaoPlaceSearch.kt`, key `cardrop.kakaoRestKey`, nearby places first, distance from the car's
   GPS via `AppContainer.myPosition()`). The shared parts: `navi/PlaceSuggester.kt` (2+ letters, 300 ms pause,
@@ -71,8 +73,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   - Board 10 "다른 곳을 직접 입력": the suggestions replace the list until the box is empty; tapping one (or 추가 =
     the top one) puts it in the list, ticked. 말해서 추가 takes the top result for what was heard. Known places
     here: rest stops, cafés, destinations. A searched place that is an AI pick under a longer name
-    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). 직접 추가 (`DropTopic.CUSTOM`) opens board 10
-    with no AI picks.
+    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). Board 08 has no 카페 or 직접 추가 tile (D11):
+    any place is added here, and 카페 comes up by voice ("커피"). `DropTopic.CUSTOM` (board 10 with no AI picks)
+    is no longer offered on screen.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
@@ -80,7 +83,7 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in the order ticked; 노래, 같이 켜기
   and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`, SharedPreferences). A tile
   opens what it names (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09,
-  게임 초대 15, 편지함 07.
+  게임 초대 15, 편지함 07. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
 
 ## Design boards
 
@@ -104,13 +107,30 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 ~/Library/Android/sdk/emulator/emulator -avd Pleos_Connect_v2.1.0   # Pleos emulator
 ```
 
-The **DEMO** button (bottom right of the app) changes fake fuel and gear, and makes bot cars send drops.
-Use it to rehearse the 시연 on one emulator. With the real crew (`cardrop.useRealCrew=true`) its **내 차** picks
+When CarDrop starts, this demo version first asks how the device runs (not in the official app;
+`core/demo/StartModeScreen.kt`): **봇 크루** (this device alone with three bot cars) or **실제 크루** and its car
+(아빠 / 삼촌 / 민지 / 이모 차). The app's parts are made only after the answer. A build without
+`app/google-services.json` has only the bot crew and doesn't ask. For adb, `--ez cardrop.skipStartQuestion true`
+on `am start` skips it and uses the last answer.
+
+The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
+Use it to rehearse the 시연 on one emulator. Its **크루** switch flips this device between the bot crew and the real
+crew without a rebuild: the app restarts (without the start question), and the device keeps the pick until
+`cardrop.useRealCrew` changes (`core/demo/DemoCrew.kt`). With the real crew its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).
-With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 to join,
-because creating the crew replaces the one every device shares. Nobody drives off before the host: a car that
-joins first waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and the host's 출발 starts its guidance
-(`drive/TripStart.kt`, `drive/FirebaseTrip.kt`). The bot crew never waits.
+With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 and join it
+with its code. Every new crew gets its own random 6-digit code (`crew/CrewCode.kt`), so two hosts (e.g. two
+emulators both on 아빠 차) never share a crew. Restarting the host's app makes a new crew with a new code, and the
+other cars join again with it (the bot crew keeps 482917). The trip starts with the host's 출발, or by itself: at
+once when every car has joined, else 3 minutes after the crew was made (board 01 counts down;
+`JoinRules.JOIN_WINDOW_MILLIS`; both done by `TripCoordinator` on the host's device). Before that nobody drives off
+or sends drops: a car that joined waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and drops, the inbox and the
+rail's 드랍 / 게임 / 편지함 are greyed out. Cars not connected at the start are left out (`JoinRules.missingCars`;
+`out` in Firebase): they disappear from every screen and vote, and their code then says "이미 출발한 크루예요" (a
+car that was in can join again, e.g. after an app restart). The start belongs to the crew (`Crew.startedAtMillis`,
+`CrewRepository.startTrip`), for the bot crew too: it sets off by itself once its 3 bots have joined (about 7 s
+after board 01 opens), a bot not in by an earlier 출발 stays behind, and a bot crew joined with its code (board 03)
+is on the road already.
 
 ## Several Claude sessions at once
 
@@ -126,6 +146,8 @@ landed on `main`.
   `ps aux | grep drive_gps`, a fresh install in `adb shell dumpsys package com.cardrop | grep lastUpdateTime`.
   Installing over `com.cardrop` replaces the other session's build and wipes its trip. Before
   `adb shell input tap`, check which app is in front: `adb shell dumpsys activity activities | grep ResumedActivity`.
+  A fresh start of `com.cardrop` shows the start question first (봇 크루 / 실제 크루); a test copy without Firebase
+  doesn't ask.
 - To test while another session's CarDrop stays installed, build a side-by-side copy: add
   `debug { applicationIdSuffix = ".test.<task>" }` to `buildTypes` for that build only (don't commit it), with
   the fake crew and without `app/google-services.json` (Firebase and the Kakao key know only `com.cardrop`, so
@@ -138,7 +160,7 @@ landed on `main`.
 
 | Key | Values | Effect |
 | --- | --- | --- |
-| `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed); without the file the app builds with the fake only. `false` = the fake crew with bot cars. Switching back needs a rebuild + install. Logs: `adb logcat -s CarDropCrew` |
+| `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed): `true` without the file stops the build, and a build without it has only the fake. `false` = the fake crew with bot cars. This is only the first default: the start question and the DEMO panel's 크루 switch pick the crew on each device, and the device keeps that until this value changes. Logs: `adb logcat -s CarDropCrew` |
 | `cardrop.myCar` | `dad` / `uncle` / `minji` / `aunt` | The car this device drives in the real crew (empty = `dad`) until the DEMO panel's 내 차 picks another one on the device. Give each device a different car; any other value stops the build |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
@@ -177,7 +199,7 @@ landed on `main`.
   start, Extended controls > Microphone > "Virtual microphone uses host audio input" (or
   `adb emu avd hostmicon`), and macOS must allow Android Studio to use the microphone. Without them it
   hears nothing and stops after 15 s. It hears everything near the computer, including other people.
-- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, just above the DEMO button, until it
+- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, a little up from the corner, until it
   stops (`Captions` in `core/CarDropApp.kt`).
 - Pleos sends the final sentence a few ms after "recognition ended", so `PleosVoiceService` waits up to 1 s
   for it; otherwise it would keep only the partial text.
@@ -200,8 +222,9 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
 
 **Several cars (real crew):** each device runs its own GPS script with its car, e.g.
 `python3 tools/drive_gps.py --car uncle` (two emulators on one Mac: add `--serial emulator-5556`). `--car` starts
-the car at its place in the convoy (아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37) and holds it still until the host
-presses 출발 (it reads `trips/<code>/startedAt` from Firebase); `--no-wait` drives right away. Every device
+the car at its place in the convoy (아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37) and holds it still until the trip
+starts (it asks CarDrop on that emulator for its crew code, `drive/TripCodeFile.kt`, then reads
+`crews/<code>/info/startedAt` from Firebase; `--code 123456` sets the code by hand); `--no-wait` drives right away. Every device
 shares its position through Firebase about once a second, so each one draws the others where they really are.
 
 - Layout: our window holds the whole 1600 x 900 design. The navigator is the left 533 px
@@ -233,6 +256,9 @@ shares its position through Firebase about once a second, so each one draws the 
 - Board 01's destination card adds the road distance and drive time ("약 62km · 1시간 5분") from the live
   route (`navi/DestinationTrip.kt`, `AppContainer.destinationTrip`). Nothing shows until the route is there,
   or while the route still ends at the old destination after a change.
+- Boards 10 and 11's times and distances ("12분 · 4대 평균", "6분", "9km") come from `drive/PlaceTimes.kt`
+  (`AppContainer.placeTimes`, unit tested): along the live route, only for places within 1.5 km of it that the
+  car hasn't passed; the other cars are timed from this one.
 - `navi/InAppNavigatorPanel.kt` + `navi/NavPanelState.kt` - the design's overlays (turn banner, CarDrop
   toast, speed from GPS, ETA card), "전체 경로" and, after dragging the map, "현재 위치".
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles

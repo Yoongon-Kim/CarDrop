@@ -54,15 +54,17 @@ object CdIcons {
     )
     /** 한마디 (a speech bubble). */
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
-    /** 노래 (a note): the song drop, cut this week, greyed out in the quick-drop editor (canvas `song`). */
+    /** 목적지 변경 (a flag): board 08's tile, target line 657 (`dest`). */
+    val Flag = lineIcon("Flag", strokeWidth = 2.2f, "M4 22V4M4 4h12l-2 4 2 4H4")
+    /** 노래 드랍 (a note): board 08's tile, target line 657 (`song`), and 노래 in the quick-drop editor (cut, faded). */
     val Music = lineIcon(
         "Music",
         strokeWidth = 2.2f,
         "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
     )
-    /** 같이 켜기 (a power button): cut this week, greyed out in the quick-drop editor (canvas `together`). */
+    /** 같이 켜기 (a power button): board 08's tile, target line 657 (`together`), and in the quick-drop editor. */
     val Power = lineIcon("Power", strokeWidth = 2.2f, "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04")
-    /** 운전 기록 (a trophy, the canvas's 기록): the safety race, cut, greyed out in the quick-drop editor (`score`). */
+    /** 운전 기록 (a trophy, the canvas's 기록): the safety race, cut, faded in the quick-drop editor (`score`). */
     val Trophy = lineIcon(
         "Trophy",
         strokeWidth = 2.2f,

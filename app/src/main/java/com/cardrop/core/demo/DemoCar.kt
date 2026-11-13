@@ -3,12 +3,13 @@ package com.cardrop.core.demo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import com.cardrop.BuildConfig
 import com.cardrop.MainActivity
 import com.cardrop.core.navigation.Screen
 
 /**
- * Owner: lead. Which car this device drives in the real crew (`cardrop.useRealCrew=true`), for the demo.
+ * Owner: lead. Which car this device drives in the real crew ([DemoCrew]), for the demo.
  *
  * The DEMO panel's "내 차" picks it and this device remembers it; without a pick it is `cardrop.myCar`
  * from local.properties. Picking restarts the app, so every part starts again as the new car (some
@@ -26,25 +27,43 @@ object DemoCar {
     fun resolve(picked: String?, buildDefault: String): String = picked?.takeIf { it in KEYS } ?: buildDefault
 
     /**
-     * The first screen. Board 01 creates the crew, and with the real crew that replaces the crew every
-     * device shares, so only [HOST] starts there; the other cars start on board 03 to join it.
+     * The first screen. Board 01 creates a crew, so with the real crew only [HOST] starts there; the other
+     * cars start on board 03 to join the host's crew with its code.
      */
     fun startScreen(useRealCrew: Boolean, car: String): Screen =
         if (useRealCrew && car != HOST) Screen.JoinCrew else Screen.CreateCrew
 
     /** The car this device drives now. */
-    fun current(context: Context): String = resolve(prefs(context).getString(PREF_KEY, null), BuildConfig.MY_CAR)
+    fun current(context: Context): String = resolve(demoPrefs(context).getString(PREF_KEY, null), BuildConfig.MY_CAR)
+
+    /** Remembers [car] (the start question, StartModeScreen). */
+    fun pick(context: Context, car: String) {
+        require(car in KEYS) { "unknown car $car" }
+        // commit(), not apply(): pickAndRestart ends the process right after, before apply() would write.
+        demoPrefs(context).edit().putString(PREF_KEY, car).commit()
+    }
 
     /** Remembers [car] and restarts the app as that car. */
     fun pickAndRestart(context: Context, car: String) {
-        require(car in KEYS) { "unknown car $car" }
-        // commit(), not apply(): the process ends right below, before apply() would write.
-        prefs(context).edit().putString(PREF_KEY, car).commit()
-        context.startActivity(Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java)))
-        // A new process makes a new AppContainer, so nothing keeps the old car.
-        Runtime.getRuntime().exit(0)
+        pick(context, car)
+        restartApp(context)
     }
 
-    private fun prefs(context: Context) = context.getSharedPreferences("cardrop_demo", Context.MODE_PRIVATE)
     private const val PREF_KEY = "myCar"
+}
+
+/** What the DEMO panel picked on this device ([DemoCar], [DemoCrew]). */
+internal fun demoPrefs(context: Context): SharedPreferences =
+    context.getSharedPreferences("cardrop_demo", Context.MODE_PRIVATE)
+
+/**
+ * Starts the app again in a new process. A new process makes a new AppContainer, so nothing keeps the old pick.
+ * The pick is already made, so the new start skips the start question (StartMode).
+ */
+internal fun restartApp(context: Context) {
+    context.startActivity(
+        Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java))
+            .putExtra(StartMode.EXTRA_SKIP_QUESTION, true),
+    )
+    Runtime.getRuntime().exit(0)
 }

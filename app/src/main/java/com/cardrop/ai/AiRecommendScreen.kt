@@ -58,6 +58,7 @@ import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.CdTextField
 import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.ErrorText
+import com.cardrop.core.ui.LastItemAtBottom
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
@@ -208,14 +209,16 @@ private fun PlacePickerContent(
     onRetry: () -> Unit = {},
     onSend: () -> Unit = {},
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // While the driver types, the screen works like Kakao Map's search: the list steps aside, the
+    // text box moves up under the title and the places that fit show below it. Pleos's keyboard
+    // covers the lower third of the screen without shrinking our window, so the box must not
+    // sit low while typing.
+    val suggesting = suggest.shown
+    // The send button, when it shows, is the last item: it goes to the bottom of the page (target line 421,
+    // `margin-top: auto`), the same way ScreenColumn's bottom slot does. The pop-up just wraps its content.
+    val arrangement = if (suggesting || state.loading) Arrangement.spacedBy(14.dp) else SendButtonAtBottom
+    Column(modifier = modifier, verticalArrangement = arrangement) {
         PickerHeader(title, subtitle, popup, onClose)
-
-        // While the driver types, the screen works like Kakao Map's search: the list steps aside, the
-        // text box moves up under the title and the places that fit show below it. Pleos's keyboard
-        // covers the lower third of the screen without shrinking our window, so the box must not
-        // sit low while typing.
-        val suggesting = suggest.shown
 
         // The list scrolls on its own when it is long; the controls below stay in view.
         if (!suggesting) Column(
@@ -313,11 +316,18 @@ private fun PlacePickerContent(
                 text = if (count > 0) "이 ${count}곳으로 투표 보내기" else "후보를 골라주세요",
                 enabled = count > 0,
                 onClick = onSend,
-                modifier = Modifier.fillMaxWidth().height(if (popup) 64.dp else 76.dp),
+                modifier = Modifier.fillMaxWidth(),
+                // The page's button as in the target (line 421): 78 high, corners 22, 21 / 800.
+                height = if (popup) 64.dp else 78.dp,
+                radius = if (popup) 20.dp else 22.dp,
+                fontSize = if (popup) 19.sp else 21.sp,
             )
         }
     }
 }
+
+/** Board 10's items 14 apart, with the last one (the send button) moved down to the bottom when there's room. */
+private val SendButtonAtBottom = LastItemAtBottom(14.dp)
 
 /**
  * Back button (page) or close button (pop-up), the small line above (the page: what the driver said), and the big

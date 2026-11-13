@@ -1,6 +1,7 @@
 package com.cardrop.drop
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -22,6 +25,7 @@ import com.cardrop.core.model.DropTopic
 import com.cardrop.core.ui.AiTag
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdChip
+import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.InfoRow
 import com.cardrop.core.ui.Pill
@@ -84,11 +88,30 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
             gap = 6.dp,
             verticalAlignment = Alignment.Top,
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (canSpin && !wheelOpen) {
-                    CdChip(text = "고민되면 돌려보기", onClick = { wheelOpen = true }, style = ChipStyle.White)
+            // The spin chip over the time left, at the right (target lines 432-436, 784). The chip opens the
+            // wheel and closes it again, so it stays while the wheel is open.
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (canSpin) {
+                    CdChip(
+                        "고민되면 돌려보기",
+                        onClick = { wheelOpen = !wheelOpen },
+                        style = ChipStyle.Dashed,
+                        icon = CdIcons.Wheel,
+                        height = 36.dp,
+                        radius = 999.dp,
+                        fontSize = 12.sp,
+                        iconSize = 24.dp,
+                        iconTint = Color.Unspecified, // the wheel keeps its three colours
+                        contentPadding = PaddingValues(start = 6.dp, end = 12.dp),
+                    )
                 }
-                Pill("%d:%02d".format(secondsLeft / 60, secondsLeft % 60))
+                Text(
+                    "%d:%02d".format(secondsLeft / 60, secondsLeft % 60),
+                    color = CdColors.Alert,
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 38.sp,
+                )
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

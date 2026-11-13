@@ -51,6 +51,7 @@ import com.cardrop.core.demo.DemoData
 import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.model.Place
 import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
@@ -62,21 +63,30 @@ import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CarDropTheme
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.drive.CrewTime
+import com.cardrop.drive.PlaceTimes
 import com.cardrop.navi.KeyboardRoom
 import com.cardrop.navi.PlaceSuggestion
 import com.cardrop.navi.PlaceSuggestionList
 import com.cardrop.navi.PlaceSuggestions
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/** No times at all: for the quick-drop pop-up, which nobody shows at the moment. */
+private val NoPlaceTimes: StateFlow<PlaceTimes> = MutableStateFlow(PlaceTimes())
 
 /**
  * Board 10 AI 추천 (휴게소 · 식사 · 주유) · Owner: lead.
  * The AI's places plus any the driver adds. The ticked ones go into a vote (board 11), sent to
- * [toCarIds], the cars chosen on board 08 (empty = the whole crew).
+ * [toCarIds], the cars chosen on board 08 (empty = the whole crew). [placeTimes] (AppContainer.placeTimes)
+ * says how long the cars take to get to each place.
  */
 @Composable
 fun AiRecommendScreen(
     vm: AiViewModel,
     topic: DropTopic,
     toCarIds: List<String>,
+    placeTimes: StateFlow<PlaceTimes>,
     onBack: () -> Unit,
     onSent: (Drop) -> Unit,
 ) {
@@ -89,6 +99,7 @@ fun AiRecommendScreen(
         onClose = onBack,
         onSent = onSent,
         modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp),
+        placeTimes = placeTimes,
     )
 }
 
@@ -124,11 +135,16 @@ private fun PlacePicker(
     onClose: () -> Unit,
     onSent: (Drop) -> Unit,
     modifier: Modifier,
+    placeTimes: StateFlow<PlaceTimes> = NoPlaceTimes,
 ) {
     val state by vm.picker.collectAsStateWithLifecycle()
     val suggest by vm.suggestions.collectAsStateWithLifecycle()
+    // A new snapshot on every GPS fix, so the minutes count down as the car drives.
+    val times by placeTimes.collectAsStateWithLifecycle()
     var typed by rememberSaveable(topic) { mutableStateOf("") }
     val recipients = vm.recipientLabel(toCarIds)
+    // The cars that take part: the "4대 평균" is theirs.
+    val carIds = vm.involvedCarIds(toCarIds)
     PlacePickerContent(
         title = pickerTitle(topic, state),
         // The page shows only what the driver said (target line 409); board 08 already showed who gets it.
@@ -137,6 +153,7 @@ private fun PlacePicker(
         typed = typed,
         popup = popup,
         modifier = modifier,
+        crewTime = { place -> times.crewTime(place, carIds) },
         suggest = suggest,
         onTypedChange = {
             typed = it
@@ -160,7 +177,10 @@ private fun PlacePicker(
     )
 }
 
-/** What board 10 draws for a given [state]. No ViewModel, so the previews below can show it. */
+/**
+ * What board 10 draws for a given [state]. No ViewModel, so the previews below can show it. [crewTime] = how long
+ * the cars that take part need to get to a place, on average (null = not known).
+ */
 @Composable
 private fun PlacePickerContent(
     title: String,
@@ -169,6 +189,7 @@ private fun PlacePickerContent(
     typed: String,
     popup: Boolean,
     modifier: Modifier = Modifier,
+    crewTime: (Place) -> CrewTime? = { null },
     suggest: PlaceSuggestions = PlaceSuggestions(),
     onTypedChange: (String) -> Unit = {},
     onClearTyped: () -> Unit = {},
@@ -212,6 +233,7 @@ private fun PlacePickerContent(
                     aiPick = !state.pick.isAdded(candidate.id),
                     selected = state.pick.isSelected(candidate.id),
                     popup = popup,
+                    crewTime = crewTime(candidate.place),
                     onToggle = { onToggle(candidate.id) },
                 )
             }
@@ -329,6 +351,7 @@ private fun PlaceRow(
     aiPick: Boolean,
     selected: Boolean,
     popup: Boolean,
+    crewTime: CrewTime?,
     onToggle: () -> Unit,
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -385,9 +408,17 @@ private fun PlaceRow(
                 Text(candidate.reason, color = CdColors.BlueDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
-        // Places the driver added have no detour time yet.
-        if (aiPick) {
-            Text("+${candidate.detourMinutes}분", color = CdColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        // How long the cars take to get there, on average (target lines 416, 694: "12분" over "4대 평균"). Only
+        // for places on the route ahead (PlaceTimes); with only this car's time known it says "내 차".
+        if (crewTime != null) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(crewTime.minutesText, color = CdColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    if (crewTime.cars >= 2) "${crewTime.cars}대 평균" else "내 차",
+                    color = CdColors.Gray600,
+                    fontSize = 12.sp,
+                )
+            }
         }
         CheckCircle(selected)
     }
@@ -499,6 +530,8 @@ private fun PlacePickerPagePreview() {
             typed = "",
             popup = false,
             modifier = Modifier.fillMaxSize().background(CdColors.Gray100).padding(horizontal = 28.dp, vertical = 24.dp),
+            // Sample times: 12분 for the first stop, then 12 minutes more for each.
+            crewTime = { place -> DemoData.restStops.indexOf(place).takeIf { it >= 0 }?.let { CrewTime(12.0 + it * 12, 4) } },
         )
     }
 }

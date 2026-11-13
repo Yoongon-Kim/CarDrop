@@ -16,6 +16,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.MutableData
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
@@ -41,11 +42,12 @@ import kotlin.coroutines.resumeWithException
  *
  * Data in the database (one crew = one branch under its 6-digit code):
  * ```
- * crews/482917/info    name, hostCarId, destination {id, name, lat, lng, detail}
- * crews/482917/cars    car-dad: {connected: true}, car-uncle: {...}, ...
+ * crews/482917/info    name, hostCarId, destination {id, name, lat, lng, detail},
+ *                      createdAt (server time; the others can join for 3 minutes), startedAt (missing = not started)
+ * crews/482917/cars    car-dad: {connected: true}, car-uncle: {...}, ...; out: true = left out at the start
  * crews/482917/drops   <dropId>: {fromCarId, kind, topic, title, ..., votes: {carId: candidateId}}
  * ```
- * Logs: `adb logcat -s CarDropCrew`.
+ * tools/drive_gps.py reads `info/startedAt` too, to drive off with the host. Logs: `adb logcat -s CarDropCrew`.
  */
 class FirebaseCrewRepository(
     private val scope: CoroutineScope,
@@ -78,6 +80,17 @@ class FirebaseCrewRepository(
             }
             override fun onCancelled(error: DatabaseError) = Unit
         })
+        // Back online after the connection dropped: Firebase marked this car offline then (onDisconnect), and it
+        // would stay "기다리는 중" for the others, and be left out if the trip started. Mark it connected again.
+        db.getReference(".info/connected").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.value != true) return
+                val connected = crewRef?.child("cars")?.child(myCarId)?.child("connected") ?: return
+                connected.onDisconnect().setValue(false)
+                connected.setValue(true)
+            }
+            override fun onCancelled(error: DatabaseError) = Unit
+        })
     }
 
     private fun now(): Long = System.currentTimeMillis() + serverOffsetMillis
@@ -90,7 +103,10 @@ class FirebaseCrewRepository(
         // A new crew replaces the old one with the same code (old drops are cleared).
         ref.setValue(
             mapOf(
-                "info" to mapOf("name" to name, "hostCarId" to myCarId, "destination" to placeToMap(destination)),
+                "info" to mapOf(
+                    "name" to name, "hostCarId" to myCarId, "destination" to placeToMap(destination),
+                    "createdAt" to ServerValue.TIMESTAMP,
+                ),
                 "cars" to LINEUP.associate { car -> car.id to mapOf("connected" to (car.id == myCarId)) },
             ),
         ).await()
@@ -103,9 +119,27 @@ class FirebaseCrewRepository(
         val ref = db.getReference("crews").child(digits)
         val info = ref.child("info").get().await()
         if (!info.exists()) return null
+        // Left out at the start (not there within 3 minutes): the crew went without this car.
+        val mine = ref.child("cars").child(myCarId).get().await()
+        if (mine.child("out").value == true && mine.child("connected").value != true) throw CrewClosedException()
         ref.child("cars").child(myCarId).child("connected").setValue(true).await()
         startListening(ref)
         return _crew.value ?: parseCrew(digits, ref.get().await())
+    }
+
+    /**
+     * One write, so every device sees both at once: the start time, and `out` on each car that isn't connected
+     * (it then drops out of the crew everywhere, and [joinCrew] refuses it).
+     */
+    override suspend fun startTrip() {
+        val ref = crewRef ?: return
+        val current = _crew.value ?: return
+        if (current.isStarted) return
+        val missing = JoinRules.missingCars(current)
+        val updates = mutableMapOf<String, Any>("info/startedAt" to ServerValue.TIMESTAMP)
+        missing.forEach { carId -> updates["cars/$carId/out"] = true }
+        Log.i(TAG, "Starting the trip of crew ${current.code}; left out: $missing")
+        ref.updateChildren(updates).await()
     }
 
     override suspend fun setDestination(destination: Place) {
@@ -223,32 +257,52 @@ class FirebaseCrewRepository(
         val connected = LINEUP.map { it.id }
             .filter { id -> snapshot.child("cars").child(id).child("connected").value == true }
             .toSet()
+        val leftOut = LINEUP.map { it.id }
+            .filter { id -> snapshot.child("cars").child(id).child("out").value == true }
+            .toSet()
+        val createdAt = info.child("createdAt").number()?.toLong()
         return buildCrew(
             code = code,
             name = info.child("name").getValue(String::class.java) ?: DemoData.DEMO_CREW_NAME,
             hostCarId = info.child("hostCarId").getValue(String::class.java) ?: myCarId,
             destination = destination,
             connected = connected,
+            leftOut = leftOut,
+            joinDeadlineMillis = createdAt?.let { it + JoinRules.JOIN_WINDOW_MILLIS },
+            startedAtMillis = info.child("startedAt").number()?.toLong(),
         )
     }
 
-    /** The crew always lists the same 4 cars in the same order; this car gets "(나)". */
-    private fun buildCrew(code: String, name: String, hostCarId: String, destination: Place, connected: Set<String>) =
-        Crew(
-            code = code,
-            name = name,
-            destination = destination,
-            hostCarId = hostCarId,
-            cars = LINEUP.map { car ->
-                val mine = car.id == myCarId
-                car.copy(
-                    name = if (mine) "${car.name} (나)" else car.name,
-                    isMe = mine,
-                    isBot = false,
-                    connected = mine || car.id in connected,
-                )
-            },
-        )
+    /**
+     * The crew lists the same 4 cars in the same order, minus the ones [leftOut] at the start; this car gets
+     * "(나)". A car that is connected is never left out: it joined just as the trip started.
+     */
+    private fun buildCrew(
+        code: String,
+        name: String,
+        hostCarId: String,
+        destination: Place,
+        connected: Set<String>,
+        leftOut: Set<String> = emptySet(),
+        joinDeadlineMillis: Long? = null,
+        startedAtMillis: Long? = null,
+    ) = Crew(
+        code = code,
+        name = name,
+        destination = destination,
+        hostCarId = hostCarId,
+        cars = LINEUP.filter { it.id !in leftOut || it.id in connected || it.id == myCarId }.map { car ->
+            val mine = car.id == myCarId
+            car.copy(
+                name = if (mine) "${car.name} (나)" else car.name,
+                isMe = mine,
+                isBot = false,
+                connected = mine || car.id in connected,
+            )
+        },
+        joinDeadlineMillis = joinDeadlineMillis,
+        startedAtMillis = startedAtMillis,
+    )
 
     private fun parseDrop(s: DataSnapshot): Drop? = runCatching {
         Drop(

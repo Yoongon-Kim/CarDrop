@@ -20,7 +20,6 @@ import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
-import com.cardrop.drive.TripStart
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.FallbackRouteProvider
@@ -68,10 +67,11 @@ class AppContainer(context: Context) {
         else FakeCrewRepository(appScope)
 
     // Lead
-    /** Real crew: the host's 출발 and every car's position, shared through Firebase (drive/FirebaseTrip.kt). */
+    /**
+     * Real crew: every car's position, shared through Firebase (drive/FirebaseTrip.kt). When the trip started is the
+     * crew's own (`Crew.startedAtMillis`), for both crews.
+     */
     private val firebaseTrip: FirebaseTrip? = if (BuildConfig.USE_REAL_CREW) FirebaseTrip(appScope, crew) else null
-    /** With the real crew the cars wait for the host's 출발; the bot crew never waits. */
-    val tripStart: TripStart = firebaseTrip ?: TripStart.AlwaysStarted
 
     // Member B
     val vehicle: VehicleRepository =
@@ -143,11 +143,7 @@ class AppContainer(context: Context) {
     val navigator = AppNavigator(start = DemoCar.startScreen(BuildConfig.USE_REAL_CREW, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
-    private val trip = TripCoordinator(
-        appScope, crew, route, navigation, voice,
-        tripStart = tripStart,
-        autoStartsGuidance = true,
-    )
+    private val trip = TripCoordinator(appScope, crew, route, navigation, voice, autoStartsGuidance = true)
 
     /** This car got to the crew's stop, stopped there or drove past it: the card on the CarDrop side. */
     val stopNotice: StateFlow<StopNotice?> get() = trip.notice

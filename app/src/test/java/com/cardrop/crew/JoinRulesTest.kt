@@ -1,13 +1,43 @@
 package com.cardrop.crew
 
 import com.cardrop.core.demo.DemoData
+import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Place
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Board 03's plain rules. */
+/** Board 03's plain rules, and the 3 minutes for joining. */
 class JoinRulesTest {
+
+    @Test
+    fun theTripLeavesOutTheCarsThatHaventJoinedButNeverTheHost() {
+        val crew = Crew(
+            "482917", "강릉 여행", DemoData.gyeongpo, hostCarId = DemoData.uncle.id,
+            cars = listOf(
+                DemoData.me,
+                DemoData.uncle.copy(connected = false), // the host, offline for a moment
+                DemoData.minji.copy(connected = false),
+                DemoData.aunt,
+            ),
+        )
+        assertEquals(listOf(DemoData.minji.id), JoinRules.missingCars(crew))
+    }
+
+    @Test
+    fun theCountdownShowsMinutesAndSecondsWhileCarsAreMissing() {
+        assertEquals("3:00 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(JoinRules.JOIN_WINDOW_MILLIS, missing = 3))
+        assertEquals("2:41 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(160_200, missing = 2))
+        // Not 0:00 while time is left.
+        assertEquals("0:01 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(400, missing = 1))
+        assertEquals("곧 출발해요 · 안 온 차는 빼고 가요", JoinRules.autoStartText(0, missing = 1))
+        assertEquals("곧 출발해요 · 안 온 차는 빼고 가요", JoinRules.autoStartText(-5_000, missing = 1))
+    }
+
+    @Test
+    fun withEveryCarInTheTripStartsAtOnce() {
+        assertEquals("모두 모였어요 · 곧 출발해요", JoinRules.autoStartText(160_200, missing = 0))
+    }
 
     @Test
     fun theCodeCanBeHeardAsNumbers() {

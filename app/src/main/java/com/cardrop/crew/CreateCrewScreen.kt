@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.Crew
 import com.cardrop.core.model.VehicleSnapshot
+import com.cardrop.core.text.particle
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdChip
@@ -400,15 +401,59 @@ private fun MembersCard(
         PastCars()
         // The board pins the button to the bottom of the card (margin-top: auto): the Spacer takes the room left.
         Spacer(Modifier.weight(1f))
-        PrimaryButton("다 모이면 출발하기", onClick = onDepart, modifier = Modifier.fillMaxWidth(), height = 66.dp)
-        Text(
-            "“출발하자”라고 말해도 돼요",
-            color = CdColors.Gray600,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp), // the board's margin-top: 6px
+        // Only the host (방장) starts the trip; the other cars go with it. Once it started, the button leads to board 04.
+        val isHost = crew != null && crew.hostCarId == myCarId
+        val started = crew?.isStarted == true
+        val deadline = crew?.joinDeadlineMillis
+        if (crew != null && !started && deadline != null) {
+            AutoStartCountdown(deadline, missing = JoinRules.missingCars(crew).size)
+        }
+        val hostName = crew?.cars?.firstOrNull { it.id == crew.hostCarId }?.name ?: "방장 차"
+        val hostCanStart = !started && (crew == null || isHost)
+        PrimaryButton(
+            when {
+                started -> "주행 화면으로"
+                hostCanStart -> "다 모이면 출발하기"
+                else -> "${hostName.particle("이", "가")} 출발하면 같이 출발해요"
+            },
+            onClick = onDepart,
+            enabled = crew != null && (started || isHost),
+            modifier = Modifier.fillMaxWidth(),
+            height = 66.dp,
         )
+        if (hostCanStart) {
+            Text(
+                "“출발하자”라고 말해도 돼요",
+                color = CdColors.Gray600,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp), // the board's margin-top: 6px
+            )
+        }
     }
+}
+
+/**
+ * Over the 출발 button until the trip starts (an app extra, the board has no timer): "2:41 뒤 자동 출발", with
+ * "· 안 온 차는 빼고 가요" while [missing] cars haven't joined. At [deadlineMillis] the trip starts by itself.
+ * Plain text, not StatusText: TalkBack would read it out every second.
+ */
+@Composable
+private fun AutoStartCountdown(deadlineMillis: Long, missing: Int) {
+    val now by produceState(System.currentTimeMillis(), deadlineMillis) {
+        while (true) {
+            value = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    Text(
+        JoinRules.autoStartText(deadlineMillis - now, missing),
+        color = if (missing > 0) CdColors.OrangeDark else CdColors.BlueDark,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.ExtraBold,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+    )
 }
 
 /** A car this one drove with before (tier C, fixed demo data: the app keeps no trip history yet). */

@@ -16,9 +16,10 @@ Usage (emulator running):
 Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
 
 --car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
-holds the car still at its start until the crew's host presses 출발 (board 01), read from the real crew's
-Firebase (trips/<code>/startedAt, see drive/FirebaseTrip.kt), so every car sets off together. --no-wait
-drives right away (the bot crew has no host to wait for).
+holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, or 3 minutes after
+the crew was made), read from the real crew's Firebase (crews/<code>/info/startedAt, see
+crew/FirebaseCrewRepository.kt), so every car sets off together. --no-wait drives right away (the bot crew has
+no host to wait for).
 
 --stop shows the navigator's "도착" (arrived): it needs about 10 s standing still within 300 m of the
 voted stop. Without --stop the car drives past every stop, which the navigator reports as "지나침".
@@ -64,7 +65,7 @@ def kotlin_string(path: Path, name: str) -> str:
 
 
 def trip_started(url: str):
-    """True / False from the trip's startedAt in Firebase (REST, no login); None when it can't be read."""
+    """True / False from the crew's startedAt in Firebase (REST, no login); None when it can't be read."""
     try:
         with urllib.request.urlopen(url, timeout=5) as response:
             return json.load(response) is not None
@@ -73,14 +74,14 @@ def trip_started(url: str):
 
 
 def wait_for_host(stand_still, url: str, poll_s: float = 1.0):
-    """Calls stand_still() every poll_s seconds until the host has started the trip."""
-    print("Waiting for the host's 출발 (the car stands at its start). Ctrl+C to stop.")
+    """Calls stand_still() every poll_s seconds until the crew's trip has started."""
+    print("Waiting for the host's 출발, or 3 minutes after the crew was made (the car stands at its start). Ctrl+C to stop.")
     misses = 0
     while True:
         stand_still()
         started = trip_started(url)
         if started:
-            print("The host started the trip. Driving.")
+            print("The trip started. Driving.")
             return
         if started is None:
             misses += 1
@@ -216,7 +217,7 @@ def main():
 
     if wait:
         code = args.code or kotlin_string(PLACES_FILE, "DEMO_CREW_CODE")
-        url = f"{kotlin_string(CREW_FILE, 'DATABASE_URL')}/trips/{code}/startedAt.json"
+        url = f"{kotlin_string(CREW_FILE, 'DATABASE_URL')}/crews/{code}/info/startedAt.json"
         start_lat, start_lng = point_at(points, cumulative, start_km)
         try:
             wait_for_host(lambda: send(start_lat, start_lng, 0.0), url)

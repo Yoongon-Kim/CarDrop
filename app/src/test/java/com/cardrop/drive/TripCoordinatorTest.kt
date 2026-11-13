@@ -151,27 +151,34 @@ class TripCoordinatorTest {
         assertEquals(shared.decidedCandidate!!.place, nav.route.value.destination)
     }
 
-    // The host's 출발 (TripStart): a car that joined before starts its guidance with the host.
+    // The trip's start (Crew.startedAtMillis): the host's 출발, or the end of the 3 minutes for joining.
 
     private fun runWithHost(
         myCar: String,
         autoStartsGuidance: Boolean = true,
-        block: suspend (TestCrew, TestNavigation, TestTripStart) -> Unit,
+        /** When joining ends, from the test's clock (NOW); null = no limit. */
+        joinDeadline: Long? = null,
+        /** False: 이모 차 hasn't joined yet (아빠 and 삼촌 have). */
+        everyoneIn: Boolean = false,
+        block: suspend (TestCrew, TestNavigation, TestVoice) -> Unit,
     ) = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val crew = TestCrew().apply { carId = myCar } // the crew's host is 아빠 차
+        val crew = TestCrew(notStarted = true).apply { carId = myCar } // the crew's host is 아빠 차
+        crew.crew.value = crew.crew.value!!.copy(
+            joinDeadlineMillis = joinDeadline,
+            cars = listOf(DemoData.me, DemoData.uncle, DemoData.aunt.copy(connected = everyoneIn)),
+        )
         val nav = TestNavigation()
-        val tripStart = TestTripStart()
-        TripCoordinator(scope, crew, TestRoute(), nav, TestVoice(), tripStart = tripStart, autoStartsGuidance = autoStartsGuidance)
-            .start()
-        try { block(crew, nav, tripStart) } finally { scope.cancel() }
+        val voice = TestVoice()
+        TripCoordinator(scope, crew, TestRoute(), nav, voice, now = { NOW }, autoStartsGuidance = autoStartsGuidance).start()
+        try { block(crew, nav, voice) } finally { scope.cancel() }
     }
 
-    @Test fun aCarThatJoinedWaitsAndThenStartsWithTheHostOnce() = runWithHost(DemoData.uncle.id) { crew, nav, trip ->
+    @Test fun aCarThatJoinedWaitsAndThenStartsWithTheHostOnce() = runWithHost(DemoData.uncle.id) { crew, nav, _ ->
         yield()
         assertEquals(0, nav.launches)
         assertEquals(DemoData.gyeongpo, nav.route.value.destination) // the route is ready while it waits
-        trip.start()
+        crew.startTrip()
         yield()
         assertEquals(1, nav.launches)
         crew.drops.value = listOf(decision("later", decided = false)) // more crew news doesn't start it again
@@ -179,15 +186,68 @@ class TripCoordinatorTest {
         assertEquals(1, nav.launches)
     }
 
-    @Test fun theHostStartsItselfWithItsOwnButton() = runWithHost(DemoData.me.id) { _, nav, trip ->
-        trip.start()
+    @Test fun theHostsGuidanceStartsWithTheTripToo() = runWithHost(DemoData.me.id) { crew, nav, _ ->
+        yield()
+        assertEquals(0, nav.launches)
+        crew.startTrip() // the host's 출발, or the end of the 3 minutes
+        yield()
+        assertEquals(1, nav.launches)
+    }
+
+    @Test fun anotherMapAppIsNeverOpenedWithoutATap() = runWithHost(DemoData.uncle.id, autoStartsGuidance = false) { crew, nav, _ ->
+        crew.startTrip()
         yield()
         assertEquals(0, nav.launches)
     }
 
-    @Test fun anotherMapAppIsNeverOpenedWithoutATap() = runWithHost(DemoData.uncle.id, autoStartsGuidance = false) { _, nav, trip ->
-        trip.start()
+    @Test fun theHostsCarStartsTheTripWhenTheThreeMinutesAreOver() =
+        runWithHost(DemoData.me.id, joinDeadline = NOW - 1) { crew, nav, _ ->
+            yield()
+            assertEquals(1, crew.tripStarts)
+            assertTrue(crew.crew.value!!.isStarted)
+            assertEquals(1, nav.launches)
+        }
+
+    @Test fun theTripWaitsWhileThereIsTimeLeftToJoin() =
+        runWithHost(DemoData.me.id, joinDeadline = NOW + 60_000) { crew, nav, _ ->
+            yield()
+            assertEquals(0, crew.tripStarts)
+            assertEquals(0, nav.launches)
+        }
+
+    @Test fun onlyTheHostsCarStartsTheTripByItself() =
+        runWithHost(DemoData.uncle.id, joinDeadline = NOW - 1) { crew, nav, _ ->
+            yield()
+            assertEquals(0, crew.tripStarts) // the host's device does it; this car waits for it
+            assertEquals(0, nav.launches)
+        }
+
+    @Test fun theHostsCarStartsTheTripAsSoonAsEveryCarHasJoined() =
+        runWithHost(DemoData.me.id, joinDeadline = NOW + 120_000) { crew, nav, _ ->
+            yield()
+            assertEquals(0, crew.tripStarts) // 이모 차 is still on her way
+            crew.crew.value = crew.crew.value!!.let { c -> c.copy(cars = c.cars.map { it.copy(connected = true) }) }
+            yield()
+            assertEquals(1, crew.tripStarts) // the last car joined: no need to wait for the 3 minutes
+            assertEquals(1, nav.launches)
+        }
+
+    @Test fun everyCarInStartsTheTripOnlyFromTheHostsCar() =
+        runWithHost(DemoData.uncle.id, joinDeadline = NOW + 120_000, everyoneIn = true) { crew, nav, _ ->
+            yield()
+            assertEquals(0, crew.tripStarts)
+            assertEquals(0, nav.launches)
+        }
+
+    @Test fun aStopBeforeTheStartIsNotToldToTheCrew() = runWithHost(DemoData.uncle.id) { crew, nav, voice ->
+        nav.waypointEvents.emit(WaypointEvent(DemoData.restStops[1], WaypointResult.ARRIVED))
         yield()
-        assertEquals(0, nav.launches)
+        assertEquals("여주휴게소에 도착했어요", voice.spoken.last()) // the driver still hears it
+        assertTrue(crew.drops.value.isEmpty()) // no drops until the trip starts
+    }
+
+    private companion object {
+        /** The tests' clock. */
+        const val NOW = 1_000_000L
     }
 }

@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.BuildConfig
 import com.cardrop.core.AppContainer
 import com.cardrop.core.model.Candidate
+import com.cardrop.core.model.Car
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Gear
@@ -86,29 +87,41 @@ fun DemoPanel(container: AppContainer) {
             } else {
                 Text("실차 데이터 사용 중 (useRealVehicle=true)", color = CdColors.Gray400, fontSize = 13.sp)
             }
-            if (crewRepo != null && crew != null) {
-                DemoButton("민지 차 연료 경고 받기") {
-                    crewRepo.injectDrop(DemoData.minji, minjiFuelInvite(container))
+            // The bots send drops only on the road, like the real cars, and only the bots that came along (a bot
+            // that hadn't joined by 출발 was left out).
+            val current = crew
+            val along = { bot: Car -> current?.cars?.any { it.id == bot.id } == true }
+            if (crewRepo != null && current != null && current.isStarted) {
+                if (along(DemoData.minji)) {
+                    DemoButton("민지 차 연료 경고 받기") {
+                        crewRepo.injectDrop(DemoData.minji, minjiFuelInvite(container))
+                    }
                 }
-                DemoButton("삼촌 차 휴게소 투표 받기") {
-                    crewRepo.injectDrop(
-                        DemoData.uncle,
-                        DropDraft(
-                            kind = DropKind.DECISION,
-                            topic = DropTopic.REST,
-                            title = "어느 휴게소에서 쉴까요?",
-                            message = "삼촌 차 · 2시간 연속 운전",
-                            candidates = demoCandidates(container),
-                        ),
-                    )
+                if (along(DemoData.uncle)) {
+                    DemoButton("삼촌 차 휴게소 투표 받기") {
+                        crewRepo.injectDrop(
+                            DemoData.uncle,
+                            DropDraft(
+                                kind = DropKind.DECISION,
+                                topic = DropTopic.REST,
+                                title = "어느 휴게소에서 쉴까요?",
+                                message = "삼촌 차 · 2시간 연속 운전",
+                                candidates = demoCandidates(container),
+                            ),
+                        )
+                    }
                 }
                 DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }
-                DemoButton("이모 차 한마디 받기") {
-                    crewRepo.injectDrop(
-                        DemoData.aunt,
-                        DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "뒤에 사고 났어요, 조심하세요"),
-                    )
+                if (along(DemoData.aunt)) {
+                    DemoButton("이모 차 한마디 받기") {
+                        crewRepo.injectDrop(
+                            DemoData.aunt,
+                            DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "뒤에 사고 났어요, 조심하세요"),
+                        )
+                    }
                 }
+            } else if (crewRepo != null && current != null) {
+                Text("출발하면 봇 차의 드랍을 받을 수 있어요", color = CdColors.Gray400, fontSize = 13.sp)
             } else if (crewRepo != null) {
                 Text("크루를 먼저 만들어 주세요", color = CdColors.Gray400, fontSize = 13.sp)
             }

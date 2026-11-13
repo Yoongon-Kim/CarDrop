@@ -15,16 +15,25 @@ import com.cardrop.voice.next
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 
-internal class TestCrew : CrewRepository {
+/** A crew whose trip is under way (most tests), or [notStarted] for the time before the host's 출발. */
+internal class TestCrew(notStarted: Boolean = false) : CrewRepository {
     /** Tests can switch cars, like picking one when joining with the real crew (board 03). */
     var carId = DemoData.me.id
     override val myCarId: String get() = carId
-    override val crew = MutableStateFlow<Crew?>(Crew("123456", "test", DemoData.gyeongpo, DemoData.me.id, listOf(DemoData.me, DemoData.uncle)))
+    override val crew = MutableStateFlow<Crew?>(
+        Crew("123456", "test", DemoData.gyeongpo, DemoData.me.id, listOf(DemoData.me, DemoData.uncle),
+            startedAtMillis = if (notStarted) null else 1L),
+    )
     override val drops = MutableStateFlow<List<Drop>>(emptyList())
     var sends = 0
     var votes = 0
+    var tripStarts = 0
     override suspend fun createCrew(name: String, destination: Place) = crew.value!!
     override suspend fun joinCrew(code: String) = crew.value
+    override suspend fun startTrip() {
+        tripStarts++
+        crew.value = crew.value?.let { if (it.isStarted) it else it.copy(startedAtMillis = 2L) }
+    }
     override suspend fun setDestination(destination: Place) { crew.value = crew.value?.copy(destination = destination) }
     override suspend fun renameCrew(name: String) { crew.value = crew.value?.copy(name = name) }
     override suspend fun sendDrop(draft: DropDraft): Drop {
@@ -39,13 +48,6 @@ internal class TestCrew : CrewRepository {
         drops.value = drops.value.map { if (it.id == dropId) it.copy(votes = it.votes + (myCarId to candidateId)) else it }
     }
     override fun leaveCrew() { crew.value = null; drops.value = emptyList() }
-}
-
-/** The host's 출발, set by the test. */
-internal class TestTripStart : TripStart {
-    override val started = MutableStateFlow(false)
-    var starts = 0
-    override fun start() { starts++; started.value = true }
 }
 
 internal class TestNavigation : NavigationHandoff {

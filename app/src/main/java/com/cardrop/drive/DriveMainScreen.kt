@@ -43,7 +43,7 @@ fun DriveMainScreen(
             onFuelWarning()
         }
     }
-    val touch = input.allowsTouch && crew != null
+    val hasCrew = crew != null
     val cars = crew?.cars.orEmpty()
     val myEta = positions[vm.myCarId]?.etaMinutes
 
@@ -57,10 +57,10 @@ fun DriveMainScreen(
 
         val fuel = snapshot.fuelPercent
         if (fuel != null && fuel <= LOW_FUEL_PERCENT) {
-            CdCard(modifier = Modifier.fillMaxWidth(), onClick = if (touch) onFuelWarning else null) {
+            CdCard(modifier = Modifier.fillMaxWidth(), onClick = if (hasCrew) onFuelWarning else null) {
                 InfoRow(
                     title = "연료 $fuel% · 주행 가능 ${snapshot.rangeKm?.toInt() ?: "—"}km",
-                    subtitle = if (touch) "눌러서 주유소 추천 받기" else "주유소 추천은 P단에서 확인할 수 있어요",
+                    subtitle = if (hasCrew) "눌러서 주유소 추천 받기" else "크루를 만들면 주유소를 추천해요",
                     trailing = { Pill("연료 경고", CdColors.OrangeLight, CdColors.OrangeDark) },
                 )
             }
@@ -70,16 +70,15 @@ fun DriveMainScreen(
 
         Text("퀵 드랍 · 보낼 곳을 골라요", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            SecondaryButton("휴게소", onClick = { onQuickDrop(DropTopic.REST) }, modifier = Modifier.weight(1f), enabled = touch)
-            SecondaryButton("식사", onClick = { onQuickDrop(DropTopic.FOOD) }, modifier = Modifier.weight(1f), enabled = touch)
-            SecondaryButton("주유", onClick = { onQuickDrop(DropTopic.FUEL) }, modifier = Modifier.weight(1f), enabled = touch)
-            SecondaryButton("편지함", onClick = onOpenInbox, modifier = Modifier.weight(1f), enabled = touch)
+            SecondaryButton("휴게소", onClick = { onQuickDrop(DropTopic.REST) }, modifier = Modifier.weight(1f), enabled = hasCrew)
+            SecondaryButton("식사", onClick = { onQuickDrop(DropTopic.FOOD) }, modifier = Modifier.weight(1f), enabled = hasCrew)
+            SecondaryButton("주유", onClick = { onQuickDrop(DropTopic.FUEL) }, modifier = Modifier.weight(1f), enabled = hasCrew)
+            SecondaryButton("편지함", onClick = onOpenInbox, modifier = Modifier.weight(1f), enabled = hasCrew)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             PrimaryButton("말로 제안해요", onClick = onSpeak, modifier = Modifier.weight(1f), enabled = crew != null)
-            SecondaryButton("드랍하기", onClick = onOpenDropSend, modifier = Modifier.weight(1f), enabled = touch)
+            SecondaryButton("드랍하기", onClick = onOpenDropSend, modifier = Modifier.weight(1f), enabled = hasCrew)
         }
-        if (!input.allowsTouch) Text("화면 조작은 P단에서 사용할 수 있어요", style = MaterialTheme.typography.bodyMedium)
         Text("내 차 연료 ${snapshot.fuelPercent ?: "—"}% · 주행 가능 ${snapshot.rangeKm?.toInt() ?: "—"}km · 연속 운전 ${snapshot.drivingMinutes ?: "—"}분")
     }
 }

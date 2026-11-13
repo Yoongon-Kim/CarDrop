@@ -22,15 +22,15 @@ class DriveRulesTest {
         tracker.reset()
         assertTrue(tracker.update(0))
     }
-    @Test fun onlyParkUnlocksTouchEvenWithMissingOrStaleGps() {
+    @Test fun gearDecidesThePillAndFreshGpsSpeedOnlyWhenGearIsUnknown() {
         val fix = GpsFix(37.5, 127.0, 80.0, 90.0, 100_000)
-        assertTrue(drivingInput(Gear.PARK, null, 100_000).allowsTouch)
+        assertEquals(DrivingInput.PARKED, drivingInput(Gear.PARK, null, 100_000))
         listOf(Gear.DRIVE, Gear.REVERSE, Gear.NEUTRAL).forEach {
-            assertFalse(drivingInput(it, null, 100_000).allowsTouch)
+            assertEquals(DrivingInput.MOVING, drivingInput(it, null, 100_000))
         }
         assertEquals(DrivingInput.MOVING, drivingInput(Gear.UNKNOWN, fix, 100_000))
         assertEquals(DrivingInput.UNKNOWN, drivingInput(Gear.UNKNOWN, fix, 120_000))
-        assertFalse(drivingInput(Gear.UNKNOWN, fix.copy(speedKmh = 0.0), 100_000).allowsTouch)
+        assertEquals(DrivingInput.UNKNOWN, drivingInput(Gear.UNKNOWN, fix.copy(speedKmh = 0.0), 100_000))
     }
     @Test fun fuelCandidatesMustBeAheadOnTheRoadAndWithinRangeWithReserve() {
         val road = RouteGeometry(listOf(GeoPoint(37.5, 127.0), GeoPoint(37.5, 127.2)))

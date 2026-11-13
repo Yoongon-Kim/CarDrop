@@ -104,7 +104,7 @@ Use it to rehearse the 시연 on one emulator.
   range or gear. A value that fails stays null (gear: `UNKNOWN`); `adb logcat -s CarDropVehicle` shows why.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
-  If gear stays `UNKNOWN`, boards 04, 05, 06 and 14 stay voice-only even when parked (`drive/DriveRules.kt`).
+  If gear stays `UNKNOWN`, the game (board 15) stays closed: it opens only in P (`ai/QuizScreen.kt`).
 - The SDK has no vehicle speed or location API. Car positions come from GPS (`navi/GpsCrewPositions.kt`), or
   from `ScriptedRouteSimulator` with `cardrop.navApp=naver`.
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.

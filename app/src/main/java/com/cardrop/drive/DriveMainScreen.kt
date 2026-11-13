@@ -68,7 +68,8 @@ fun DriveMainScreen(
     val inviteFrom = if (invite != null && inviteDrop != null) invite.carName(inviteDrop.fromCarId) else null
     val waiting = drops.count { needsMyAnswer(it, vm) }
 
-    ScreenColumn {
+    // 드랍하기 sits at the bottom of the screen, as in the design (`margin-top: auto`, target 274).
+    ScreenColumn(bottom = { DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak) }) {
         // The design's header (target 203-206): eyebrow 14/700, 2 px gap, title 28/800 a little tighter, and the
         // pill and inbox button centred on the text.
         ScreenHeader(
@@ -108,8 +109,6 @@ fun DriveMainScreen(
                 QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
             }
         }
-
-        DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak)
     }
 }
 
@@ -225,7 +224,7 @@ private fun DropButton(enabled: Boolean, onOpenDropSend: () -> Unit, onSpeak: ()
         }
         Column {
             Text("드랍하기", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.White)
-            Text("마이크를 누르면 말로 제안해요", fontSize = 14.sp, color = CdColors.White.copy(alpha = 0.9f))
+            Text("말로 제안해요 · 스티어링 음성 버튼", fontSize = 14.sp, color = CdColors.White.copy(alpha = 0.9f))
         }
     }
 }

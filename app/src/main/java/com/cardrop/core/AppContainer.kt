@@ -11,6 +11,7 @@ import com.cardrop.ai.PrefsPhraseStore
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
+import com.cardrop.core.demo.DemoCar
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
@@ -49,12 +50,14 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // Member A
+    /** Which car this device drives in the real crew: the DEMO panel's "내 차", else `cardrop.myCar`. */
+    val myCar: String = DemoCar.current(context)
     /**
-     * `cardrop.useRealCrew=true`: the real crew on Firebase, shared by several devices; this device is the
-     * car in `cardrop.myCar`. Otherwise the fake crew with bot cars (also the way back if the network fails).
+     * `cardrop.useRealCrew=true`: the real crew on Firebase, shared by several devices; this device is
+     * [myCar]. Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
     val crew: CrewRepository =
-        if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(BuildConfig.MY_CAR))
+        if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
 
     // Member B
@@ -115,7 +118,7 @@ class AppContainer(context: Context) {
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
      * keeps the driver on the same screen and doesn't open old drops again.
      */
-    val navigator = AppNavigator()
+    val navigator = AppNavigator(start = DemoCar.startScreen(BuildConfig.USE_REAL_CREW, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice)

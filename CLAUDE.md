@@ -81,14 +81,17 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 ```
 
 The **DEMO** button (bottom right of the app) changes fake fuel and gear, and makes bot cars send drops.
-Use it to rehearse the 시연 on one emulator.
+Use it to rehearse the 시연 on one emulator. With the real crew (`cardrop.useRealCrew=true`) its **내 차** picks
+which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).
+With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 to join,
+because creating the crew replaces the one every device shares.
 
 ## Local settings (`local.properties`, not committed)
 
 | Key | Values | Effect |
 | --- | --- | --- |
 | `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed); without the file the app builds with the fake only. `false` = the fake crew with bot cars. Switching back needs a rebuild + install. Logs: `adb logcat -s CarDropCrew` |
-| `cardrop.myCar` | `dad` / `uncle` / `minji` / `aunt` | Which car this device is in the real crew (empty = `dad`). Give each device a different car; any other value stops the build |
+| `cardrop.myCar` | `dad` / `uncle` / `minji` / `aunt` | The car this device drives in the real crew (empty = `dad`) until the DEMO panel's 내 차 picks another one on the device. Give each device a different car; any other value stops the build |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
 | `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |

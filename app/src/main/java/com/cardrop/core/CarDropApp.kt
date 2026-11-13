@@ -31,6 +31,7 @@ import com.cardrop.ai.AiViewModel
 import com.cardrop.ai.QuizScreen
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
+import com.cardrop.core.demo.DemoRailButton
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
 import com.cardrop.core.navigation.DropRoutingEffect
@@ -94,6 +95,8 @@ fun CarDropApp(container: AppContainer) {
     val crewNow by container.crew.crew.collectAsStateWithLifecycle()
     val myCar = crewNow?.cars?.firstOrNull { it.id == container.crew.myCarId }
         ?: Car(container.crew.myCarId, "내 차", CarColor.BLUE, isMe = true)
+    // The DEMO panel: its button sits in the rail (so it never covers a screen's bottom buttons), the panel over the screen.
+    var demoOpen by remember { mutableStateOf(false) }
 
     CarDropShell(
         current = navigator.current,
@@ -101,9 +104,10 @@ fun CarDropApp(container: AppContainer) {
         navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)
-            DemoPanel(container)
+            DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },
         myCar = myCar,
+        railExtra = { DemoRailButton(onClick = { demoOpen = !demoOpen }) },
     ) {
         // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
         val driveScreen: @Composable (FuelInvite?) -> Unit = { invite ->
@@ -189,7 +193,7 @@ fun CarDropApp(container: AppContainer) {
 
 /**
  * Top right: the card for this car getting to the crew's stop (stopped / drove past).
- * Bottom right, just above the DEMO button (so they don't cover the screen header): the black captions
+ * Bottom right, a little up from the corner (so they don't cover the screen header): the black captions
  * for the microphone listening, what the voice just said (the fake voice has no sound; fades out after
  * a few seconds), and quiet social messages.
  */
@@ -215,7 +219,7 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
             StopNoticeCard(stopNotice, navRoute.waypoint)
         }
         Column(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = CAPTIONS_ABOVE_DEMO),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = CAPTIONS_FROM_BOTTOM),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -228,8 +232,11 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
     }
 }
 
-/** Room for the DEMO button (about 40 dp tall) in the same corner, plus a small gap. */
-private val CAPTIONS_ABOVE_DEMO = 50.dp
+/**
+ * How far up from the corner the captions sit: where they were above the DEMO button, which is in the rail now.
+ * While they show (a few seconds), they still cover the right end of a button pinned to the bottom.
+ */
+private val CAPTIONS_FROM_BOTTOM = 50.dp
 
 /** How long the "음성 · …" caption stays before it fades out. */
 private const val SPOKEN_CAPTION_MILLIS = 5_000L

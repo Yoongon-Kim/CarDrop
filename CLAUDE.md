@@ -100,7 +100,7 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 ~/Library/Android/sdk/emulator/emulator -avd Pleos_Connect_v2.1.0   # Pleos emulator
 ```
 
-The **DEMO** button (bottom right of the app) changes fake fuel and gear, and makes bot cars send drops.
+The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
 Use it to rehearse the 시연 on one emulator. With the real crew (`cardrop.useRealCrew=true`) its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).
 With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 to join,
@@ -173,7 +173,7 @@ landed on `main`.
   start, Extended controls > Microphone > "Virtual microphone uses host audio input" (or
   `adb emu avd hostmicon`), and macOS must allow Android Studio to use the microphone. Without them it
   hears nothing and stops after 15 s. It hears everything near the computer, including other people.
-- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, just above the DEMO button, until it
+- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, a little up from the corner, until it
   stops (`Captions` in `core/CarDropApp.kt`).
 - Pleos sends the final sentence a few ms after "recognition ended", so `PleosVoiceService` waits up to 1 s
   for it; otherwise it would keep only the partial text.

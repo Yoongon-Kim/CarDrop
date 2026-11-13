@@ -112,6 +112,11 @@ class FirebaseCrewRepository(
         crewRef?.child("info")?.child("destination")?.setValue(placeToMap(destination))?.await()
     }
 
+    /** Every device reads the name from crews/<code>/info/name, so they all see the new one. */
+    override suspend fun renameCrew(name: String) {
+        crewRef?.child("info")?.child("name")?.setValue(name)?.await()
+    }
+
     override suspend fun sendDrop(draft: DropDraft): Drop {
         val ref = crewRef ?: error("크루에 먼저 참여해 주세요")
         val created = now()

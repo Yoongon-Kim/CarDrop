@@ -1,5 +1,6 @@
 package com.cardrop.drive
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.text.particle
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.TightLetterSpacing
 import com.cardrop.voice.FakeVoiceService
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.delay
@@ -55,7 +57,8 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
     val fuel = snapshot.fuelPercent
     val listener = voice?.takeUnless { it is FakeVoiceService }
     ScreenColumn {
-        ScreenHeader("연료 경고 · 내 차", "연료가 얼마 안 남았어요", eyebrowColor = CdColors.OrangeDark) {
+        FuelHeader("연료가 얼마 안 남았어요") {
+            // Not in the design: the way out without answering.
             CdChip("나중에 확인", onDone, enabled = !action.busy)
         }
         // This car and its fuel.
@@ -104,18 +107,19 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                 )
             }
+            // The design's answers (341-342): 78 high, corners 20, "응, 알려줘" 20 px and "아니, 혼자 갈게" 18 px.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PrimaryButton("응, 알려줘", share, Modifier.weight(1f).height(78.dp), ready)
+                PrimaryButton("응, 알려줘", share, Modifier.weight(1f), ready, height = 78.dp, fontSize = 20.sp)
                 PrimaryButton(
-                    "아니, 혼자 갈게", alone, Modifier.weight(1f).height(78.dp), ready,
-                    containerColor = CdColors.Gray100, contentColor = CdColors.Ink2,
+                    "아니, 혼자 갈게", alone, Modifier.weight(1f), ready,
+                    containerColor = CdColors.Gray100, contentColor = CdColors.Ink2, height = 78.dp, fontSize = 18.sp,
                 )
             }
             DriveActionFeedback(action)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Always the design's hint (344); the 말로 답하기 chip next to it comes only with the real voice.
                 Text(
-                    if (listener != null) "“응”, “알려줘”라고 말해도 돼요 · 어느 쪽이든 AI가 주유소를 골라드려요"
-                    else "어느 쪽이든 AI가 주유소를 골라드려요",
+                    "“응”, “알려줘”라고 말해도 돼요 · 어느 쪽이든 AI가 주유소를 골라드려요",
                     fontSize = 13.sp, color = CdColors.Gray600, modifier = Modifier.weight(1f),
                 )
                 if (listener != null) {
@@ -128,28 +132,54 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
     }
 }
 
+/**
+ * Board 05's header, both steps (target 325): an orange 14/800 eyebrow ("내 차" where the design names its demo car,
+ * "민지 차 화면") and a 32/800 title, a little tighter.
+ */
+@Composable
+private fun FuelHeader(title: String, trailing: @Composable RowScope.() -> Unit = {}) {
+    ScreenHeader(
+        eyebrow = "연료 경고 · 내 차",
+        title = title,
+        eyebrowColor = CdColors.OrangeDark,
+        eyebrowWeight = FontWeight.ExtraBold,
+        titleSize = 32.sp,
+        titleLetterSpacing = TightLetterSpacing,
+        trailing = trailing,
+    )
+}
+
 /** Step 2: the stations the AI picked. The first is its top pick; the driver may choose another. */
 @Composable
 private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> Unit) {
     val snapshot by vm.snapshot.collectAsStateWithLifecycle()
     val action by vm.action.collectAsStateWithLifecycle()
     var chosen by remember(plan) { mutableIntStateOf(0) }
-    ScreenColumn {
-        ScreenHeader("연료 경고 · 내 차", "AI가 주유소 ${plan.stations.size}곳을 골랐어요", eyebrowColor = CdColors.OrangeDark)
-        Text("가는 길에 있고, 남은 연료로 갈 수 있는 곳만 골랐어요", style = MaterialTheme.typography.bodyLarge, color = CdColors.Gray600)
-        plan.stations.forEachIndexed { i, station ->
-            StationRow(i + 1, station, selected = i == chosen, rangeKm = snapshot.rangeKm, enabled = !action.busy) { chosen = i }
-        }
-        DriveActionFeedback(action)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+    // The design has no 취소 here; the back button goes back to step 1 instead (while nothing is being sent).
+    BackHandler(enabled = !action.busy) { vm.cancelFuelPlan() }
+    // One full-width button at the bottom (target 358): 76 high, corners 22, 20 px.
+    ScreenColumn(
+        bottom = {
             PrimaryButton(
                 if (plan.shared) "여기로 정하고 일행에게 알리기" else "여기로 혼자 다녀오기",
                 { vm.confirmFuelStop(chosen, onDone) },
-                Modifier.weight(2f),
+                Modifier.fillMaxWidth(),
                 !action.busy,
+                height = 76.dp,
+                radius = 22.dp,
+                fontSize = 20.sp,
             )
-            SecondaryButton("취소", { vm.cancelFuelPlan() }, Modifier.weight(1f), !action.busy)
+        },
+    ) {
+        FuelHeader("AI가 주유소 ${plan.stations.size}곳을 골랐어요")
+        Text("가는 길에 있고, 남은 연료로 갈 수 있는 곳만 골랐어요", style = MaterialTheme.typography.bodyLarge, color = CdColors.Gray600)
+        // The stations 10 apart (target 349).
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            plan.stations.forEachIndexed { i, station ->
+                StationRow(i + 1, station, selected = i == chosen, rangeKm = snapshot.rangeKm, enabled = !action.busy) { chosen = i }
+            }
         }
+        DriveActionFeedback(action)
     }
 }
 
@@ -245,8 +275,9 @@ internal fun FuelInviteBanner(vm: DriveViewModel, invite: FuelInvite, drop: Drop
         joined -> "같이 ${station?.name ?: "주유소"}에 들러요" to "내 내비에도 경유지로 넣었어요 · ${name}에 응답이 전달됐어요"
         passed -> "우리는 가던 길로 가요" to "경로는 그대로예요 · ${name.particle("은", "는")} ${destination}에서 합류해요"
         drop.isDecided -> "이미 결정된 알림이에요" to drop.decidedCandidate?.place?.name.orEmpty()
-        else -> "${name}에서 주유소 간대요, 같이 갈래요?" to
-            ("아니면 그냥 가던 길 가도 돼요" + if (voice != null) " · “같이 가자”라고 말해도 돼요" else "")
+        // The design's question and hint (664-665): "민지 차가 주유소 간대요, 같이 갈래요?" (이/가 picked for the name).
+        else -> "${name.particle("이", "가")} 주유소 간대요, 같이 갈래요?" to
+            "아니면 그냥 가던 길 가도 돼요 · “같이 가자”라고 말해도 돼요"
     }
     val shape = RoundedCornerShape(22.dp)
     Row(
@@ -278,8 +309,15 @@ internal fun FuelInviteBanner(vm: DriveViewModel, invite: FuelInvite, drop: Drop
                     if (it == DriveVoiceCommand.JOIN) join() else pass()
                 }
             }
-            PrimaryButton("가던 길 갈래요", pass, enabled = ready, containerColor = CdColors.White, contentColor = CdColors.Ink2)
-            PrimaryButton("같이 갈래요", join, enabled = ready, containerColor = CdColors.Orange)
+            // The design's buttons (249-250): 56 high, corners 16, sides 16 / 20, text 15 / 16 px.
+            PrimaryButton(
+                "가던 길 갈래요", pass, enabled = ready, containerColor = CdColors.White, contentColor = CdColors.Ink2,
+                height = 56.dp, radius = 16.dp, fontSize = 15.sp, horizontalPadding = 16.dp,
+            )
+            PrimaryButton(
+                "같이 갈래요", join, enabled = ready, containerColor = CdColors.Orange,
+                height = 56.dp, radius = 16.dp, fontSize = 16.sp, horizontalPadding = 20.dp,
+            )
         }
     }
 }

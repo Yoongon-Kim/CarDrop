@@ -12,7 +12,7 @@ class ShoutPhrasesTest {
     @Test
     fun nothingSavedMeansTheDesignsEightPhrases() {
         assertEquals(ShoutPhrases.DEFAULTS, ShoutPhrases.fromSaved(null))
-        assertEquals(8, ShoutPhrases.DEFAULTS.size)
+        assertEquals(6, ShoutPhrases.DEFAULTS.size)
     }
 
     @Test

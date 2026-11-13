@@ -59,8 +59,9 @@ fun Modifier.softShadow(
  * CSS blurs a shadow with a Gaussian whose sigma is half the blur radius. Android's `setShadowLayer`
  * takes a radius that it turns into sigma = 0.57735 x radius + 0.5 (Skia's rule), so solve for that radius.
  * A radius of 0 would remove the shadow, so it stays a little above 0.
+ * Internal (not private) so the map markers (`navi/MapMarkers.kt`) turn their CSS shadows into Android ones the same way.
  */
-private fun cssBlurToShadowRadius(blurPx: Float): Float =
+internal fun cssBlurToShadowRadius(blurPx: Float): Float =
     ((blurPx / 2f - 0.5f) / 0.57735f).coerceAtLeast(0.01f)
 
 private const val MAX_SHADOW_ALPHA = 0.996f

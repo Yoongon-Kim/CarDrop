@@ -1,17 +1,81 @@
-# CarDrop
+CarDrop
 
-A Pleos Connect app for groups of cars driving to the same place: form a crew, vote on a rest stop,
-share a fuel warning, and send the agreed stop to every car's navigation (an in-app navigator drawn in the
-left third of the screen).
+CarDrop은 여러 대의 차량으로 이동하는 일행이 경로상 경유지를 추천받고, 투표로 들를 곳을 정하며, 이동 중에도 서로 소식을 나누는 Pleos Connect용 차량 Social/Communication 앱입니다.
 
-## Quick start
+## 빠른 실행
 
-1. Install Android Studio and open this folder.
-2. Copy your Android SDK path into `local.properties` (`sdk.dir=...`). The other keys are described in `CLAUDE.md`.
-3. Start the `Pleos_Connect_v2.1.0` emulator, then press Run (or `./gradlew installDebug`).
-4. In the app: 크루 → 다 모이면 출발하기 → 홈 → 휴게소 → 이 3곳으로 투표 보내기 → 응답하기.
-   The **DEMO** button (bottom right) stages low fuel, P/D, and drops from the bot cars.
+1. Android Studio에서 저장소 루트(`settings.gradle.kts`가 있는 폴더)를 열고 Gradle 동기화를 완료합니다. Android SDK 경로는 Android Studio가 생성하는 `local.properties`의 `sdk.dir`을 사용합니다.
+2. Device Manager에서 **Pleos Connect v2.1.0** 에뮬레이터를 시작합니다.
+3. 실행 대상에 해당 에뮬레이터를 선택하고 **Run ▶**을 누릅니다. 앱이 위치 권한을 요청하면 허용합니다.
+4. 앱에서 크루를 만들고 **다 모이면 출발하기**를 누릅니다. 홈에서 **휴게소**를 선택하고, 추천 후보와 받을 차량을 확인해 투표를 보냅니다.
+5. 오른쪽 아래 **DEMO**에서 가상 차량의 응답을 재현합니다. 투표 결과와 앱 내 지도의 경유지 변경을 확인합니다.
 
-Everything runs on fakes by default, so no car or map app is needed. The in-app navigator is real (GPS +
-live routes) and needs internet; on the emulator, run `python3 tools/drive_gps.py` to drive the car.
-See `CLAUDE.md` for architecture, ownership and the navigation handoff notes.
+기본 설정에서는 별도 API 키나 Firebase 설정 파일 없이 에뮬레이터 한 대로 크루·추천·투표 흐름을 체험할 수 있습니다. 이 모드에서는 가상 차량, 샘플 추천, 모의 음성 입력을 사용합니다. 지도 타일과 온라인 경로 계산에는 인터넷 연결이 필요합니다.
+
+## 체험할 기능
+
+### Android 앱에서 체험
+
+| 기능 | 어디서 무엇을 해볼 수 있나요? |
+| --- | --- |
+| 크루 만들기·참여 | 목적지를 선택하고 크루를 만듭니다. 다른 차량은 6자리 초대 코드로 참여합니다. 여러 기기를 연결하는 방법은 아래 Firebase 설정을 참고하세요. |
+| 주행 홈·일행 위치 | 출발 후 앱 내 지도에서 차량 위치와 경로를 확인합니다. 홈의 퀵 드랍으로 휴게소·식사·주유·한마디를 바로 제안합니다. |
+| 받는 차량 선택·편지함 | **드랍하기**에서 크루 전체 또는 개별 차량을 선택합니다. 받은 차량은 편지함에서 제안과 메시지를 확인합니다. |
+| 경유지·목적지 제안 | 휴게소·식사·주유소·카페 등 원하는 주제를 고르거나 장소를 직접 추가합니다. 목적지 변경 제안도 결정 드랍으로 처리합니다. |
+| AI 추천·음성 제안 | “배고파”처럼 말하면 제안 의도를 해석합니다. 추천 화면에서 후보와 추천 이유를 확인한 뒤 보낼 장소를 고릅니다. |
+| 투표·돌림판 | 받은 차량에서 후보를 선택하거나 “1번”, “아무 데나”, “패스”처럼 응답합니다. 고르기 어려울 때는 **고민되면 돌려보기**를 사용합니다. |
+| 결정 안내·경로 변경 | 투표 결과를 확인하고 앱 내 지도의 경유지 변경을 볼 수 있습니다. **지금 안내 시작** 또는 **우리 차는 안 들르기**를 선택합니다. |
+| 연료 부족 알림 | DEMO에서 연료 부족 상황을 재현합니다. 일행은 **같이 갈래요** 또는 **가던 길 갈래요**로 주유소 동행 여부를 정합니다. |
+| 일행에게 한마디 | 자주 쓰는 문구를 추가·수정·삭제하거나 직접 말해 메시지를 보냅니다. 받은 차량에는 소식을 화면으로 표시합니다. |
+| 정차 중 AI 퀴즈 | DEMO에서 기어를 P로 설정하고 게임 초대를 선택해 문제에 답합니다. D로 바꾸면 퀴즈가 멈추고, 다시 P로 바꾸면 이어서 진행합니다. |
+
+### 디자인 프로토타입에 포함된 기능
+
+아래 번호는 저장소의 [최종 화면 설계 원본](design/FinalApp.dc.html)에 표시된 화면 번호입니다. 제출 소스 ZIP에는 이 파일이 참조하는 `support.js`가 포함되어 있지 않아 HTML 파일만으로 재생하려면 해당 파일도 필요합니다.
+
+| 기능 | 화면 | 확인할 내용과 구현 범위 |
+| --- | --- | --- |
+| 노래 드랍·따라듣기 | 12–13 | 보내는 차량이 듣던 곡을 공유하고, 받은 차량은 곡 정보를 확인한 뒤 **받아서 바로 듣기** 또는 **괜찮아요**를 선택하는 흐름입니다. Android 앱에는 노래 드랍 항목만 표시되며, 실제 음악 서비스 재생 연동은 디자인 시연 범위 밖입니다. |
+| 안전 운전 점수 비교 | 04·16–17 | 홈 리더보드에서 일행 차량의 점수를 비교하고, 안전 대결 화면에서 점수 현황을, 도착 후 결과 화면에서 최종 순위를 확인하는 설계입니다. 표시된 점수는 시연용이며, Android 앱에서 실차 안전 점수를 산출하지 않습니다. |
+| 저장된 그룹·초대 공유 | 01–03 | 가족이나 동호회 등 저장된 그룹을 다시 초대하고, 초대 코드를 읽어 주거나 문자 링크를 보내는 화면입니다. Android 앱의 참여 경로는 6자리 코드입니다. |
+| 같이 켜기·포인트·제휴 혜택 | 18–19 | 정차 중 같은 장소에서 앱을 켠 크루의 참여 현황, 포인트 보너스, 제휴 혜택 안내를 보여주는 화면입니다. 포인트 지급과 광고 집행은 디자인 예시입니다. |
+
+## 테스트 환경
+
+| 항목 | 규격 |
+| --- | --- |
+| 에뮬레이터 | Pleos Connect v2.1.0 (`Pleos_Connect_v2.1.0`), Android Automotive API 34 |
+| Windows 개발 PC의 AVD 디스플레이 설정 | 가로 2560 × 1440 px, 160 dpi |
+| 앱 UI 설계 기준 | 가로 1600 × 900 px. 앱 내부의 왼쪽 약 1/3은 경로 안내, 오른쪽 약 2/3는 크루·투표 화면 |
+| 개발 환경 | Android Studio, Kotlin, Jetpack Compose, Gradle Wrapper 8.13 |
+| 앱 빌드 설정 | compileSdk 35, targetSdk 35, minSdk 28, JVM 타깃 17. Gradle 데몬은 프로젝트 설정에 따라 JDK 21 사용 |
+
+## 선택 설정
+
+아래 값은 프로젝트 루트의 `local.properties`에서 설정합니다. 설정을 변경한 뒤 앱을 다시 빌드하고 설치합니다.
+
+| 연동할 서비스 | 필요한 설정 |
+| --- | --- |
+| Pleos 음성 인식·안내 | `cardrop.useRealVoice=true`. 에뮬레이터를 시작할 때 호스트 마이크 입력을 켜고 앱에 마이크 권한을 허용합니다. |
+| 차량 데이터 조회 | `cardrop.useRealVehicle=true`. Pleos Vehicle SDK를 통해 차량이 제공하는 연료 잔량·주행 가능 거리 등을 조회합니다. 기본 모드에서는 DEMO로 연료 부족을 재현합니다. |
+| AI 의도 분석·추천 | `cardrop.claudeApiKey` 설정. 미설정 시 샘플 응답을 사용합니다. 현재 빌드는 키를 APK에 포함하므로 공유용 APK는 Claude 비밀 키를 비운 상태로 빌드합니다. |
+| 지도·경로·장소 검색 | `cardrop.kakaoRestKey`는 카카오 경로 계산·장소 검색에, `cardrop.kakaoNativeKey`는 카카오 지도 표시에 사용합니다. 키가 없으면 OSRM 경로, MapLibre 지도, 앱에 등록된 장소 목록을 사용합니다. |
+| 두 차량 간 실제 투표 | 팀 Firebase 프로젝트의 설정 파일을 `app/google-services.json`에 두고 `cardrop.useRealCrew=true`로 설정합니다. 각 기기에 `cardrop.myCar=dad`, `cardrop.myCar=uncle`처럼 서로 다른 값으로 빌드·설치한 뒤, 한 차량이 만든 크루에 다른 차량이 6자리 코드로 참여합니다. |
+
+### 에뮬레이터에서 주행 재현
+
+Python 3와 Android SDK의 `platform-tools`를 준비하고 `adb`를 PATH에 추가합니다. 앱 실행 후 저장소 루트에서 다음 명령을 실행하면 영동고속도로 시연 경로를 따라 GPS 좌표가 입력됩니다.
+
+```powershell
+python tools/drive_gps.py
+```
+
+## APK 파일 위치(나중에 실제 위치로 수정)
+
+소스에서 직접 빌드한 **테스트용 APK**의 위치는 `app/build/outputs/apk/debug/app-debug.apk`입니다. 저장소 루트에서 아래 명령으로 생성할 수 있습니다.
+
+```powershell
+.\gradlew.bat assembleDebug
+```
+
+macOS 또는 Linux에서는 `./gradlew assembleDebug`를 사용합니다.

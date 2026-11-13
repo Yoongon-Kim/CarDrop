@@ -43,6 +43,7 @@ import com.cardrop.crew.CreateCrewScreen
 import com.cardrop.crew.CrewViewModel
 import com.cardrop.crew.DestinationSearchScreen
 import com.cardrop.crew.JoinCrewScreen
+import com.cardrop.crew.JoinRules
 import com.cardrop.drive.DecidedScreen
 import com.cardrop.drive.DriveMainScreen
 import com.cardrop.drive.DriveViewModel
@@ -130,6 +131,7 @@ fun CarDropApp(container: AppContainer) {
         when (val screen = navigator.current) {
             Screen.CreateCrew -> CreateCrewScreen(
                 vm = crewVm,
+                vehicle = driveVm.snapshot, // this car's fuel for the host's row
                 onSearchDestination = { navigator.go(Screen.DestinationSearch) },
                 onJoinWithCode = { navigator.go(Screen.JoinCrew) },
                 onDepart = {
@@ -139,9 +141,19 @@ fun CarDropApp(container: AppContainer) {
                 },
             )
             Screen.DestinationSearch -> DestinationSearchScreen(crewVm, onBack = navigator::back, onPicked = navigator::back)
-            Screen.JoinCrew -> JoinCrewScreen(crewVm) {
+            Screen.JoinCrew -> JoinCrewScreen(
+                vm = crewVm,
+                routeDestination = { container.navigation.route.value.destination },
+                onBack = navigator::back,
+            ) { stop ->
                 // Before the host's 출발 this car waits on board 04; TripCoordinator starts it with the host.
                 if (container.tripStart.started.value) driveVm.startGuidance()
+                // "…들렀다 가기": where this car was heading becomes the waypoint on the way to the crew's
+                // destination. After startGuidance, so the navigator's last message is about the stop.
+                val crewDestination = container.crew.crew.value?.destination
+                if (stop != null && crewDestination != null) {
+                    container.navigation.setRoute(crewDestination, waypoint = stop, reason = JoinRules.stopAddedNote(stop))
+                }
                 navigator.switchTab(Screen.Drive)
             }
             Screen.Drive -> driveScreen(null)
@@ -186,13 +198,18 @@ fun CarDropApp(container: AppContainer) {
                 onOpenResult = { navigator.go(Screen.Decided(it)) },
             )
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
-            Screen.Games -> QuizScreen(aiVm)
+            Screen.Games -> {
+                // For the eyebrow "덕평자연휴게소 · 4대 모두 정차": the stop this car is parked at, and the crew's messages.
+                val stop by container.inAppNavigation.parkedAt.collectAsStateWithLifecycle()
+                val drops by driveVm.drops.collectAsStateWithLifecycle()
+                QuizScreen(aiVm, stop = stop, drops = drops)
+            }
         }
     }
 }
 
 /**
- * Top right: the card for this car getting to the crew's stop (stopped / drove past).
+ * Top right, below the screen header: the card for this car getting to the crew's stop (stopped / drove past).
  * Bottom right, a little up from the corner (so they don't cover the screen header): the black captions
  * for the microphone listening, what the voice just said (the fake voice has no sound; fades out after
  * a few seconds), and quiet social messages.
@@ -215,7 +232,9 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
     }
 
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+        // Below the screen header (not over board 04's 음성 모드 pill and inbox button), and in line with the
+        // screen's right edge (16 + 12 = ScreenColumn's 28).
+        Box(modifier = Modifier.align(Alignment.TopEnd).padding(top = STOP_NOTICE_TOP, end = 12.dp)) {
             StopNoticeCard(stopNotice, navRoute.waypoint)
         }
         Column(
@@ -237,6 +256,12 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
  * While they show (a few seconds), they still cover the right end of a button pinned to the bottom.
  */
 private val CAPTIONS_FROM_BOTTOM = 50.dp
+
+/**
+ * The stop card's distance from the top, inside the 16 dp around the captions: a screen header ends about
+ * 88 dp down (24 dp screen padding + board 04's header, about 64 dp), so the card starts about 14 dp below it.
+ */
+private val STOP_NOTICE_TOP = 86.dp
 
 /** How long the "음성 · …" caption stays before it fades out. */
 private const val SPOKEN_CAPTION_MILLIS = 5_000L

@@ -217,6 +217,9 @@ shares its position through Firebase about once a second, so each one draws the 
   "…를 지나쳤어요"). Board 14 "도착 예정" (`drive/Arrivals.kt`) reads those crew messages back
   (`drive/StopNews.kt`) for 도착했어요 / 지나쳤어요; without one, a car within 0.3 km shows "곧 도착해요" and one
   more than 0.8 km past shows "지나쳤어요". The bot cars send no messages, so they never show 도착.
+- After 도착 the car is parked there (`NavigatorState.parkedAt`) until it is more than 300 m away or faster than
+  20 km/h: the ETA card shows "덕평자연휴게소 · 정차 중" with "P", and board 15's eyebrow names the stop and the cars
+  that said 도착했어요 ("덕평자연휴게소 · 4대 모두 정차").
 - Routing: `navi/KakaoDirections.kt` (Kakao Mobility, Korean data + traffic + Korean turn texts; key
   `cardrop.kakaoRestKey`, free for non-commercial use up to 10,000 requests/day), then
   `navi/OsrmDirections.kt` (public OSRM server, no key, no traffic, no uptime promise) as backup.

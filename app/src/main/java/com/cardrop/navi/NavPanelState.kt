@@ -85,7 +85,8 @@ fun formatKm(km: Double): String = when {
     else -> "${km.roundToInt()} km"
 }
 
-private fun clock(nowMillis: Long, seconds: Double, zone: ZoneId): String =
+/** The clock time [seconds] from now, e.g. "14:32" (also board 14's "도착 예정"). */
+internal fun clock(nowMillis: Long, seconds: Double, zone: ZoneId): String =
     Instant.ofEpochMilli(nowMillis + (seconds.coerceAtLeast(0.0) * 1000).toLong())
         .atZone(zone)
         .format(DateTimeFormatter.ofPattern("HH:mm"))

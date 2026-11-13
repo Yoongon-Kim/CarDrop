@@ -91,6 +91,7 @@ private fun SharedControlsPreview() {
                     fontSize = 13.sp, padding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                 )
                 AiTag()
+                AiTag(small = true)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(CdIcons.Back, CdIcons.Close, CdIcons.Plus, CdIcons.Pencil, CdIcons.Mic, CdIcons.Check, CdIcons.Flag).forEach {

@@ -10,17 +10,54 @@ Usage (emulator running):
     python3 tools/drive_gps.py --speed 1       # real time, 100 km/h
     python3 tools/drive_gps.py --start-km 60 --speed 10
     python3 tools/drive_gps.py --gpx /tmp/trip.gpx   # write a GPX for Extended controls > Location > Routes
+    python3 tools/drive_gps.py --stop 여주휴게소     # pull into that stop, stand still 20 s, drive on
 Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
+
+--stop shows the navigator's "도착" (arrived): it needs about 10 s standing still within 300 m of the
+voted stop. Without --stop the car drives past every stop, which the navigator reports as "지나침".
 """
 import argparse
 import math
+import os
 import re
+import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-ROUTE_FILE = Path(__file__).resolve().parent.parent / "app/src/main/java/com/cardrop/drive/DemoRouteData.kt"
+ROOT = Path(__file__).resolve().parent.parent
+ROUTE_FILE = ROOT / "app/src/main/java/com/cardrop/drive/DemoRouteData.kt"
+PLACES_FILE = ROOT / "app/src/main/java/com/cardrop/core/demo/DemoData.kt"
+
+
+def find_adb() -> str:
+    """adb from PATH, else from the Android SDK (Android Studio doesn't put it on PATH)."""
+    found = shutil.which("adb")
+    if found:
+        return found
+    for sdk in (os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"), str(Path.home() / "Library/Android/sdk")):
+        if sdk and (Path(sdk) / "platform-tools/adb").exists():
+            return str(Path(sdk) / "platform-tools/adb")
+    sys.exit("adb not found: add Android SDK platform-tools to PATH or set ANDROID_HOME")
+
+
+def load_places() -> dict:
+    """Every Place(...) in DemoData.kt (rest stops, cafés, destinations) by name: (lat, lng)."""
+    text = PLACES_FILE.read_text(encoding="utf-8")
+    found = re.findall(r'Place\(\s*"[^"]*",\s*"([^"]+)",\s*(-?[0-9.]+),\s*(-?[0-9.]+)', text)
+    return {name: (float(lat), float(lng)) for name, lat, lng in found}
+
+
+def nearest_km(points, cumulative, place):
+    """km along the route where it passes closest to [place], checked every ~20 m."""
+    best_km, best_d, km = 0.0, float("inf"), 0.0
+    while km <= cumulative[-1]:
+        d = haversine_km(point_at(points, cumulative, km), place)
+        if d < best_d:
+            best_km, best_d = km, d
+        km += 0.02
+    return best_km, best_d
 
 
 def load_polyline() -> str:
@@ -87,6 +124,8 @@ def main():
     parser.add_argument("--kmh", type=float, default=100.0, help="driving speed the GPS reports (default 100)")
     parser.add_argument("--serial", default=None, help="adb device, e.g. emulator-5554")
     parser.add_argument("--gpx", default=None, help="write a GPX file instead of driving")
+    parser.add_argument("--stop", default=None, help="pull into this place on the way, e.g. 여주휴게소 (a name from DemoData.kt)")
+    parser.add_argument("--stop-seconds", type=float, default=20.0, help="how long to stand still there (default 20)")
     args = parser.parse_args()
 
     points = decode(load_polyline())
@@ -99,20 +138,44 @@ def main():
         write_gpx(args.gpx, points, cumulative, args.start_km, args.kmh)
         return
 
-    adb = ["adb"] + (["-s", args.serial] if args.serial else [])
+    stop = None
+    if args.stop:
+        places = load_places()
+        if args.stop not in places:
+            sys.exit(f"Unknown place {args.stop!r}. Known: {', '.join(sorted(places))}")
+        stop_km, off_km = nearest_km(points, cumulative, places[args.stop])
+        if off_km > 1.5 or stop_km < args.start_km:
+            sys.exit(f"{args.stop} is not ahead on the route (closest at km {stop_km:.1f}, {off_km * 1000:.0f} m away)")
+        stop = (args.stop, places[args.stop], stop_km)
+        print(f"Will stop at {args.stop} (km {stop_km:.1f}) for {args.stop_seconds:g} s.")
+
+    adb = [find_adb()] + (["-s", args.serial] if args.serial else [])
     knots = args.kmh / 1.852
+
+    def send(lat, lng, knots_now):
+        # geo fix <longitude> <latitude> [<altitude> [<satellites> [<velocity in knots>]]]
+        result = subprocess.run(adb + ["emu", "geo", "fix", f"{lng:.6f}", f"{lat:.6f}", "50", "8", f"{knots_now:.1f}"],
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            sys.exit(f"adb failed: {result.stderr.strip() or result.stdout.strip()} (is the emulator running?)")
+
     km = args.start_km
     step = args.kmh / 3600.0 * args.speed
     print(f"Driving {total - km:.0f} km at {args.kmh:.0f} km/h x{args.speed:g}. Ctrl+C to stop.")
     tick = 0
     try:
         while km <= total:
+            if stop and km >= stop[2]:
+                # Pull into the stop (its map point, beside the motorway) and stand still, 1 fix per second.
+                name, (lat, lng), stop_km = stop
+                print(f"  Stopped at {name} for {args.stop_seconds:g} s.")
+                for _ in range(int(args.stop_seconds)):
+                    send(lat, lng, 0.0)
+                    time.sleep(1.0)
+                print(f"  Leaving {name}.")
+                km, stop = stop_km, None
             lat, lng = point_at(points, cumulative, km)
-            # geo fix <longitude> <latitude> [<altitude> [<satellites> [<velocity in knots>]]]
-            result = subprocess.run(adb + ["emu", "geo", "fix", f"{lng:.6f}", f"{lat:.6f}", "50", "8", f"{knots:.1f}"],
-                                    capture_output=True, text=True)
-            if result.returncode != 0:
-                sys.exit(f"adb failed: {result.stderr.strip() or result.stdout.strip()} (is the emulator running?)")
+            send(lat, lng, knots)
             if tick % 10 == 0:
                 print(f"  km {km:6.1f} / {total:.0f}   {lat:.5f}, {lng:.5f}")
             tick += 1

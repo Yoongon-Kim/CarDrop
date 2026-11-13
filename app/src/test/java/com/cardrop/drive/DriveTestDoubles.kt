@@ -7,6 +7,8 @@ import com.cardrop.core.model.*
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.navi.NavigationHandoff
+import com.cardrop.navi.WaypointEvent
+import kotlinx.coroutines.flow.MutableSharedFlow
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +49,7 @@ internal class TestNavigation : NavigationHandoff {
         changes += route.value
     }
     override fun launch(): Boolean { launches++; return available && route.value.destination != null }
+    override val waypointEvents = MutableSharedFlow<WaypointEvent>(extraBufferCapacity = 8)
 }
 
 internal class TestRoute : RouteSimulator {

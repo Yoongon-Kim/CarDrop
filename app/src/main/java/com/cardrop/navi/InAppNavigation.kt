@@ -3,13 +3,16 @@ package com.cardrop.navi
 import android.util.Log
 import com.cardrop.core.model.NavRoute
 import com.cardrop.core.model.Place
+import com.cardrop.core.text.particle
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RoutePoint
 import com.cardrop.drive.TripDecisions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
@@ -43,7 +46,7 @@ data class NavigatorState(
  * - position: this car's GPS ([LocationSource]); on the emulator, `tools/drive_gps.py` feeds it;
  * - route: asked from [router] (Kakao, then OSRM) from where the car is to the crew destination,
  *   through the voted waypoint; asked again when the destination or waypoint changes, when the car
- *   leaves the route, and after the car reaches the waypoint;
+ *   leaves the route, and after the car stops at the waypoint or drives past it ([waypointEvents]);
  * - guidance: the next turn and arrival times from the live position ([NavPanelState]).
  *
  * Used on the emulator, where the built-in Pleos navigation shows no map (style `connect_empty`).
@@ -71,6 +74,10 @@ class InAppNavigation(
     private val _state = MutableStateFlow(NavigatorState())
     val state: StateFlow<NavigatorState> = _state
 
+    // Room for a few events, so a slow listener never holds up the GPS.
+    private val _waypointEvents = MutableSharedFlow<WaypointEvent>(extraBufferCapacity = 8)
+    override val waypointEvents: SharedFlow<WaypointEvent> = _waypointEvents
+
     private val tracker = GuidanceTracker()
     private var routing: Job? = null
     private var lastRequestMillis = 0L
@@ -89,7 +96,7 @@ class InAppNavigation(
         val old = _route.value
         if (waypoint != null && isBehind(waypoint)) {
             // The vote ended after this car drove past the stop: don't send it back.
-            _route.value = NavRoute(destination, waypoint = null, lastAction = "${waypoint.name}은 이미 지났어요 · 목적지로 안내해요")
+            _route.value = NavRoute(destination, waypoint = null, lastAction = "${waypoint.name.particle("은", "는")} 이미 지났어요 · 목적지로 안내해요")
             if (old.destination != destination || old.waypoint != null) requestRoute()
             return
         }
@@ -159,8 +166,14 @@ class InAppNavigation(
             it.copy(fix = fix, progressKm = update.km, snapped = update.snapped, offRoute = update.offRoute, arrived = update.arrived)
         }
         when {
-            update.reachedWaypoint && waypoint != null -> {
-                _route.update { it.copy(waypoint = null, lastAction = "${waypoint.name}에 도착했어요") }
+            update.waypoint != null && waypoint != null -> {
+                // Stopped there, or drove past it: either way the stop is done, so guide to the destination.
+                val text = when (update.waypoint) {
+                    WaypointResult.ARRIVED -> "${waypoint.name}에 도착했어요"
+                    WaypointResult.PASSED -> "${waypoint.name.particle("을", "를")} 지나쳤어요 · 목적지로 안내해요"
+                }
+                _route.update { it.copy(waypoint = null, lastAction = text) }
+                _waypointEvents.tryEmit(WaypointEvent(waypoint, update.waypoint))
                 requestRoute()
             }
             justArrived -> _route.update { it.copy(lastAction = "목적지에 도착했어요") }

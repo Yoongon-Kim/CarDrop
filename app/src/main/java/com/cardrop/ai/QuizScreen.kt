@@ -60,15 +60,18 @@ fun QuizScreen(vm: AiViewModel) {
         val others = crew?.cars.orEmpty().filter { it.id != vm.myCarId }
         val opponent = others.firstOrNull { it.id == round.opponentId }
         val opponentName = opponent?.name ?: CREW_CAR.name
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.width(250.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // The design fills the screen's height (509): the two columns take what is left under the header.
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Column(Modifier.width(250.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 QuizKind.entries.forEach { kind -> GameRow(kind, selected = kind == round.kind) { vm.chooseQuiz(kind) } }
+                Spacer(Modifier.weight(1f)) // 도전장 드랍 and its hint at the bottom of the column (512-513)
                 ChallengeButton(opponentName, sent = round.challengeSent, enabled = crew != null, onClick = vm::sendChallenge)
                 Text("D로 바꾸면 게임이 멈추고 다음 정차 때 이어서 해요", fontSize = 13.sp, color = CdColors.Gray600, lineHeight = 20.sp)
             }
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(26.dp))
                     .background(CdColors.White)
                     .padding(horizontal = 22.dp, vertical = 18.dp),
@@ -181,9 +184,12 @@ private fun OpponentChip(car: Car, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** The question (tiles and four answers), what the pick was worth, "다음 문제", and the score at the end. */
+/**
+ * The question (tiles and four answers), what the pick was worth, "다음 문제", and the score at the end.
+ * The answers sit at the bottom of the white card, as in the design (`margin-top: auto`, target 531).
+ */
 @Composable
-private fun QuizBody(
+private fun ColumnScope.QuizBody(
     quiz: AiViewModel.Loadable<QuizQuestion>,
     round: QuizRound,
     onAnswer: (String) -> Unit,
@@ -234,6 +240,7 @@ private fun QuizBody(
                     }
                 }
             }
+            Spacer(Modifier.weight(1f))
             question.answers.chunked(2).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     row.forEach { answer ->

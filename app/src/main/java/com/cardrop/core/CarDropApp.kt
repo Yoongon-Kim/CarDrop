@@ -143,10 +143,13 @@ fun CarDropApp(container: AppContainer) {
             is Screen.FuelThem -> driveScreen(
                 FuelInvite(screen.dropId, crewVm::carName, container.voice) { navigator.switchTab(Screen.Drive) },
             )
-            // Board 07: a half sheet over board 04, so the drive screen stays behind it.
+            // Board 07: a half sheet over board 04, so the drive screen stays behind it. A fuel invite this car
+            // turned down (가던 길 갈래요) doesn't wait for an answer there, the same as on 홈's badge.
             Screen.Inbox -> Box(modifier = Modifier.fillMaxSize()) {
                 driveScreen(null)
-                InboxScreen(crewVm, onClose = navigator::back) { drop -> navigator.go(inboxScreenFor(drop)) }
+                InboxScreen(crewVm, onClose = navigator::back, isSkipped = driveVm::skipped) { drop ->
+                    navigator.go(inboxScreenFor(drop))
+                }
             }
             Screen.DropSend -> DropSendScreen(
                 vm = crewVm,

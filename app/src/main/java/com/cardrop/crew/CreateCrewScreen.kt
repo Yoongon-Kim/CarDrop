@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Crew
@@ -228,13 +229,17 @@ private const val CREW_NAME_MAX_LENGTH = 20
 /** The join code, and two ways to tell it to the others: read aloud, or a text message ([onShare]). */
 @Composable
 private fun InviteCodeCard(vm: CrewViewModel, crew: Crew?, onShare: () -> Unit, shareStatus: String?) {
-    CdCard(modifier = Modifier.fillMaxWidth()) {
-        Text("참여 코드", style = MaterialTheme.typography.labelMedium)
+    // Design lines 113-114: radius 24, padding 22 / 24, 14 apart; the code big and centred, with no label.
+    CdCard(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(horizontal = 24.dp, vertical = 22.dp), gap = 14.dp) {
         Text(
             crew?.code?.chunked(3)?.joinToString(" ") ?: "------",
-            fontSize = 44.sp,
-            fontWeight = FontWeight.Black,
             color = CdColors.Ink,
+            fontSize = 60.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.08.em,
+            lineHeight = 60.sp, // the board's line-height: 1
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             // Reads the code aloud, digit by digit ("사 팔 이, 구 일 칠").

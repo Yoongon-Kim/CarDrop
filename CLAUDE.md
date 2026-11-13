@@ -83,6 +83,26 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 The **DEMO** button (bottom right of the app) changes fake fuel and gear, and makes bot cars send drops.
 Use it to rehearse the 시연 on one emulator.
 
+## Several Claude sessions at once
+
+Sessions started in the same folder share its files, its one checked-out branch and the one emulator.
+On 2026-11-13 a `git checkout` in one session moved another off its branch, and that session's commit
+landed on `main`.
+
+- Do branch work in your own git worktree, never with `git checkout` / `git switch` in a folder another
+  session uses: `git fetch origin && git worktree add -b lead/<task> ../cardrop-<task> origin/main`.
+  Copy `local.properties` into it (the build fails without one) and, for the real crew,
+  `app/google-services.json`. Start Claude there. After the PR is merged: `git worktree remove ../cardrop-<task>`.
+- One session at a time on the emulator. First check that no other session is using it: a test drive shows in
+  `ps aux | grep drive_gps`, a fresh install in `adb shell dumpsys package com.cardrop | grep lastUpdateTime`.
+  Installing over `com.cardrop` replaces the other session's build and wipes its trip. Before
+  `adb shell input tap`, check which app is in front: `adb shell dumpsys activity activities | grep ResumedActivity`.
+- To test while another session's CarDrop stays installed, build a side-by-side copy: add
+  `debug { applicationIdSuffix = ".test" }` to `buildTypes` for that build only (don't commit it), with the
+  fake crew and without `app/google-services.json` (Firebase and the Kakao key know only `com.cardrop`, so the
+  copy shows the MapLibre map). Start it with `adb shell am start --user 10 -n com.cardrop.test/com.cardrop.MainActivity`
+  and uninstall it afterwards.
+
 ## Local settings (`local.properties`, not committed)
 
 | Key | Values | Effect |

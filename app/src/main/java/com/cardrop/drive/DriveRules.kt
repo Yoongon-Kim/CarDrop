@@ -19,9 +19,12 @@ class FuelWarningTracker {
     fun reset() { warned = false }
 }
 
+/**
+ * The pill on boards 04, 05, 06 and 14. It doesn't limit touch: a passenger may use the screen while
+ * driving. Only the game (board 15) is closed outside P, by its own check in `ai/QuizScreen.kt`.
+ */
 enum class DrivingInput(val label: String) {
-    PARKED("P · 정차 중"), MOVING("주행 중 · 음성 모드"), UNKNOWN("차량 상태 확인 중");
-    val allowsTouch: Boolean get() = this == PARKED
+    PARKED("P · 정차 중"), MOVING("주행 중 · 음성 모드"), UNKNOWN("차량 상태 확인 중")
 }
 
 fun drivingInput(gear: Gear, fix: GpsFix?, now: Long): DrivingInput = when (gear) {

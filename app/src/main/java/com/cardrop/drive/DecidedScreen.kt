@@ -43,8 +43,8 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
         val skip = { if (vm.skipStop(drop.id)) onDone() }
         val ready = crew != null && !action.busy
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            PrimaryButton("지금 안내 시작", start, Modifier.weight(1f), ready && input.allowsTouch)
-            SecondaryButton("우리 차는 안 들르기", skip, Modifier.weight(1f), ready && input.allowsTouch)
+            PrimaryButton("지금 안내 시작", start, Modifier.weight(1f), ready)
+            SecondaryButton("우리 차는 안 들르기", skip, Modifier.weight(1f), ready)
         }
         DriveVoiceReply(voice, "“안내 시작” 또는 “우리 차는 안 들르기”라고 말해 주세요", ready,
             setOf(DriveVoiceCommand.START, DriveVoiceCommand.SKIP)) {

@@ -36,7 +36,7 @@ internal fun DriveVoiceReply(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(hint)
         if (voice == null || voice is FakeVoiceService) {
-            StatusText("음성 서비스 연결 전이에요 · P단에서 화면으로 응답해 주세요")
+            StatusText("음성 서비스 연결 전이에요 · 화면으로 응답해 주세요")
         } else {
             val microphoneBusy by voice.listening.collectAsStateWithLifecycle()
             PrimaryButton(if (listening) "듣고 있어요…" else "말로 응답하기", enabled = enabled && !listening && !microphoneBusy, onClick = {

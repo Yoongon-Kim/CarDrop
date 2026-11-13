@@ -37,8 +37,8 @@ fun FuelMeScreen(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceService? = 
         Pill(input.label)
         DriveActionFeedback(action)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            PrimaryButton("응, 알려줘", share, Modifier.weight(1f), ready && input.allowsTouch)
-            SecondaryButton("아니, 혼자 갈게", alone, Modifier.weight(1f), ready && input.allowsTouch)
+            PrimaryButton("응, 알려줘", share, Modifier.weight(1f), ready)
+            SecondaryButton("아니, 혼자 갈게", alone, Modifier.weight(1f), ready)
         }
         DriveVoiceReply(voice, "“알려줘” 또는 “혼자 갈게”라고 말해 주세요", ready,
             setOf(DriveVoiceCommand.SHARE_FUEL, DriveVoiceCommand.ALONE)) {
@@ -48,7 +48,7 @@ fun FuelMeScreen(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceService? = 
                 else -> Unit
             }
         }
-        SecondaryButton("나중에 확인", onDone, enabled = !action.busy && input.allowsTouch)
+        SecondaryButton("나중에 확인", onDone, enabled = !action.busy)
     }
 }
 
@@ -82,8 +82,8 @@ fun FuelThemScreen(vm: DriveViewModel, dropId: String, carName: (String) -> Stri
                 if (drop.isDecided) StatusText("이미 결정된 알림이에요")
                 if (vm.skipped(drop.id)) StatusText("우리 차는 가던 길로 가요")
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SecondaryButton("가던 길 갈래요", pass, Modifier.weight(1f), ready && input.allowsTouch)
-                    PrimaryButton("같이 갈래요", join, Modifier.weight(1f), ready && input.allowsTouch && drop.candidates.isNotEmpty())
+                    SecondaryButton("가던 길 갈래요", pass, Modifier.weight(1f), ready)
+                    PrimaryButton("같이 갈래요", join, Modifier.weight(1f), ready && drop.candidates.isNotEmpty())
                 }
             }
         }
@@ -94,6 +94,6 @@ fun FuelThemScreen(vm: DriveViewModel, dropId: String, carName: (String) -> Stri
             if (it == DriveVoiceCommand.JOIN) join() else pass()
         }
         CrewDriveOverview(crew?.cars.orEmpty(), positions, vm.myCarId)
-        if (!ready) SecondaryButton("주행 화면으로", onDone, enabled = !action.busy && input.allowsTouch)
+        if (!ready) SecondaryButton("주행 화면으로", onDone, enabled = !action.busy)
     }
 }

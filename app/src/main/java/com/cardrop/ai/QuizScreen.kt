@@ -169,7 +169,7 @@ private fun VsRow(opponent: Car, round: QuizRound) {
         }
         Text("나", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
         Text("VS", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray400)
-        CarBadge(opponent, size = 30)
+        CarBadge(opponent, size = 44) // 73 x 48, as in the design (516, 788)
         Text(opponent.name, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1)
         Spacer(Modifier.weight(1f))
         Text(

@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.ai.AiViewModel.PhraseEditor
 import com.cardrop.ai.AiViewModel.ShoutState
+import com.cardrop.core.model.Crew
+import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
@@ -68,9 +70,10 @@ fun ShoutScreen(
 ) {
     LaunchedEffect(initialText) { vm.openShout(initialText) }
     val state by vm.shout.collectAsStateWithLifecycle()
+    val crew by vm.crewState.collectAsStateWithLifecycle()
     ShoutContent(
         state = state,
-        recipients = vm.recipientLabel(toCarIds),
+        recipients = shoutRecipients(crew, toCarIds, vm.myCarId),
         exampleCar = vm.exampleCarName(),
         onBack = onBack,
         onSelect = vm::selectPhrase,
@@ -84,6 +87,19 @@ fun ShoutScreen(
         onListen = vm::listenForShout,
         onSend = { vm.sendChosenShout(toCarIds, onSent) },
     )
+}
+
+/**
+ * Board 09's "받는 차" line: the whole crew with its number of cars, "크루 전체 (3대)" (target 402), and chosen cars
+ * by name as everywhere else ("삼촌 차 · 민지 차"). Only 09 shows the count: [Crew.recipientLabel] is shared with
+ * boards 08, 10 and the caption after sending. Internal so ShoutRecipientsTest can check it.
+ */
+internal fun shoutRecipients(crew: Crew?, toCarIds: List<String>, myCarId: String): String {
+    val label = crew?.recipientLabel(toCarIds, myCarId) ?: return "크루 전체"
+    val others = crew.cars.filterNot { it.id == myCarId }
+    val chosen = others.filter { it.id in toCarIds }
+    val wholeCrew = chosen.isEmpty() || chosen.size == others.size // the same rule as recipientLabel
+    return if (wholeCrew && others.isNotEmpty()) "$label (${others.size}대)" else label
 }
 
 /** What board 09 draws for a given [state]. No ViewModel, so the previews below can show it. */
@@ -327,7 +343,7 @@ private fun ShoutPreview() {
         Box(Modifier.fillMaxSize().background(CdColors.Gray100)) {
             ShoutContent(
                 state = ShoutState(phrases = ShoutPhrases.DEFAULTS, selected = 4),
-                recipients = "크루 전체",
+                recipients = "크루 전체 (3대)",
                 exampleCar = "삼촌 차",
             )
         }

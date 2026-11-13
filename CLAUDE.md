@@ -65,7 +65,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   list UI, `KeyboardRoom` so the last lines scroll above Pleos's keyboard). Without the key, or offline, only
   places the app knows match (`knownPlaceMatches` in `navi/PlaceSearch.kt`). Logs: `adb logcat -s CarDropPlaces`.
   - Board 02: the box starts focused; before typing it lists `DemoData.destinations`. Tapping a place (or enter
-    for the top one) makes it the crew's destination with Kakao's address as its detail.
+    for the top one) makes it the crew's destination with Kakao's address as its detail. 말로 검색 listens
+    (`VoiceService.listen(placeName = true)`), puts what was heard into the box and searches it; the driver
+    still taps the place, so a misheard name never becomes the destination by itself.
   - Board 10 "다른 곳을 직접 입력": the suggestions replace the list until the box is empty; tapping one (or 추가 =
     the top one) puts it in the list, ticked. 말해서 추가 takes the top result for what was heard. Known places
     here: rest stops, cafés, destinations. A searched place that is an AI pick under a longer name

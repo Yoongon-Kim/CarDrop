@@ -13,11 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.text.withRo
+import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.ErrorText
 import com.cardrop.core.ui.PrimaryButton
@@ -29,12 +31,22 @@ import com.cardrop.core.ui.theme.CdColors
 
 /** Board 03 코드로 참여 · Owner: Member A. With the fake, code 482917 always works. */
 @Composable
-fun JoinCrewScreen(vm: CrewViewModel, onJoined: () -> Unit) {
+fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) {
     var code by remember { mutableStateOf("") }
     val join by vm.join.collectAsStateWithLifecycle()
 
     ScreenColumn {
-        ScreenHeader(eyebrow = "주행 중엔 “코드 482917”처럼 말해서 넣어요", title = "코드로 참여")
+        // Design lines 177-179: the back button, then the title with the grey line under it.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BackButton(onClick = onBack)
+            ScreenHeader(
+                eyebrow = null,
+                title = "코드로 참여",
+                subtitle = "주행 중엔 “코드 482917”처럼 말해서 넣어요",
+                gap = 0.dp,
+                modifier = Modifier.weight(1f),
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             OutlinedTextField(
                 value = code,

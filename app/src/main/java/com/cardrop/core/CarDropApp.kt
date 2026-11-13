@@ -135,7 +135,7 @@ fun CarDropApp(container: AppContainer) {
                 },
             )
             Screen.DestinationSearch -> DestinationSearchScreen(crewVm, onBack = navigator::back, onPicked = navigator::back)
-            Screen.JoinCrew -> JoinCrewScreen(crewVm) {
+            Screen.JoinCrew -> JoinCrewScreen(crewVm, onBack = navigator::back) {
                 // Before the host's 출발 this car waits on board 04; TripCoordinator starts it with the host.
                 if (container.tripStart.started.value) driveVm.startGuidance()
                 navigator.switchTab(Screen.Drive)

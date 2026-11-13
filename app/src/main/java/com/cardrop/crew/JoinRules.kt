@@ -19,7 +19,7 @@ object JoinRules {
      * itself, without the cars that are still missing, if the host hasn't pressed 출발 before and not every car
      * has joined (with every car in, it starts at once).
      */
-    const val JOIN_WINDOW_MILLIS = 3 * 60_000L
+    const val JOIN_WINDOW_MILLIS = 2 * 60_000L
 
     /**
      * The cars of [crew] that the trip leaves out when it starts now: every car not connected, except the host.
@@ -28,13 +28,13 @@ object JoinRules {
     fun missingCars(crew: Crew): List<String> = crew.cars.filter { !it.connected && it.id != crew.hostCarId }.map { it.id }
 
     /**
-     * Until the trip starts by itself (boards 01 and 04): "2:41 뒤 자동 출발 · 안 온 차는 빼고 가요" while [missing]
+     * Until the trip starts by itself (boards 01 and 04): "1:41 뒤 자동 출발 · 안 온 차는 빼고 가요" while [missing]
      * cars haven't joined, "곧 출발해요 · …" at 0 until the start arrives. With every car in, the trip starts at
      * once: "모두 모였어요 · 곧 출발해요".
      */
     fun autoStartText(millisLeft: Long, missing: Int): String {
         if (missing == 0) return "모두 모였어요 · 곧 출발해요"
-        val seconds = (millisLeft + 999) / 1_000 // 2:40.2 left shows 2:41, like a countdown
+        val seconds = (millisLeft + 999) / 1_000 // 1:40.2 left shows 1:41, like a countdown
         val time = if (seconds > 0) "%d:%02d 뒤 자동 출발".format(seconds / 60, seconds % 60) else "곧 출발해요"
         return "$time · 안 온 차는 빼고 가요"
     }

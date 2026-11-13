@@ -130,7 +130,7 @@ With the real crew, 아빠 차 starts on board 01 and creates the crew; the othe
 with its code. Every new crew gets its own random 6-digit code (`crew/CrewCode.kt`), so two hosts (e.g. two
 emulators both on 아빠 차) never share a crew. Restarting the host's app makes a new crew with a new code, and the
 other cars join again with it (the bot crew keeps 482917). The trip starts with the host's 출발, or by itself: at
-once when every car has joined, else 3 minutes after the crew was made (board 01 counts down;
+once when every car has joined, else 2 minutes after the crew was made (board 01 counts down;
 `JoinRules.JOIN_WINDOW_MILLIS`; both done by `TripCoordinator` on the host's device). Before that nobody drives off
 or sends drops: a car that joined waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and drops, the inbox and the
 rail's 드랍 / 게임 / 편지함 are greyed out. Cars not connected at the start are left out (`JoinRules.missingCars`;

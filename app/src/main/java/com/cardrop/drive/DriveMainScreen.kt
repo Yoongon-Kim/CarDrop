@@ -66,7 +66,7 @@ fun DriveMainScreen(
     val waitingFor by vm.waitingForHost.collectAsStateWithLifecycle()
     val hasCrew = crew != null
     // Drops, the inbox and the fuel warning wait for the trip to start: the host's 출발 (board 01), or the end of
-    // the 3 minutes for joining.
+    // the 2 minutes for joining.
     val started = crew?.isStarted == true
     val canDrop = hasCrew && started
     LaunchedEffect(warning, crew?.code, started) {
@@ -317,8 +317,8 @@ private fun DropButton(
 }
 
 /**
- * 드랍하기's second line before the trip starts: "출발하면 드랍을 보낼 수 있어요 · 2:41 뒤 자동 출발 · 안 온 차는 빼고
- * 가요" (the 3 minutes for joining, counted down every second), or "… · 모두 모였어요 · 곧 출발해요" with every car in.
+ * 드랍하기's second line before the trip starts: "출발하면 드랍을 보낼 수 있어요 · 1:41 뒤 자동 출발 · 안 온 차는 빼고
+ * 가요" (the 2 minutes for joining, counted down every second), or "… · 모두 모였어요 · 곧 출발해요" with every car in.
  * Without a deadline, the first part only.
  */
 @Composable

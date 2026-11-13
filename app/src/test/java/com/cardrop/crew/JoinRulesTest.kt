@@ -7,7 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Board 03's plain rules, and the 3 minutes for joining. */
+/** Board 03's plain rules, and the 2 minutes for joining. */
 class JoinRulesTest {
 
     @Test
@@ -26,8 +26,8 @@ class JoinRulesTest {
 
     @Test
     fun theCountdownShowsMinutesAndSecondsWhileCarsAreMissing() {
-        assertEquals("3:00 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(JoinRules.JOIN_WINDOW_MILLIS, missing = 3))
-        assertEquals("2:41 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(160_200, missing = 2))
+        assertEquals("2:00 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(JoinRules.JOIN_WINDOW_MILLIS, missing = 3))
+        assertEquals("1:41 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(100_200, missing = 2))
         // Not 0:00 while time is left.
         assertEquals("0:01 뒤 자동 출발 · 안 온 차는 빼고 가요", JoinRules.autoStartText(400, missing = 1))
         assertEquals("곧 출발해요 · 안 온 차는 빼고 가요", JoinRules.autoStartText(0, missing = 1))

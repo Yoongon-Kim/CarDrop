@@ -434,7 +434,7 @@ private fun MembersCard(
 }
 
 /**
- * Over the 출발 button until the trip starts (an app extra, the board has no timer): "2:41 뒤 자동 출발", with
+ * Over the 출발 button until the trip starts (an app extra, the board has no timer): "1:41 뒤 자동 출발", with
  * "· 안 온 차는 빼고 가요" while [missing] cars haven't joined. At [deadlineMillis] the trip starts by itself.
  * Plain text, not StatusText: TalkBack would read it out every second.
  */

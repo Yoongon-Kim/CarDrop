@@ -48,4 +48,36 @@ class VoteRulesTest {
         assertTrue(VoteRules.isOver(drop(mapOf("me" to "a")), cars, nowMillis = 10_000))
         assertTrue(VoteRules.isOver(drop(cars.associateWith { "a" }), cars, nowMillis = 0))
     }
+
+    @Test
+    fun `the vote doesn't wait for a car that passed`() {
+        val d = drop(mapOf("me" to "b", "uncle" to "b", "minji" to "a", "aunt" to VoteRules.PASS))
+        assertTrue(VoteRules.isOver(d, cars, nowMillis = 0))
+        assertTrue(VoteRules.passed(d, "aunt"))
+        assertFalse(VoteRules.passed(d, "minji"))
+    }
+
+    @Test
+    fun `a pass counts for no place, not for candidate 1`() {
+        // If the three cars that passed counted as silent, a would win 3 to 1.
+        val d = drop(mapOf("me" to "b", "uncle" to VoteRules.PASS, "minji" to VoteRules.PASS, "aunt" to VoteRules.PASS))
+        assertEquals("b", VoteRules.winner(d, cars))
+        assertEquals(1, VoteRules.agreeing(d, cars))
+    }
+
+    @Test
+    fun `silent cars still count for candidate 1 next to a pass`() {
+        // b: me. a: uncle and minji, who didn't answer. aunt passed.
+        val d = drop(mapOf("me" to "b", "aunt" to VoteRules.PASS))
+        assertEquals("a", VoteRules.winner(d, cars))
+        assertEquals(2, VoteRules.agreeing(d, cars))
+    }
+
+    @Test
+    fun `when every car passes candidate 1 closes the vote`() {
+        val d = drop(cars.associateWith { VoteRules.PASS })
+        assertTrue(VoteRules.isOver(d, cars, nowMillis = 0))
+        assertEquals("a", VoteRules.winner(d, cars))
+        assertEquals(0, VoteRules.agreeing(d, cars))
+    }
 }

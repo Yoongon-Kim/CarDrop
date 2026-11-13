@@ -12,6 +12,7 @@ import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.core.demo.DemoCar
+import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
@@ -19,10 +20,13 @@ import com.cardrop.drive.BotFuel
 import com.cardrop.drive.CrewFuel
 import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
+import com.cardrop.drive.PlaceTimes
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
-import com.cardrop.drive.TripStart
+import com.cardrop.drive.TripCodeFile
+import com.cardrop.drive.PrefsQuickDropStore
+import com.cardrop.drive.QuickDrops
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.FallbackRouteProvider
@@ -46,7 +50,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * Owner: lead. The one place that decides fake vs real for every interface.
@@ -61,19 +67,22 @@ class AppContainer(context: Context) {
     // Member A
     /** Which car this device drives in the real crew: the DEMO panel's "내 차", else `cardrop.myCar`. */
     val myCar: String = DemoCar.current(context)
+    /** Real crew or bot crew on this device: the DEMO panel's "크루" switch, else `cardrop.useRealCrew` ([DemoCrew]). */
+    val useRealCrew: Boolean = DemoCrew.current(context)
     /**
-     * `cardrop.useRealCrew=true`: the real crew on Firebase, shared by several devices; this device is
-     * [myCar]. Otherwise the fake crew with bot cars (also the way back if the network fails).
+     * [useRealCrew]: the real crew on Firebase, shared by several devices; this device is [myCar].
+     * Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
     val crew: CrewRepository =
-        if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
+        if (useRealCrew) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
 
     // Lead
-    /** Real crew: the host's 출발 and every car's position, shared through Firebase (drive/FirebaseTrip.kt). */
-    private val firebaseTrip: FirebaseTrip? = if (BuildConfig.USE_REAL_CREW) FirebaseTrip(appScope, crew) else null
-    /** With the real crew the cars wait for the host's 출발; the bot crew never waits. */
-    val tripStart: TripStart = firebaseTrip ?: TripStart.AlwaysStarted
+    /**
+     * Real crew: every car's position and fuel, shared through Firebase (drive/FirebaseTrip.kt). When the trip
+     * started is the crew's own (`Crew.startedAtMillis`), for both crews.
+     */
+    private val firebaseTrip: FirebaseTrip? = if (useRealCrew) FirebaseTrip(appScope, crew) else null
     /** Board 04's crew cards: the other cars' fuel, from their own devices (real crew) or the bots' ([BotFuel]). */
     val crewFuel: CrewFuel = firebaseTrip ?: BotFuel(appScope, crew.drops)
 
@@ -104,6 +113,14 @@ class AppContainer(context: Context) {
     val destinationTrip: StateFlow<DestinationTrip?> =
         combine(inAppNavigation.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
             .stateIn(appScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Boards 10 and 11: how far a place is from this car by road and how long it takes ("9km", "6분"), and the
+     * crew's average ("12분 · 4대 평균"), on the navigator's live route. A new snapshot on every GPS fix.
+     */
+    val placeTimes: StateFlow<PlaceTimes> =
+        combine(inAppNavigation.state, route.positions) { state, positions -> PlaceTimes(state, positions, crew.myCarId) }
+            .stateIn(appScope, SharingStarted.Eagerly, PlaceTimes())
 
     /**
      * Where this car is: the navigator's GPS fix (there before departure too). Null before the first fix.
@@ -138,20 +155,18 @@ class AppContainer(context: Context) {
     val placeSearch: PlaceSearch? = BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoPlaceSearch)
     /** Board 09's phrases, kept on this device. */
     val phrases: PhraseStore = PrefsPhraseStore(context)
+    /** Board 04's quick-drop slots (퀵 드랍 편집), kept on this device. */
+    val quickDrops = QuickDrops(PrefsQuickDropStore(context))
 
     /**
      * The open screen with its back stack, and which drops have already been opened. They live here, as long
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
      * keeps the driver on the same screen and doesn't open old drops again.
      */
-    val navigator = AppNavigator(start = DemoCar.startScreen(BuildConfig.USE_REAL_CREW, myCar))
+    val navigator = AppNavigator(start = DemoCar.startScreen(useRealCrew, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
-    private val trip = TripCoordinator(
-        appScope, crew, route, navigation, voice,
-        tripStart = tripStart,
-        autoStartsGuidance = true,
-    )
+    private val trip = TripCoordinator(appScope, crew, route, navigation, voice, autoStartsGuidance = true)
 
     /** This car got to the crew's stop, stopped there or drove past it: the card on the CarDrop side. */
     val stopNotice: StateFlow<StopNotice?> get() = trip.notice
@@ -160,5 +175,10 @@ class AppContainer(context: Context) {
         trip.start()
         firebaseTrip?.shareMyFuel(vehicle.snapshot)
         firebaseTrip?.shareMyPosition(route.positions)
+        // tools/drive_gps.py reads this car's crew code from the device (drive/TripCodeFile.kt). The bot crew
+        // saves none, and an old code from an earlier start is removed.
+        appScope.launch(Dispatchers.IO) {
+            (firebaseTrip?.crewCode ?: flowOf(null)).collect { TripCodeFile.save(context, it) }
+        }
     }
 }

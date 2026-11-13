@@ -18,6 +18,11 @@ sealed interface Screen {
     data object JoinCrew : Screen
     /** 04 주행 메인 · Member B */
     data object Drive : Screen
+    /**
+     * 04's 퀵 드랍 편집: which drops go in 04's four quick slots · lead. Not in design/FinalApp.dc.html; built from
+     * the live canvas (`quickEdit`, drive/QuickDropEditScreen.kt).
+     */
+    data object QuickDropEdit : Screen
     /** 05 연료 경고 (내 차) · Member B */
     data object FuelMe : Screen
     /** 06 연료 알림 받은 차 · Member B */

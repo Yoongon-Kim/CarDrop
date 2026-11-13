@@ -1,5 +1,6 @@
 package com.cardrop.crew
 
+import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Place
 import com.cardrop.core.text.particle
 import com.cardrop.drive.GeoPoint
@@ -12,6 +13,31 @@ import com.cardrop.drive.haversineKm
 object JoinRules {
     /** A crew's join code has this many digits, e.g. "482917". The crew is looked up at the last one. */
     const val CODE_LENGTH = 6
+
+    /**
+     * The other cars have this long to join after the host makes the crew (board 01). Then the trip starts by
+     * itself, without the cars that are still missing, if the host hasn't pressed 출발 before and not every car
+     * has joined (with every car in, it starts at once).
+     */
+    const val JOIN_WINDOW_MILLIS = 3 * 60_000L
+
+    /**
+     * The cars of [crew] that the trip leaves out when it starts now: every car not connected, except the host.
+     * They drop out of the crew on every device, and their code no longer lets them in.
+     */
+    fun missingCars(crew: Crew): List<String> = crew.cars.filter { !it.connected && it.id != crew.hostCarId }.map { it.id }
+
+    /**
+     * Until the trip starts by itself (boards 01 and 04): "2:41 뒤 자동 출발 · 안 온 차는 빼고 가요" while [missing]
+     * cars haven't joined, "곧 출발해요 · …" at 0 until the start arrives. With every car in, the trip starts at
+     * once: "모두 모였어요 · 곧 출발해요".
+     */
+    fun autoStartText(millisLeft: Long, missing: Int): String {
+        if (missing == 0) return "모두 모였어요 · 곧 출발해요"
+        val seconds = (millisLeft + 999) / 1_000 // 2:40.2 left shows 2:41, like a countdown
+        val time = if (seconds > 0) "%d:%02d 뒤 자동 출발".format(seconds / 60, seconds % 60) else "곧 출발해요"
+        return "$time · 안 온 차는 빼고 가요"
+    }
 
     /**
      * The join code in what the driver said (board 03's 말로 key), or null when it isn't exactly 6 digits.

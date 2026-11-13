@@ -103,12 +103,17 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
     // The CarDrop toast under the banner shows each new route change for 5 seconds. It follows nav.toast, not the
     // text of route.lastAction: every change has its own id there, so the same message twice in a row shows twice.
     // A newer change cancels the wait and starts again; none (after clear()) hides the toast at once.
+    // Shown or not and its text are kept apart: the text stays while the toast fades out, so it never fades out as an
+    // empty "CarDrop" card.
     val latestToast by nav.toast.collectAsStateWithLifecycle()
-    var toast by remember { mutableStateOf<String?>(null) }
+    var toastVisible by remember { mutableStateOf(false) }
+    var toastText by remember { mutableStateOf("") }
     LaunchedEffect(latestToast) {
-        toast = latestToast?.text
+        val text = latestToast?.text
+        if (text != null) toastText = text
+        toastVisible = text != null
         delay(5_000)
-        toast = null
+        toastVisible = false
     }
 
     Box(modifier = Modifier.fillMaxSize().background(CdColors.NavBackground)) {
@@ -149,11 +154,11 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
             // The design's toast entrance (cdPop): it rises 18 px while it fades in, in 0.5 s, slowing down at the end.
             val rise = with(LocalDensity.current) { 18.dp.roundToPx() }
             AnimatedVisibility(
-                visible = toast != null,
+                visible = toastVisible,
                 enter = fadeIn(tween(500, easing = EaseOut)) + slideInVertically(tween(500, easing = EaseOut)) { rise },
                 exit = fadeOut(),
             ) {
-                Toast(toast.orEmpty())
+                Toast(toastText)
             }
         }
 

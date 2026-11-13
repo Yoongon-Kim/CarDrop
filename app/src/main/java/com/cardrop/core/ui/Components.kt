@@ -323,19 +323,21 @@ fun CdChip(
 }
 
 /**
- * A 1 dp dashed line just inside the edge, like CSS `border: 1px dashed`: dashes and gaps 3 dp long, as
- * browsers draw a 1 px dashed border. [radius] = the shape's corners (capped at half the height, like CSS).
+ * A dashed line just inside the edge, like CSS `border: 1px dashed`. The defaults are a 1 dp line with dashes and
+ * gaps 3 dp long, as browsers draw a 1 px dashed border ([CdChip]'s [ChipStyle.Dashed]). Chrome draws a 2 px one
+ * with 6 px dashes and 4 px gaps (measured on board 04's empty quick-drop slots):
+ * `dashedBorder(CdColors.Gray400, 20.dp, width = 2.dp, dash = 6.dp, gap = 4.dp)`.
+ * [radius] = the shape's corners (capped at half the height, like CSS).
  */
-private fun Modifier.dashedBorder(color: Color, radius: Dp): Modifier = drawBehind {
-    val line = 1.dp.toPx()
-    val dash = 3.dp.toPx()
+fun Modifier.dashedBorder(color: Color, radius: Dp, width: Dp = 1.dp, dash: Dp = 3.dp, gap: Dp = 3.dp): Modifier = drawBehind {
+    val line = width.toPx()
     val corner = (radius.toPx().coerceAtMost(size.minDimension / 2) - line / 2).coerceAtLeast(0f)
     drawRoundRect(
         color = color,
         topLeft = Offset(line / 2, line / 2),
         size = Size(size.width - line, size.height - line),
         cornerRadius = CornerRadius(corner),
-        style = Stroke(width = line, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
+        style = Stroke(width = line, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash.toPx(), gap.toPx()))),
     )
 }
 
@@ -477,10 +479,27 @@ fun InfoRow(
     }
 }
 
-/** "AI" tag used wherever the AI wrote something. */
+/**
+ * "AI" tag used wherever the AI wrote something. The default is today's round pill (14sp); `small = true` is
+ * the small square-ish tag on board 11's AI card (target line 466: 12px / 800, white on #3182F6, radius 6,
+ * padding 3 x 7).
+ */
 @Composable
-fun AiTag() {
-    Pill("AI", background = CdColors.Blue, color = CdColors.White)
+fun AiTag(small: Boolean = false) {
+    if (!small) {
+        Pill("AI", background = CdColors.Blue, color = CdColors.White)
+        return
+    }
+    Text(
+        text = "AI",
+        color = CdColors.White,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(CdColors.Blue)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
 }
 
 /** Placeholder for parts of a screen that are not built yet. Delete it once the part exists. */

@@ -10,7 +10,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -27,14 +26,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Owner: lead. With the real crew (`cardrop.useRealCrew=true`): what the cars share while driving, next
- * to the crew and its drops (Member A's FirebaseCrewRepository): when the host started the trip, where
- * each car is, so every device draws the other cars where they really are, and each car's fuel (board 04).
+ * Owner: lead. With the real crew (`cardrop.useRealCrew=true`): where each car is while driving and its fuel, next
+ * to the crew and its drops (Member A's FirebaseCrewRepository), so every device draws the other cars where they
+ * really are and shows their fuel on board 04. When the trip started is the crew's (`Crew.startedAtMillis`,
+ * `crews/<code>/info/startedAt`).
  *
- * Database, apart from `crews/<code>` so that a position every second doesn't wake the crew listener,
- * and so tools/drive_gps.py can read the start without the app:
+ * Database, apart from `crews/<code>` so that a position every second doesn't wake the crew listener:
  * ```
- * trips/482917/startedAt              server time of the host's 출발; missing = not started yet
  * trips/482917/positions/car-uncle    {lat, lng, km (to the destination), min (to the destination)}
  * trips/482917/fuel/car-uncle         {pct (fuel %), km (range left; missing = not known)}
  * ```
@@ -44,12 +42,9 @@ class FirebaseTrip(
     private val scope: CoroutineScope,
     private val crew: CrewRepository,
     databaseUrl: String = FirebaseCrewRepository.DATABASE_URL,
-) : TripStart, CrewFuel {
+) : CrewFuel {
 
     private val db = FirebaseDatabase.getInstance(databaseUrl)
-
-    private val _started = MutableStateFlow(false)
-    override val started: StateFlow<Boolean> = _started
 
     /** Every car's position as shared, this car's too. */
     private val shared = MutableStateFlow<Map<String, CarPosition>>(emptyMap())
@@ -62,6 +57,10 @@ class FirebaseTrip(
     /** Every car's fuel as shared, this car's too. Board 04 shows only the connected cars' ([crewCardFuel]). */
     private val sharedFuel = MutableStateFlow<Map<String, CarFuel>>(emptyMap())
     override val fuel: StateFlow<Map<String, CarFuel>> = sharedFuel
+
+    /** The code of the crew whose trip we follow (every crew has its own random code); null outside a crew. */
+    private val _crewCode = MutableStateFlow<String?>(null)
+    val crewCode: StateFlow<String?> = _crewCode
 
     /** The trip branch we follow, e.g. trips/482917. Null outside a crew. */
     private var tripRef: DatabaseReference? = null
@@ -80,16 +79,6 @@ class FirebaseTrip(
         }
     }
 
-    override fun start() {
-        val ref = tripRef ?: run {
-            Log.w(TAG, "출발 without a crew")
-            return
-        }
-        ref.child("startedAt").setValue(ServerValue.TIMESTAMP)
-            .addOnSuccessListener { Log.i(TAG, "trip started (crew ${ref.key})") }
-            .addOnFailureListener { Log.w(TAG, "Could not start the trip: ${it.message}") }
-    }
-
     /** Shares this car's position from [positions] while in a crew, at most once a second. */
     fun shareMyPosition(positions: StateFlow<Map<String, CarPosition>>) {
         scope.launch {
@@ -104,7 +93,7 @@ class FirebaseTrip(
 
     /**
      * Shares this car's fuel from [vehicle] while in a crew: at once when it changes, and within a second when
-     * the trip doesn't hold it (a trip just joined, or the host's new crew cleared it). Unchanged, it isn't sent.
+     * the trip doesn't hold it (a crew just made or joined). Unchanged, it isn't sent.
      */
     fun shareMyFuel(vehicle: StateFlow<VehicleSnapshot>) {
         scope.launch {
@@ -130,21 +119,18 @@ class FirebaseTrip(
         listener?.let { l -> tripRef?.removeEventListener(l) }
         listener = null
         tripRef = null
-        _started.value = false
         sharedFuel.value = emptyMap()
         shared.value = emptyMap()
+        _crewCode.value = current?.code
         if (current == null) return
 
         val ref = db.getReference("trips").child(current.code)
-        // This car just created the crew: a new trip, not started, without an earlier trip's positions.
+        // This car just created the crew: a new trip, without an earlier trip's positions.
         if (current.hostCarId == crew.myCarId) {
             ref.removeValue().addOnFailureListener { Log.w(TAG, "Could not clear the old trip: ${it.message}") }
         }
         val l = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val nowStarted = snapshot.child("startedAt").exists()
-                if (nowStarted != _started.value) Log.i(TAG, if (nowStarted) "trip started" else "trip not started")
-                _started.value = nowStarted
                 shared.value = snapshot.child("positions").children.mapNotNull(::parsePosition).associateBy { it.carId }
                 sharedFuel.value = snapshot.child("fuel").children.mapNotNull(::parseFuel).toMap()
             }

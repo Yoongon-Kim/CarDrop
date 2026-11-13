@@ -217,12 +217,11 @@ class DriveViewModelTest {
 
     @Test fun aCarThatJoinedSaysWhoItWaitsForUntilTheHostStarts() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val crew = TestCrew().apply { carId = DemoData.uncle.id } // the crew's host is 아빠 차
-        val trip = TestTripStart()
-        val vm = DriveViewModel(FakeVehicleRepository(), TestRoute(), TestNavigation(), crew, TestAi(), scope, tripStart = trip)
+        val crew = TestCrew(notStarted = true).apply { carId = DemoData.uncle.id } // the crew's host is 아빠 차
+        val vm = DriveViewModel(FakeVehicleRepository(), TestRoute(), TestNavigation(), crew, TestAi(), scope)
         try {
             assertEquals(DemoData.me.name, vm.waitingForHost.value)
-            trip.start()
+            crew.startTrip()
             yield()
             assertNull(vm.waitingForHost.value)
         } finally { scope.cancel() }
@@ -230,7 +229,7 @@ class DriveViewModelTest {
 
     @Test fun theHostNeverWaits() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val vm = DriveViewModel(FakeVehicleRepository(), TestRoute(), TestNavigation(), TestCrew(), TestAi(), scope, tripStart = TestTripStart())
+        val vm = DriveViewModel(FakeVehicleRepository(), TestRoute(), TestNavigation(), TestCrew(notStarted = true), TestAi(), scope)
         try { assertNull(vm.waitingForHost.value) } finally { scope.cancel() }
     }
 

@@ -30,6 +30,22 @@ object CdIcons {
         strokeWidth = 2f,
         "M3 22V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v17M3 22h11M14 9h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3M6 8h5",
     )
+    val Inbox = lineIcon(
+        "Inbox",
+        strokeWidth = 2f,
+        "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+        "m22 7-10 6L2 7",
+    )
+    /** 휴게소 (a cup). */
+    val Rest = lineIcon("Rest", strokeWidth = 2.2f, "M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v3M10 2v3M14 2v3")
+    /** 식사 (fork and knife). */
+    val Food = lineIcon(
+        "Food",
+        strokeWidth = 2.2f,
+        "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7",
+    )
+    /** 한마디 (a speech bubble). */
+    val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
 }
 
 /** Builds an icon from SVG path strings, drawn as lines (no fill), like the design's `<svg>` tags. */

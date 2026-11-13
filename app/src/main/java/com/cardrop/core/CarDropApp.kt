@@ -103,6 +103,7 @@ fun CarDropApp(container: AppContainer) {
                         onMessage = { text -> navigator.go(Screen.Shout(text)) },
                     )
                 },
+                onShout = { navigator.go(Screen.Shout()) },
                 invite = invite,
             )
         }

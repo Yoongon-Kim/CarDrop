@@ -52,6 +52,16 @@ object CdColors {
     /** Board 05: background and number circle of the chosen station. */
     val YellowLight = Color(0xFFFFF7DD)
     val Amber = Color(0xFFF0A30A)
+    /** Board 04: the "음성 모드" pill and the "… 방면 →" label. */
+    val Green = Color(0xFF0B7F5A)
+    val GreenLight = Color(0xFFE6F8F1)
+    /** Unread counts, e.g. board 04's inbox badge. */
+    val Alert = Color(0xFFF04452)
+    /** Border of a crew card whose car is low on fuel. */
+    val FuelLow = Color(0xFFFFB067)
+    /** Icon colours of the 식사 and 주유 quick drops. */
+    val OrangeDeep = Color(0xFFC25A00)
+    val YellowDeep = Color(0xFF8A5A00)
 }
 
 fun CarColor.toColor(): Color = when (this) {
@@ -60,6 +70,15 @@ fun CarColor.toColor(): Color = when (this) {
     CarColor.TEAL -> CdColors.Teal
     CarColor.YELLOW -> CdColors.Yellow
     CarColor.GRAY -> CdColors.Gray200
+}
+
+/** The light background of a car's crew card (board 04), from the design. */
+fun CarColor.tint(): Color = when (this) {
+    CarColor.BLUE -> Color(0xFFEEF5FF)
+    CarColor.PURPLE -> Color(0xFFF3EEFF)
+    CarColor.TEAL -> CdColors.TealLight
+    CarColor.YELLOW -> CdColors.YellowLight
+    CarColor.GRAY -> CdColors.Gray100
 }
 
 private val CdTypography = Typography(

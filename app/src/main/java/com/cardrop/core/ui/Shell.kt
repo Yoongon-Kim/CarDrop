@@ -78,8 +78,9 @@ fun ScreenColumn(
 /**
  * Places the items from the top with [gap] between them (like `Arrangement.spacedBy(gap)`), then moves
  * the last item down to the bottom of the column if there is room: the design's `margin-top: auto`.
+ * Internal (not private) only so LastItemAtBottomTest can check it.
  */
-private class LastItemAtBottom(private val gap: Dp) : Arrangement.Vertical {
+internal class LastItemAtBottom(private val gap: Dp) : Arrangement.Vertical {
     override val spacing: Dp get() = gap
 
     override fun Density.arrange(totalSize: Int, sizes: IntArray, outPositions: IntArray) {

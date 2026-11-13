@@ -35,7 +35,7 @@ Rules:
 
 ```
 Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
-                                       CrewRepository      FakeCrewRepository (bots) -> realtime DB
+                                       CrewRepository      FakeCrewRepository (bots) -> FirebaseCrewRepository
                                        VehicleRepository   FakeVehicleRepository     -> PleosVehicleRepository
                                        RouteSimulator      GpsCrewPositions (inapp) / ScriptedRouteSimulator
                                        NavigationHandoff   InAppNavigation (GPS + Kakao/OSRM) -> NaverMapHandoff
@@ -87,7 +87,8 @@ Use it to rehearse the 시연 on one emulator.
 
 | Key | Values | Effect |
 | --- | --- | --- |
-| `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed); without the file the app builds with the fake only. `false` = the fake crew with bot cars. Switching back needs a rebuild + install |
+| `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed); without the file the app builds with the fake only. `false` = the fake crew with bot cars. Switching back needs a rebuild + install. Logs: `adb logcat -s CarDropCrew` |
+| `cardrop.myCar` | `dad` / `uncle` / `minji` / `aunt` | Which car this device is in the real crew (empty = `dad`). Give each device a different car; any other value stops the build |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
 | `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |

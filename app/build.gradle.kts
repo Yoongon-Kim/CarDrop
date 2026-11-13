@@ -24,6 +24,12 @@ val useRealCrew = localFlag("cardrop.useRealCrew")
 if (useRealCrew && !hasFirebaseConfig) {
     throw GradleException("cardrop.useRealCrew=true needs app/google-services.json (ask Member A for it)")
 }
+// Which car this device is in the real crew. Each device sets a different one; a typo stops the build
+// instead of quietly making this device 아빠 차 too.
+val myCar = localString("cardrop.myCar").lowercase().ifEmpty { "dad" }
+if (myCar !in setOf("dad", "uncle", "minji", "aunt")) {
+    throw GradleException("cardrop.myCar must be dad, uncle, minji or aunt (it is \"$myCar\")")
+}
 
 // Kotlin copies BuildConfig values into the code that reads them, and an incremental build can keep
 // the old copy after local.properties changes (a new key still looked empty). So any change to
@@ -45,6 +51,7 @@ android {
 
         // Switch each area from its fake to its real implementation.
         buildConfigField("boolean", "USE_REAL_CREW", useRealCrew.toString())
+        buildConfigField("String", "MY_CAR", "\"$myCar\"")
         buildConfigField("boolean", "USE_REAL_VEHICLE", localFlag("cardrop.useRealVehicle").toString())
         buildConfigField("boolean", "USE_REAL_VOICE", localFlag("cardrop.useRealVoice").toString())
         buildConfigField("String", "NAV_APP", "\"${localString("cardrop.navApp").ifEmpty { "inapp" }}\"")

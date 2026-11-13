@@ -10,6 +10,7 @@ import com.cardrop.ai.PhraseStore
 import com.cardrop.ai.PrefsPhraseStore
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
+import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.core.model.Place
 import com.cardrop.drive.DemoRoute
 import com.cardrop.drive.RouteSimulator
@@ -44,9 +45,13 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // Member A
-    // TODO(Member A): `if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope) else FakeCrewRepository(appScope)`
-    //  once crew/FirebaseCrewRepository.kt exists (cardrop.useRealCrew in local.properties, see CLAUDE.md).
-    val crew: CrewRepository = FakeCrewRepository(appScope)
+    /**
+     * `cardrop.useRealCrew=true`: the real crew on Firebase, shared by several devices; this device is the
+     * car in `cardrop.myCar`. Otherwise the fake crew with bot cars (also the way back if the network fails).
+     */
+    val crew: CrewRepository =
+        if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(BuildConfig.MY_CAR))
+        else FakeCrewRepository(appScope)
 
     // Member B
     val vehicle: VehicleRepository =

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.CdCard
+import com.cardrop.core.ui.ErrorText
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
@@ -49,7 +50,7 @@ fun JoinCrewScreen(vm: CrewViewModel, onJoined: () -> Unit) {
         when (val state = join) {
             CrewViewModel.JoinState.Idle -> Unit
             CrewViewModel.JoinState.Searching -> Text("크루를 찾는 중…", style = MaterialTheme.typography.bodyLarge)
-            CrewViewModel.JoinState.NotFound -> Text("그 코드의 크루가 없어요", color = CdColors.OrangeDark)
+            CrewViewModel.JoinState.NotFound -> ErrorText("그 코드의 크루가 없어요")
             is CrewViewModel.JoinState.Found -> CdCard(modifier = Modifier.fillMaxWidth()) {
                 Text("크루를 찾았어요", style = MaterialTheme.typography.labelMedium)
                 Text(state.crew.name, style = MaterialTheme.typography.headlineLarge)

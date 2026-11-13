@@ -91,6 +91,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   said 반대). Board 14 for a new destination has no "우리 차는 안 들르기". "AI 추천 받기" on the search still opens
   board 10 with three picks, as does saying "목적지 바꾸자". The DEMO panel's "삼촌 차 목적지 제안 받기" stages the
   receiving side with the bot crew.
+- Board 14 (결정, `drive/DecidedScreen.kt`) starts guidance after 3 s and goes back to 04 by itself 15 s after it
+  opened (lead, 2026-11-14; not on the design board), also when opened from 11's 결과 보기 or the inbox, but not
+  while the microphone is listening. 지금 안내 시작 / 주행 화면으로 still go at once.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
   lines 302-344): four slots. Until the driver saves their own list they hold 휴게소 and 주유 and two dashed "추가"
   (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays

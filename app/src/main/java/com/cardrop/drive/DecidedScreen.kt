@@ -28,6 +28,8 @@ import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drop.VoteRules
 import com.cardrop.voice.VoiceService
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlin.math.ceil
 
 /**
@@ -37,7 +39,11 @@ import kotlin.math.ceil
  * bring the old destination back.
  *
  * The countdown runs only with the in-app navigator ([DriveViewModel.autoStartsGuidance]). Once it has started
- * guidance the screen stays, so the arrivals can still be read; the main button then says "주행 화면으로".
+ * guidance the main button says "주행 화면으로".
+ *
+ * The screen is a notice, not a page to stay on (lead, 2026-11-14): 15 seconds after it opened it goes back to 홈
+ * by itself, as "주행 화면으로" does, so the driver doesn't have to tap. If the microphone is listening then (the
+ * driver may be saying "우리 차는 안 들르기"), it waits until the microphone stops.
  */
 @Composable
 fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice: VoiceService? = null) {
@@ -47,6 +53,13 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
     val positions by vm.positions.collectAsStateWithLifecycle()
     val action by vm.action.collectAsStateWithLifecycle()
     LaunchedEffect(dropId) { vm.clearError() }
+    // The 15-second timer. It stops by itself when the screen closes earlier (a tap, or another screen opening).
+    val close by rememberUpdatedState(onDone)
+    LaunchedEffect(dropId) {
+        delay(AUTO_CLOSE_MILLIS)
+        voice?.listening?.first { listening -> !listening }
+        close()
+    }
     val drop = drops.firstOrNull { it.id == dropId }
     val winner = drop?.decidedCandidate
     ScreenColumn {
@@ -192,3 +205,6 @@ private fun ArrivalRow(arrival: Arrival) {
 }
 
 private const val COUNTDOWN_MILLIS = 3_000
+
+/** How long board 14 stays before it goes back to 홈 by itself. */
+private const val AUTO_CLOSE_MILLIS = 15_000L

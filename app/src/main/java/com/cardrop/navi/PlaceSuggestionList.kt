@@ -97,7 +97,7 @@ fun PlaceCard(
     }
 }
 
-/** One line: pin, name (typed letters in blue), category · address, distance from the car. */
+/** One line: pin, name (typed letters in blue), address · category, distance from the car. */
 @Composable
 private fun PlaceLine(suggestion: PlaceSuggestion, highlight: String, inList: Boolean, onClick: () -> Unit) {
     Row(
@@ -123,7 +123,8 @@ private fun PlaceLine(suggestion: PlaceSuggestion, highlight: String, inList: Bo
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val meta = listOf(suggestion.category, suggestion.address).filter { it.isNotBlank() }.joinToString(" · ")
+            // Address first, as on board 02: "강원 강릉시 강문동 · 해수욕장".
+            val meta = listOf(suggestion.address, suggestion.category).filter { it.isNotBlank() }.joinToString(" · ")
             if (meta.isNotEmpty()) {
                 Text(meta, color = CdColors.Gray600, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

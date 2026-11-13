@@ -170,7 +170,8 @@ landed on `main`.
   start, Extended controls > Microphone > "Virtual microphone uses host audio input" (or
   `adb emu avd hostmicon`), and macOS must allow Android Studio to use the microphone. Without them it
   hears nothing and stops after 15 s. It hears everything near the computer, including other people.
-- While listening, a "마이크 · 듣고 있어요…" caption shows at the top right until it stops.
+- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, just above the DEMO button, until it
+  stops (`Captions` in `core/CarDropApp.kt`).
 - Pleos sends the final sentence a few ms after "recognition ended", so `PleosVoiceService` waits up to 1 s
   for it; otherwise it would keep only the partial text.
 - Logs: `adb logcat -s CarDropVoice`.

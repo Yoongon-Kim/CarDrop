@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.ai.AiViewModel.PhraseEditor
@@ -112,13 +111,8 @@ private fun ShoutContent(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onClick = onBack)
             Column {
-                Text(
-                    "일행에게 한마디",
-                    color = CdColors.Ink,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.02).em,
-                )
+                // 30/800 with normal letter-spacing (target 392).
+                Text("일행에게 한마디", color = CdColors.Ink, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
                 Text("소셜 드랍 · 받는 차에는 음성 없이 화면에만 조용히 떠요", color = CdColors.Gray600, fontSize = 14.sp)
             }
         }

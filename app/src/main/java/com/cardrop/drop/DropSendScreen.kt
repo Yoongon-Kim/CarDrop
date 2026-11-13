@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -114,23 +115,46 @@ fun DropSendScreen(
             )
             Text("누르면 바로 다음 단계로 넘어가요", color = CdColors.Gray600, fontSize = 14.sp, modifier = Modifier.alignByBaseline())
         }
-        Text("결정 드랍 · 음성으로 안내돼요", style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            TopicCard("휴게소 가자", "AI가 3곳 추천", Modifier.weight(1f)) { onPickTopic(DropTopic.REST, toCarIds) }
-            TopicCard("밥 먹자", "식당 · 휴게소 맛집", Modifier.weight(1f)) { onPickTopic(DropTopic.FOOD, toCarIds) }
-            TopicCard("주유하자", "가는 길 주유소", Modifier.weight(1f)) { onPickTopic(DropTopic.FUEL, toCarIds) }
+        TopicGroup("결정 드랍 · 음성으로 묻고 투표해요", CdColors.BlueDark, CdColors.BlueLight) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                TopicCard("휴게소 가자", "AI가 3곳 추천", Modifier.weight(1f)) { onPickTopic(DropTopic.REST, toCarIds) }
+                TopicCard("밥 먹자", "식당 · 휴게소 맛집", Modifier.weight(1f)) { onPickTopic(DropTopic.FOOD, toCarIds) }
+                TopicCard("주유하자", "가는 길 주유소", Modifier.weight(1f)) { onPickTopic(DropTopic.FUEL, toCarIds) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                TopicCard("카페 가자", "경포 근처 카페", Modifier.weight(1f)) { onPickTopic(DropTopic.CAFE, toCarIds) }
+                TopicCard("직접 추가", "원하는 곳을 골라요", Modifier.weight(1f)) { onPickTopic(DropTopic.CUSTOM, toCarIds) }
+                Spacer(Modifier.weight(1f)) // keeps the cards the same width as the row above
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            TopicCard("카페 가자", "경포 근처 카페", Modifier.weight(1f)) { onPickTopic(DropTopic.CAFE, toCarIds) }
-            TopicCard("직접 추가", "원하는 곳을 골라요", Modifier.weight(1f)) { onPickTopic(DropTopic.CUSTOM, toCarIds) }
-            Spacer(Modifier.weight(1f)) // keeps the cards the same width as the row above
+        TopicGroup("소셜 드랍 · 화면에만 조용히", CdColors.VioletDark, CdColors.VioletLight) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                TopicCard("일행에게 한마디", "자주 쓰는 말", Modifier.weight(1f)) { onShout(toCarIds) }
+                TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f), onClick = onGames)
+                TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
+            }
         }
-        Text("소셜 드랍 · 화면에만 조용히", style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            TopicCard("일행에게 한마디", "자주 쓰는 말", Modifier.weight(1f)) { onShout(toCarIds) }
-            TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f), onClick = onGames)
-            TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
-        }
+    }
+}
+
+/**
+ * A group of tiles under its tag: "결정 드랍 · …" in blue or "소셜 드랍 · …" in violet, as a small pill
+ * (13 / 800, corners 8, padding 5 x 10), 8 px above the tiles (target lines 373-374, 683-686).
+ */
+@Composable
+private fun TopicGroup(tag: String, color: Color, background: Color, tiles: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            tag,
+            color = color,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(background)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        )
+        tiles()
     }
 }
 

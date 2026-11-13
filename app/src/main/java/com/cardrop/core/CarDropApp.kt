@@ -72,7 +72,12 @@ fun CarDropApp(container: AppContainer) {
         }
     }
 
-    DropRoutingEffect(container.crew, container.voice, navigator) { socialMessage = it }
+    DropRoutingEffect(
+        crew = container.crew,
+        voice = container.voice,
+        navigator = navigator,
+        isSkipped = container.navigation.decisions::isSkipped,
+    ) { socialMessage = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
     CarDropShell(

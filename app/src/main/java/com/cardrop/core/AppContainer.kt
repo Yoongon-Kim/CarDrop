@@ -38,6 +38,7 @@ import com.cardrop.navi.KakaoPlaceSearch
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.OsrmDirections
 import com.cardrop.navi.NavigationHandoff
+import com.cardrop.navi.PleosFusedLocationSource
 import com.cardrop.vehicle.FakeVehicleRepository
 import com.cardrop.vehicle.PleosVehicleRepository
 import com.cardrop.vehicle.VehicleRepository
@@ -102,8 +103,17 @@ class AppContainer(context: Context) {
             ),
             kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
         )
-    /** Every car's position: this car from GPS, the others from their devices (real crew) or behind it (bots). */
-    val route: RouteSimulator = GpsCrewPositions(appScope, inAppNavigation, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions)
+    private val crewLocation = PleosFusedLocationSource(context.applicationContext, appScope)
+    val supportsFusedLocation: Boolean get() = crewLocation.supported
+
+    /** A grant after the crew started connects the SDK without restarting the app or the trip. */
+    fun onFusedLocationPermissionGranted() = crewLocation.onPermissionGranted()
+
+    /** Crew diagram: fresh FusedLocation measurements, GPS fallback, and the other cars through Firebase. */
+    val route: RouteSimulator = GpsCrewPositions(
+        appScope, inAppNavigation, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions,
+        preferredLocation = crewLocation,
+    )
     val navigation: NavigationHandoff = inAppNavigation
 
     /**

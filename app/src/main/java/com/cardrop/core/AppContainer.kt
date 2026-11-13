@@ -66,6 +66,7 @@ class AppContainer(context: Context) {
                         OsrmDirections(),
                     ),
                 ),
+                kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
             )
         }
     val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, crew.myCarId) }

@@ -1,12 +1,5 @@
 package com.cardrop.navi
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
-import android.graphics.Typeface
-import android.util.DisplayMetrics
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -222,17 +215,18 @@ private fun loadStyle(map: MapLibreMap, view: MapView, pixelRatio: Float, onRead
 }
 
 /** Our sources and layers on top of the base map, plus the marker images. */
-private class NavMapLayers(private val style: Style, private val ratio: Float) {
+private class NavMapLayers(private val style: Style, ratio: Float) {
 
+    private val markers = MapMarkers(ratio)
     private val labelImages = mutableSetOf<String>()
     private var waypointLabel: String? = null
     private var destinationLabel: String? = null
 
     init {
         showKoreanNames()
-        style.addImage(IMG_ME, mePuck())
-        style.addImage(IMG_WAYPOINT, squarePin(ORANGE, "경"))
-        style.addImage(IMG_DESTINATION, squarePin(BLUE, null))
+        style.addImage(IMG_ME, markers.mePuck())
+        style.addImage(IMG_WAYPOINT, markers.waypointPin())
+        style.addImage(IMG_DESTINATION, markers.destinationPin())
 
         listOf(SRC_DONE, SRC_AHEAD, SRC_CARS, SRC_ME, SRC_PLACES).forEach {
             style.addSource(GeoJsonSource(it, FeatureCollection.fromFeatures(emptyList())))
@@ -297,7 +291,7 @@ private class NavMapLayers(private val style: Style, private val ratio: Float) {
             FeatureCollection.fromFeatures(
                 cars.map { car ->
                     val labelId = "label-car-${car.id}"
-                    if (labelImages.add(labelId)) style.addImage(labelId, labelPill(car.label))
+                    if (labelImages.add(labelId)) style.addImage(labelId, markers.labelPill(car.label))
                     Feature.fromGeometry(Point.fromLngLat(car.position.lng, car.position.lat)).apply {
                         addStringProperty("color", hex(car.color.toColor().toArgb()))
                         addStringProperty("label", labelId)
@@ -308,11 +302,11 @@ private class NavMapLayers(private val style: Style, private val ratio: Float) {
 
         if (waypoint?.name != waypointLabel) {
             waypointLabel = waypoint?.name
-            waypoint?.let { style.addImage(IMG_WAYPOINT_LABEL, labelPill(it.name)) }
+            waypoint?.let { style.addImage(IMG_WAYPOINT_LABEL, markers.labelPill(it.name)) }
         }
         if (destination?.name != destinationLabel) {
             destinationLabel = destination?.name
-            destination?.let { style.addImage(IMG_DESTINATION_LABEL, labelPill(it.name)) }
+            destination?.let { style.addImage(IMG_DESTINATION_LABEL, markers.labelPill(it.name)) }
         }
         source(SRC_PLACES).setGeoJson(
             FeatureCollection.fromFeatures(
@@ -371,80 +365,6 @@ private class NavMapLayers(private val style: Style, private val ratio: Float) {
             PropertyFactory.iconIgnorePlacement(true),
         )
 
-    // ---- Marker images, drawn with Android's Canvas so Korean text uses the system font ----
-
-    /** Creates a bitmap of [w] x [h] design px, sharp at our pixel ratio. */
-    private fun bitmap(w: Float, h: Float, draw: Canvas.() -> Unit): Bitmap =
-        Bitmap.createBitmap((w * ratio).toInt(), (h * ratio).toInt(), Bitmap.Config.ARGB_8888).apply {
-            density = (DisplayMetrics.DENSITY_DEFAULT * ratio).toInt() // tells MapLibre the pixel ratio
-            Canvas(this).apply { scale(ratio, ratio); draw() }
-        }
-
-    /** This car: the design's blue dot with a white arrow showing the driving direction. */
-    private fun mePuck(): Bitmap = bitmap(48f, 48f) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x40000000
-        drawCircle(24f, 26f, 20f, paint)
-        paint.color = WHITE
-        drawCircle(24f, 24f, 20f, paint)
-        paint.color = BLUE
-        drawCircle(24f, 24f, 15f, paint)
-        paint.color = WHITE
-        drawPath(
-            Path().apply {
-                moveTo(24f, 14f); lineTo(31f, 31f); lineTo(24f, 27f); lineTo(17f, 31f); close()
-            },
-            paint,
-        )
-    }
-
-    /** The waypoint ("경", orange) and destination (flag, blue) markers from the design. */
-    private fun squarePin(color: Int, text: String?): Bitmap = bitmap(42f, 42f) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x33000000
-        drawRoundRect(RectF(2f, 4f, 40f, 42f), 13f, 13f, paint)
-        paint.color = WHITE
-        drawRoundRect(RectF(2f, 2f, 40f, 40f), 13f, 13f, paint)
-        paint.color = color
-        drawRoundRect(RectF(4f, 4f, 38f, 38f), 11f, 11f, paint)
-        paint.color = WHITE
-        if (text != null) {
-            paint.textSize = 15f
-            paint.typeface = Typeface.DEFAULT_BOLD
-            paint.textAlign = Paint.Align.CENTER
-            drawText(text, 21f, 21f - (paint.ascent() + paint.descent()) / 2, paint)
-        } else {
-            // Flag icon (design: M4 22V4 M4 4h12l-2 4 2 4H4), 20 px, centred.
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2.4f
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.strokeJoin = Paint.Join.ROUND
-            save()
-            translate(11f, 10f)
-            scale(20f / 24f, 20f / 24f)
-            drawPath(Path().apply { moveTo(4f, 22f); lineTo(4f, 4f) }, paint)
-            drawPath(Path().apply { moveTo(4f, 4f); lineTo(16f, 4f); lineTo(14f, 8f); lineTo(16f, 12f); lineTo(4f, 12f) }, paint)
-            restore()
-        }
-    }
-
-    /** A small white name tag under a marker ("삼촌", "여주휴게소"). */
-    private fun labelPill(text: String): Bitmap {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-        }
-        val width = paint.measureText(text) + 16f
-        return bitmap(width + 2f, 24f) {
-            paint.color = 0x26000000
-            drawRoundRect(RectF(1f, 2f, width + 1f, 24f), 8f, 8f, paint)
-            paint.color = WHITE
-            drawRoundRect(RectF(1f, 1f, width + 1f, 22f), 8f, 8f, paint)
-            paint.color = INK
-            drawText(text, 9f, 11.5f - (paint.ascent() + paint.descent()) / 2, paint)
-        }
-    }
-
     private fun hex(argb: Int) = String.format(Locale.US, "#%06X", argb and 0xFFFFFF)
 }
 
@@ -460,15 +380,8 @@ private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 private const val OFFLINE_STYLE =
     """{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#E9EEF3"}}]}"""
 
-/** Map labels and markers a bit larger than the UI scale, so they read on the car screen. */
-private const val MAP_SCALE = 1.25f
 private const val FOLLOW_ZOOM = 13.0
 private const val FOLLOW_TILT = 50.0
-
-private const val WHITE = 0xFFFFFFFF.toInt()
-private const val BLUE = 0xFF2F6FE0.toInt()
-private const val ORANGE = 0xFFFF8A3D.toInt()
-private const val INK = 0xFF191F28.toInt()
 
 private const val SRC_DONE = "cd-route-done"
 private const val SRC_AHEAD = "cd-route-ahead"

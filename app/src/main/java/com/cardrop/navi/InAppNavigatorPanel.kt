@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +52,8 @@ import kotlinx.coroutines.delay
  * The navigator drawn inside CarDrop (`cardrop.navApp=inapp`): the design's left third
  * (533 x 900 design px). A real map with the live route (GPS + Kakao/OSRM) and every crew car,
  * plus the design's overlays: turn banner, CarDrop toast, speed, and the waypoint / destination card.
+ * The map is Kakao's ([KakaoNavMap]) when local.properties has `cardrop.kakaoNativeKey`, else
+ * MapLibre + OpenFreeMap ([NavMap]); also MapLibre if Kakao refuses the key.
  */
 @Composable
 fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
@@ -86,6 +90,11 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
         else -> NavCamera.FOLLOW
     }
 
+    var kakaoFailed by remember { mutableStateOf(false) }
+    val kakaoKey = nav.kakaoMapKey?.takeUnless { kakaoFailed }
+    // Height of the bottom cards: Kakao's logo goes just above them.
+    var bottomPx by remember { mutableIntStateOf(0) }
+
     // The CarDrop toast under the banner shows each new route change for 5 seconds.
     var toast by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(route.lastAction) {
@@ -96,17 +105,34 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
     }
 
     Box(modifier = Modifier.fillMaxSize().background(CdColors.NavBackground)) {
-        NavMap(
-            route = navState.route,
-            progressKm = navState.progressKm,
-            me = me,
-            cars = cars,
-            waypoint = route.waypoint,
-            destination = route.destination,
-            camera = camera,
-            onUserMovedMap = { free = true },
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (kakaoKey != null) {
+            KakaoNavMap(
+                appKey = kakaoKey,
+                route = navState.route,
+                progressKm = navState.progressKm,
+                me = me,
+                cars = cars,
+                waypoint = route.waypoint,
+                destination = route.destination,
+                camera = camera,
+                logoBottomPx = bottomPx,
+                onUserMovedMap = { free = true },
+                onFailed = { kakaoFailed = true },
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            NavMap(
+                route = navState.route,
+                progressKm = navState.progressKm,
+                me = me,
+                cars = cars,
+                waypoint = route.waypoint,
+                destination = route.destination,
+                camera = camera,
+                onUserMovedMap = { free = true },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         Column(
             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -119,12 +145,16 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
         }
 
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp),
+            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().onSizeChanged { bottomPx = it.height }.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "© OpenFreeMap © OpenStreetMap" + (state.provider?.let { " · 경로 $it" } ?: ""),
+                    // Kakao's map shows its own logo; OpenFreeMap needs this credit line.
+                    listOfNotNull(
+                        "© OpenFreeMap © OpenStreetMap".takeIf { kakaoKey == null },
+                        state.provider?.let { "경로 $it" },
+                    ).joinToString(" · "),
                     color = CdColors.Gray500,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(1f),

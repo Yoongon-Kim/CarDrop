@@ -39,6 +39,7 @@ android {
         buildConfigField("String", "NAV_APP", "\"${localString("cardrop.navApp").ifEmpty { "inapp" }}\"")
         buildConfigField("String", "CLAUDE_API_KEY", "\"${localString("cardrop.claudeApiKey")}\"")
         buildConfigField("String", "KAKAO_REST_KEY", "\"${localString("cardrop.kakaoRestKey")}\"")
+        buildConfigField("String", "KAKAO_NATIVE_KEY", "\"${localString("cardrop.kakaoNativeKey")}\"")
     }
 
     buildTypes {
@@ -63,6 +64,7 @@ android {
 dependencies {
     implementation(libs.vehicle.sdk)
     implementation(libs.maplibre.android) // in-app navigator map (navi/NavMap.kt)
+    implementation(libs.kakao.map) // Kakao's map for the navigator (navi/KakaoNavMap.kt), test added by the lead 2026-11-13
     implementation(libs.anthropic.java) // real AiService (ai/ClaudeAiService.kt), approved by the lead 2026-11-13
     implementation(libs.pleos.tts) // real voice, speaking (voice/PleosVoiceService.kt), approved by the lead 2026-11-13
     implementation(libs.pleos.stt) // real voice, listening

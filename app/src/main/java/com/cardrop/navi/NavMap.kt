@@ -84,6 +84,7 @@ fun NavMap(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     // Our UI is scaled to the design (DesignScale); scale the map's labels and icons the same way.
     val pixelRatio = LocalDensity.current.density * MAP_SCALE
+    val fonts = rememberMarkerFonts()
 
     val mapView = remember {
         MapLibre.getInstance(context.applicationContext)
@@ -109,7 +110,7 @@ fun NavMap(
             m.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) userMoved()
             }
-            loadStyle(m, mapView, pixelRatio) { layers = it }
+            loadStyle(m, mapView, pixelRatio, fonts) { layers = it }
             map = m
         }
         var started = false
@@ -202,22 +203,22 @@ private fun moveCamera(
     )
 }
 
-private fun loadStyle(map: MapLibreMap, view: MapView, pixelRatio: Float, onReady: (NavMapLayers) -> Unit) {
+private fun loadStyle(map: MapLibreMap, view: MapView, pixelRatio: Float, fonts: MarkerFonts, onReady: (NavMapLayers) -> Unit) {
     var usedFallback = false
     view.addOnDidFailLoadingMapListener { message ->
         Log.w(TAG, "Map style failed ($message); using the plain offline style")
         if (!usedFallback) {
             usedFallback = true
-            map.setStyle(Style.Builder().fromJson(OFFLINE_STYLE)) { onReady(NavMapLayers(it, pixelRatio)) }
+            map.setStyle(Style.Builder().fromJson(OFFLINE_STYLE)) { onReady(NavMapLayers(it, pixelRatio, fonts)) }
         }
     }
-    map.setStyle(Style.Builder().fromUri(STYLE_URL)) { onReady(NavMapLayers(it, pixelRatio)) }
+    map.setStyle(Style.Builder().fromUri(STYLE_URL)) { onReady(NavMapLayers(it, pixelRatio, fonts)) }
 }
 
 /** Our sources and layers on top of the base map, plus the marker images. */
-private class NavMapLayers(private val style: Style, ratio: Float) {
+private class NavMapLayers(private val style: Style, ratio: Float, fonts: MarkerFonts) {
 
-    private val markers = MapMarkers(ratio)
+    private val markers = MapMarkers(ratio, fonts)
     private val labelImages = mutableSetOf<String>()
     private var roadRoute: LiveRoute? = null
     private var waypointLabel: String? = null

@@ -7,16 +7,43 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.DisplayMetrics
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.resolveAsTypeface
 import com.cardrop.core.ui.cssBlurToShadowRadius
+import com.cardrop.core.ui.theme.NotoSansKr
+
+/**
+ * The app's font (Noto Sans KR, `core/ui/theme/Theme.kt`) as the two Android typefaces the marker images use:
+ * [bold] (700) for the name tags, [extraBold] (800) for the "경" pin, as in the design (target line 55).
+ */
+internal class MarkerFonts(val bold: Typeface, val extraBold: Typeface)
+
+/**
+ * [MarkerFonts] taken from Compose, so the map's text is the same font file and weights as the app's Text.
+ * The font is in the app (`res/font`), so it loads at once and the typefaces are ready here.
+ */
+@Composable
+internal fun rememberMarkerFonts(): MarkerFonts {
+    val resolver = LocalFontFamilyResolver.current
+    return remember(resolver) {
+        MarkerFonts(
+            bold = resolver.resolveAsTypeface(NotoSansKr, FontWeight.Bold).value,
+            extraBold = resolver.resolveAsTypeface(NotoSansKr, FontWeight.ExtraBold).value,
+        )
+    }
+}
 
 /**
  * Owner: Member B.
  *
  * The marker images both maps draw ([NavMap] = MapLibre, [KakaoNavMap] = Kakao): this car, the waypoint
- * and destination pins, and the small name tags. Drawn with Android's Canvas so Korean text uses the
- * system font. Sizes are in design px; [ratio] is how many real pixels one design px gets.
+ * and destination pins, and the small name tags. Drawn with Android's Canvas, with the app's font ([fonts]).
+ * Sizes are in design px; [ratio] is how many real pixels one design px gets.
  */
-internal class MapMarkers(private val ratio: Float) {
+internal class MapMarkers(private val ratio: Float, private val fonts: MarkerFonts) {
 
     /** Creates a bitmap of [w] x [h] design px, sharp at our pixel ratio. */
     fun bitmap(w: Float, h: Float, draw: Canvas.() -> Unit): Bitmap =
@@ -71,7 +98,7 @@ internal class MapMarkers(private val ratio: Float) {
         paint.color = MARKER_WHITE
         if (text != null) {
             paint.textSize = 14f
-            paint.typeface = Typeface.DEFAULT_BOLD
+            paint.typeface = fonts.extraBold // the design's 14/800
             paint.textAlign = Paint.Align.CENTER
             drawText(text, 21f, 21f - (paint.ascent() + paint.descent()) / 2, paint)
         } else {
@@ -93,7 +120,7 @@ internal class MapMarkers(private val ratio: Float) {
     fun labelPill(text: String): Bitmap {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = fonts.bold
         }
         val width = paint.measureText(text) + 16f
         return bitmap(width + 2f, 24f) {

@@ -83,6 +83,7 @@ fun KakaoNavMap(
     val density = LocalDensity.current
     // Our UI is scaled to the design (DesignScale); our markers use the same size as on the MapLibre map.
     val pixelRatio = density.density * MAP_SCALE
+    val fonts = rememberMarkerFonts()
     val logo = LogoSpot(sidePx = with(density) { 18.dp.toPx() }, bottomPx = logoBottomPx.toFloat())
     val userMoved by rememberUpdatedState(onUserMovedMap)
     val failed by rememberUpdatedState(onFailed)
@@ -126,7 +127,7 @@ fun KakaoNavMap(
                         if (gesture != GestureType.Unknown) main.execute { userMoved() }
                     }
                     main.execute {
-                        layers = KakaoMapLayers(kakaoMap, MapMarkers(pixelRatio), pixelRatio)
+                        layers = KakaoMapLayers(kakaoMap, MapMarkers(pixelRatio, fonts), pixelRatio)
                         map = kakaoMap
                     }
                 }

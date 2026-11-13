@@ -108,7 +108,8 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
             }
         }
 
-        val arrivals = remember(drop, positions, route, crew, skipped) { vm.arrivals(drop) }
+        // drops: the crew's "도착했어요" / "지나쳤어요" messages change the list too.
+        val arrivals = remember(drop, drops, positions, route, crew, skipped) { vm.arrivals(drop) }
         if (arrivals.isNotEmpty()) {
             CdCard(Modifier.fillMaxWidth()) {
                 Text("도착 예정", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)

@@ -158,7 +158,9 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
   more than 800 m away without stopping (the motorway passes rest stops 70-100 m from their map point, so
   distance alone can't tell them apart). Either one takes the stop off the route, shows the CarDrop toast,
   and `drive/TripCoordinator.kt` says it aloud and sends the crew a SOCIAL drop ("…에 도착했어요" /
-  "…를 지나쳤어요"). Board 14 "도착 예정" still marks a car "도착했어요" by distance alone (0.3 km).
+  "…를 지나쳤어요"). Board 14 "도착 예정" (`drive/Arrivals.kt`) reads those crew messages back
+  (`drive/StopNews.kt`) for 도착했어요 / 지나쳤어요; without one, a car within 0.3 km shows "곧 도착해요" and one
+  more than 0.8 km past shows "지나쳤어요". The bot cars send no messages, so they never show 도착.
 - Routing: `navi/KakaoDirections.kt` (Kakao Mobility, Korean data + traffic + Korean turn texts; key
   `cardrop.kakaoRestKey`, free for non-commercial use up to 10,000 requests/day), then
   `navi/OsrmDirections.kt` (public OSRM server, no key, no traffic, no uptime promise) as backup.

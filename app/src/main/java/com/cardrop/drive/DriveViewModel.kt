@@ -255,6 +255,7 @@ class DriveViewModel(
             drop, current.cars, positions.value, myCarId, skipped(drop.id), way?.first, way?.second,
             navigation.route.value.destination?.name ?: current.destination.name,
             System.currentTimeMillis(), ZoneId.systemDefault(),
+            said = StopNews.results(drops.value, place, sinceMillis = drop.createdAtMillis),
         )
     }
 

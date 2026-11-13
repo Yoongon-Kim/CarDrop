@@ -6,7 +6,9 @@ import com.cardrop.core.model.CarPosition
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
+import com.cardrop.navi.WaypointResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.time.Instant
 import java.time.ZoneId
@@ -42,8 +44,8 @@ class ArrivalsTest {
         Instant.ofEpochMilli(now + minutes * 60_000L).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
 
     private fun rows(drop: Drop, skipped: Boolean = false, myKm: Double? = 9.0, myMinutes: Double? = 6.0,
-        at: Map<String, CarPosition> = positions) =
-        crewArrivals(drop, cars, at, me, skipped, myKm, myMinutes, "강릉 경포해변", now, zone)
+        at: Map<String, CarPosition> = positions, said: Map<String, WaypointResult> = emptyMap()) =
+        crewArrivals(drop, cars, at, me, skipped, myKm, myMinutes, "강릉 경포해변", now, zone, said)
 
     @Test fun everyCarIsTimedFromThisCarsWayToTheStop() {
         val rows = rows(decided())
@@ -65,9 +67,30 @@ class ArrivalsTest {
         assertEquals(listOf(uncle), rows.filter { it.stops }.map { it.car.id })
         assertEquals("패스 · 강릉 경포해변에서 합류", rows.first { it.car.id == me }.status)
     }
-    @Test fun aReachedStopAndUnknownPositionsAreSaidPlainly() {
+    @Test fun nearTheStopWithoutAMessageIsAlmostThereAndUnknownPositionsAreSaidPlainly() {
         val rows = rows(decided(), myKm = 0.1, myMinutes = 0.0, at = mapOf(me to positions.getValue(me)))
-        assertEquals("도착했어요", rows.first { it.car.id == me }.status)
+        assertEquals("곧 도착해요", rows.first { it.car.id == me }.status) // beside the stop, not stopped yet
         assertEquals("위치 기다리는 중", rows.first { it.car.id == uncle }.status)
+    }
+    @Test fun aCarThatSaidItStoppedHasArrivedEvenAfterDrivingOn() {
+        val rows = rows(decided(), myKm = -5.0, said = mapOf(me to WaypointResult.ARRIVED))
+        assertEquals("도착했어요", rows.first { it.car.id == me }.status)
+        assertEquals(me, rows.first().car.id)
+    }
+    @Test fun aCarThatSaidItDrovePastMeetsTheCrewAtTheDestination() {
+        val rows = rows(decided(), said = mapOf(uncle to WaypointResult.PASSED))
+        val row = rows.first { it.car.id == uncle }
+        assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", row.status)
+        assertEquals("계속", row.time)
+        assertFalse(row.stops)
+        assertEquals(uncle, rows.last().car.id) // after the cars that stop
+    }
+    @Test fun withoutAMessageOnlyNearIsAlmostThereAndWellPastIsDrivenPast() {
+        // This car is 2 km past the stop; the others are 0.8, 1.8 and 3 km behind it.
+        val rows = rows(decided(), myKm = -2.0).associate { it.car.id to it.status }
+        assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", rows[me])
+        assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", rows[uncle]) // 1.2 km past
+        assertEquals("곧 도착해요", rows[minji]) // 0.2 km past
+        assertEquals("1.0km", rows[aunt])
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,7 @@ import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.SecondaryButton
+import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.TodoNote
 import com.cardrop.core.ui.theme.CdColors
 
@@ -47,8 +49,10 @@ fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) 
     // rememberSaveable: the digits stay when Android rebuilds the screen (e.g. day / night theme).
     var code by rememberSaveable { mutableStateOf("") }
     val join by vm.join.collectAsStateWithLifecycle()
+    val voice by vm.codeVoice.collectAsStateWithLifecycle()
     // Opened with empty boxes: forget a crew found earlier, so the right half matches the boxes.
     LaunchedEffect(Unit) { if (code.isEmpty()) vm.clearJoin() }
+    DisposableEffect(Unit) { onDispose { vm.stopListening() } } // leaving the screen stops the mic
     // Every change of the code goes through here: the crew is looked up at the 6th digit.
     val changeCode: (String) -> Unit = { digits ->
         code = digits
@@ -76,11 +80,18 @@ fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) 
                 gap = 16.dp,
             ) {
                 DigitBoxes(code)
+                // "듣고 있어요…", or why what was heard didn't fill the boxes (an app extra).
+                voice.status?.let { StatusText(it, Modifier.align(Alignment.CenterHorizontally)) }
                 Keypad(
                     onDigit = { if (code.length < JoinRules.CODE_LENGTH) changeCode(code + it) },
                     onErase = { if (code.isNotEmpty()) changeCode(code.dropLast(1)) },
-                    listening = false,
-                    onListen = null,
+                    listening = voice.listening,
+                    // 말로: the 6 digits heard go into the boxes, so the crew is looked up at once.
+                    onListen = if (vm.canListen) {
+                        { vm.listenForCode(onHeard = changeCode) }
+                    } else {
+                        null
+                    },
                     modifier = Modifier.weight(1f), // the keypad takes the rest of the card
                 )
             }

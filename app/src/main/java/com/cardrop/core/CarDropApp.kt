@@ -62,7 +62,9 @@ import kotlinx.coroutines.delay
 fun CarDropApp(container: AppContainer) {
     // From AppContainer, not `remember`: a new activity (day/night theme, a second MainActivity) keeps the screen.
     val navigator = container.navigator
-    val crewVm: CrewViewModel = viewModel { CrewViewModel(container.crew, container.placeSearch, container::myPosition, container.voice) }
+    val crewVm: CrewViewModel = viewModel { CrewViewModel(
+            container.crew, container.placeSearch, container::myPosition, container.voice, container.destinationTrip,
+        ) }
     val driveVm: DriveViewModel = viewModel {
         DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai, tripStart = container.tripStart)
     }

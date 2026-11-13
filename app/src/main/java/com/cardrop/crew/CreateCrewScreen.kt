@@ -35,6 +35,7 @@ fun CreateCrewScreen(
 ) {
     LaunchedEffect(Unit) { vm.ensureCrew() }
     val crew by vm.crew.collectAsStateWithLifecycle()
+    val trip by vm.trip.collectAsStateWithLifecycle()
 
     ScreenColumn {
         ScreenHeader(eyebrow = "출발 전 · 정차 중", title = "함께 갈 차를 모아요") {
@@ -44,7 +45,9 @@ fun CreateCrewScreen(
             CdCard(modifier = Modifier.weight(1f), onClick = onSearchDestination) {
                 Text("목적지", style = MaterialTheme.typography.labelMedium)
                 Text(crew?.destination?.name ?: "목적지를 골라 주세요", style = MaterialTheme.typography.titleLarge)
-                Text(crew?.destination?.detail.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+                // "강원 강릉시 · 해수욕장 · 약 62km · 1시간 5분": the road distance and time come from the navigator.
+                val detail = listOfNotNull(crew?.destination?.detail?.takeIf { it.isNotBlank() }, trip?.text)
+                Text(detail.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
                 Text("입력하면 내비 목적지에 바로 반영돼요 · 일행 모두 같은 목적지로", style = MaterialTheme.typography.bodyMedium)
             }
             CdCard(modifier = Modifier.weight(1f)) {

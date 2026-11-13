@@ -7,6 +7,7 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.Place
 import com.cardrop.drive.GeoPoint
+import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
 import com.cardrop.navi.PlaceSuggestion
@@ -27,7 +28,13 @@ class CrewViewModel(
     here: () -> GeoPoint? = { null },
     /** Board 02 "말로 검색"; null hides the button. */
     private val voice: VoiceService? = null,
+    /** Board 01: road distance and drive time to the destination (from the navigator), or null. */
+    destinationTrip: StateFlow<DestinationTrip?> = MutableStateFlow(null),
 ) : ViewModel() {
+
+    /** Board 01's "약 62km · 1시간 5분" for the crew destination; null until the navigator has a route. */
+    val trip: StateFlow<DestinationTrip?> = destinationTrip
+
 
     /**
      * Read on every use, like DriveViewModel's: with the real crew this device picks its car when joining

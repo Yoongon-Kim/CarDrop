@@ -63,6 +63,12 @@ fun crewStrip(cars: List<Car>, positions: Map<String, CarPosition>): List<StripC
     }
 }
 
+/**
+ * The order to draw the strip's cars in: the last car first, the leader last. A Box draws its children in order,
+ * so when two markers overlap, the car in front ends up on top.
+ */
+fun drawingOrder(strip: List<StripCar>): List<StripCar> = strip.sortedByDescending { it.rank }
+
 /** "선두" for the leading car, otherwise how far behind it, e.g. "2.1km 뒤". */
 fun gapText(leaderKmToDestination: Float, kmToDestination: Float): String {
     val behind = kmToDestination - leaderKmToDestination
@@ -94,7 +100,7 @@ internal fun CrewRoad(cars: List<Car>, positions: Map<String, CarPosition>, myCa
         StripLabel("크루 위치", CdColors.Ink, 14, Modifier.align(Alignment.TopStart))
         destinationName?.let { StripLabel("$it 방면 →", CdColors.Green, 13, Modifier.align(Alignment.TopEnd)) }
         if (strip.isEmpty()) StatusText("차량 위치를 기다리고 있어요", Modifier.align(Alignment.Center))
-        strip.forEach { car ->
+        drawingOrder(strip).forEach { car ->
             val x = car.along * VIEW_WIDTH
             val centerX = (x * widthPx / VIEW_WIDTH).roundToInt()
             val roadY = (RoadShape.yAt(x) * heightPx / VIEW_HEIGHT).roundToInt()

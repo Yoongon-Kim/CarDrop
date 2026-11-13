@@ -95,11 +95,13 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
     // Height of the bottom cards: Kakao's logo goes just above them.
     var bottomPx by remember { mutableIntStateOf(0) }
 
-    // The CarDrop toast under the banner shows each new route change for 5 seconds.
+    // The CarDrop toast under the banner shows each new route change for 5 seconds. It follows nav.toast, not the
+    // text of route.lastAction: every change has its own id there, so the same message twice in a row shows twice.
+    // A newer change cancels the wait and starts again; none (after clear()) hides the toast at once.
+    val latestToast by nav.toast.collectAsStateWithLifecycle()
     var toast by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(route.lastAction) {
-        val text = route.lastAction ?: return@LaunchedEffect
-        toast = text
+    LaunchedEffect(latestToast) {
+        toast = latestToast?.text
         delay(5_000)
         toast = null
     }

@@ -70,6 +70,52 @@ class NavigationFlowTest {
             assertEquals(2, router.requests)
         } finally { scope.cancel() }
     }
+    @Test fun theSameMessageForAnotherDestinationIsANewToast() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val nav = InAppNavigation(scope, Location(), Router(road)) { 100_000 }
+            // The host picks a destination, then another one: the same text twice.
+            nav.setRoute(DemoData.gyeongpo, reason = "크루 목적지를 내비에 넣었어요")
+            val first = nav.toast.value
+            nav.setRoute(DemoData.destinations.last(), reason = "크루 목적지를 내비에 넣었어요")
+            val second = nav.toast.value
+            assertEquals("크루 목적지를 내비에 넣었어요", first?.text)
+            assertEquals(first?.text, second?.text)
+            assertNotEquals(first?.id, second?.id)
+            // The trip ends: no toast left over.
+            nav.clear()
+            assertNull(nav.toast.value)
+        } finally { scope.cancel() }
+    }
+    @Test fun aSecondRerouteInARowIsANewToast() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            var now = 100_000L
+            val location = Location()
+            val router = Router(road)
+            val nav = InAppNavigation(scope, location, router) { now }
+            location.fix.value = fix(0.0, now)
+            nav.setRoute(DemoData.gyeongpo)
+            yield()
+            val reroutes = (1..2).map {
+                // 3 fixes off the route, then one after the 8-second gap between route requests: a new route.
+                for (wait in listOf(1_000L, 1_000L, 1_000L, 7_000L)) {
+                    now += wait
+                    location.fix.value = fix(.1, now, .004)
+                    yield()
+                }
+                nav.route.value to nav.toast.value
+            }
+            assertEquals(3, router.requests)
+            val (routeAfterFirst, firstToast) = reroutes[0]
+            val (routeAfterSecond, secondToast) = reroutes[1]
+            // The route value is the same after both, so it can't tell the second reroute apart; the toast can.
+            assertEquals(routeAfterFirst, routeAfterSecond)
+            assertEquals("경로를 벗어나서 새 경로를 찾았어요", firstToast?.text)
+            assertEquals(firstToast?.text, secondToast?.text)
+            assertNotEquals(firstToast?.id, secondToast?.id)
+        } finally { scope.cancel() }
+    }
     @Test fun drivingPastTheStopTakesItOffTheRouteAndTellsListeners() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         try {

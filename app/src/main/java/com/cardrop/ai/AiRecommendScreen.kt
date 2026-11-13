@@ -308,7 +308,7 @@ private fun PickerHeader(title: String, subtitle: String, popup: Boolean, onClos
 /** Tile colours for the AI's 1st, 2nd and 3rd place (design: blue, orange, teal). */
 private val tileColors = listOf(
     CdColors.BlueLight to CdColors.BlueDark,
-    CdColors.OrangeLight to CdColors.OrangeDark,
+    CdColors.OrangeLight to CdColors.OrangeDeep,
     CdColors.TealLight to CdColors.TealDark,
 )
 

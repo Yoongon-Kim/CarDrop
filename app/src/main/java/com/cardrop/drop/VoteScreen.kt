@@ -446,8 +446,11 @@ private fun Modifier.dashedEdge(color: Color, radius: Dp): Modifier = drawBehind
     )
 }
 
-/** What the vote is about, after "{보낸 차}의 제안 · " in the tag (target lines 711-713: "식사", "주유"). */
-private fun DropTopic.voteTag(): String = when (this) {
+/**
+ * What the vote is about, after "{보낸 차}의 제안 · " in the tag (target lines 711-713: "식사", "주유"). Internal: board 10
+ * says the same name after sending ("휴게소 투표를 보냈어요", `ai/AiViewModel.kt`).
+ */
+internal fun DropTopic.voteTag(): String = when (this) {
     DropTopic.REST -> "휴게소"
     DropTopic.FOOD -> "식사"
     DropTopic.FUEL -> "주유"

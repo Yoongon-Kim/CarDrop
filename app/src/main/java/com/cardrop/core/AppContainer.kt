@@ -12,6 +12,7 @@ import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.core.demo.DemoCar
+import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
@@ -60,17 +61,19 @@ class AppContainer(context: Context) {
     // Member A
     /** Which car this device drives in the real crew: the DEMO panel's "내 차", else `cardrop.myCar`. */
     val myCar: String = DemoCar.current(context)
+    /** Real crew or bot crew on this device: the DEMO panel's "크루" switch, else `cardrop.useRealCrew` ([DemoCrew]). */
+    val useRealCrew: Boolean = DemoCrew.current(context)
     /**
-     * `cardrop.useRealCrew=true`: the real crew on Firebase, shared by several devices; this device is
-     * [myCar]. Otherwise the fake crew with bot cars (also the way back if the network fails).
+     * [useRealCrew]: the real crew on Firebase, shared by several devices; this device is [myCar].
+     * Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
     val crew: CrewRepository =
-        if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
+        if (useRealCrew) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
 
     // Lead
     /** Real crew: the host's 출발 and every car's position, shared through Firebase (drive/FirebaseTrip.kt). */
-    private val firebaseTrip: FirebaseTrip? = if (BuildConfig.USE_REAL_CREW) FirebaseTrip(appScope, crew) else null
+    private val firebaseTrip: FirebaseTrip? = if (useRealCrew) FirebaseTrip(appScope, crew) else null
     /** With the real crew the cars wait for the host's 출발; the bot crew never waits. */
     val tripStart: TripStart = firebaseTrip ?: TripStart.AlwaysStarted
 
@@ -149,7 +152,7 @@ class AppContainer(context: Context) {
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
      * keeps the driver on the same screen and doesn't open old drops again.
      */
-    val navigator = AppNavigator(start = DemoCar.startScreen(BuildConfig.USE_REAL_CREW, myCar))
+    val navigator = AppNavigator(start = DemoCar.startScreen(useRealCrew, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
     private val trip = TripCoordinator(

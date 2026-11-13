@@ -179,6 +179,7 @@ fun CarDropApp(container: AppContainer) {
             // A pass (난 패스) keeps this car's route: the navigator skips the stop, like 14's "우리 차는 안 들르기".
             is Screen.Vote -> VoteScreen(
                 crewVm, screen.dropId, placeTimes = container.placeTimes, onPass = container.navigation.decisions::skip,
+                onOpenResult = { navigator.go(Screen.Decided(it)) },
             )
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             Screen.Games -> QuizScreen(aiVm)

@@ -78,12 +78,19 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Board 11 투표 (받는 차) · Owner: Member A.
  * This car picks a place, 아무 데나 좋아 or 난 패스 ([VotePick]), and 응답하기 sends it. When the vote ends, the app
- * moves to board 14 on its own (see DropRouting).
+ * moves to board 14 on its own (see DropRouting), except for a car that passed: its route doesn't change, so it
+ * stays here, and the button becomes 결과 보기 ([onOpenResult], board 14).
  * [placeTimes] (AppContainer.placeTimes) says how far each place is from this car and how long it takes.
  * [onPass] makes this car skip the stop, as board 14's "우리 차는 안 들르기" does: a pass keeps its route.
  */
 @Composable
-fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTimes>, onPass: (dropId: String) -> Unit) {
+fun VoteScreen(
+    vm: CrewViewModel,
+    dropId: String,
+    placeTimes: StateFlow<PlaceTimes>,
+    onPass: (dropId: String) -> Unit,
+    onOpenResult: (dropId: String) -> Unit,
+) {
     val drops by vm.drops.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
     val times by placeTimes.collectAsStateWithLifecycle()
@@ -103,7 +110,8 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
     var pick by remember(dropId) { mutableStateOf(VotePick.from(drop.votes[vm.myCarId], drop.candidates)) }
     // The place this car's vote counts for (place 1 for 아무 데나); null for a pass.
     val counted = pick.countedId(drop.candidates)
-    val alreadyVoted = vm.myCarId in drop.votes
+    // Answered, or the vote is over: nothing to pick any more.
+    val alreadyVoted = vm.myCarId in drop.votes || drop.isDecided
     // 돌림판 is a small extra: only before answering, and only when there is something to choose between.
     val canSpin = !alreadyVoted && drop.candidates.size >= 2
     var wheelOpen by remember(dropId) { mutableStateOf(false) }
@@ -119,10 +127,16 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
         // 응답하기 sits at the bottom of the screen (target line 467, `margin-top: auto`): 72 high, corners 22, 20 / 800.
         ScreenColumn(bottom = {
             PrimaryButton(
-                text = if (alreadyVoted) "응답했어요" else "응답하기",
-                enabled = !alreadyVoted && vote != null,
+                text = when {
+                    drop.isDecided -> "결과 보기"
+                    alreadyVoted -> "응답했어요"
+                    else -> "응답하기"
+                },
+                enabled = drop.isDecided || (!alreadyVoted && vote != null),
                 onClick = {
-                    if (vote != null) {
+                    if (drop.isDecided) {
+                        onOpenResult(dropId)
+                    } else if (vote != null) {
                         // A pass skips the stop first, so the stop never reaches this car's route, even if this
                         // answer is the last one and ends the vote at once.
                         if (pick == VotePick.Pass) onPass(dropId)
@@ -172,9 +186,10 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                             contentPadding = PaddingValues(start = 6.dp, end = 12.dp),
                         )
                     }
+                    // Once the vote is over (everyone answered early, or time ran out): "마감" in grey.
                     Text(
-                        "%d:%02d".format(secondsLeft / 60, secondsLeft % 60),
-                        color = CdColors.Alert,
+                        if (drop.isDecided) "마감" else "%d:%02d".format(secondsLeft / 60, secondsLeft % 60),
+                        color = if (drop.isDecided) CdColors.Gray450 else CdColors.Alert,
                         fontSize = 38.sp,
                         fontWeight = FontWeight.ExtraBold,
                         lineHeight = 38.sp,

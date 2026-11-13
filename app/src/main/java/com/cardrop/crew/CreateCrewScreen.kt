@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,9 +39,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -389,6 +393,7 @@ private fun MembersCard(
             )
             MemberRow(car, meta)
         }
+        PastCars()
         // The board pins the button to the bottom of the card (margin-top: auto): the Spacer takes the room left.
         Spacer(Modifier.weight(1f))
         PrimaryButton("다 모이면 출발하기", onClick = onDepart, modifier = Modifier.fillMaxWidth(), height = 66.dp)
@@ -400,6 +405,64 @@ private fun MembersCard(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp), // the board's margin-top: 6px
         )
     }
+}
+
+/** A car this one drove with before (tier C, fixed demo data: the app keeps no trip history yet). */
+private data class PastCar(val initial: String, val name: String, val trip: String)
+
+private val pastCars = listOf(PastCar("민", "민수 차", "9월 · 양양 여행"))
+
+/**
+ * 예전에 함께 달린 차 (design lines 137-142): the label, then each car with a grey initial circle, its name and
+ * when it came along, and 초대. 초대 isn't built yet: it says "아직 준비 중이에요".
+ */
+@Composable
+private fun PastCars() {
+    var status by remember { mutableStateOf<String?>(null) }
+    // margin-top: 12px on the board, on top of the card's 2.
+    Text(
+        "예전에 함께 달린 차",
+        color = CdColors.Ink,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.padding(top = 12.dp),
+    )
+    pastCars.forEach { car ->
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(38.dp).clip(CircleShape).background(CdColors.Gray100),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(car.initial, color = CdColors.Gray600, fontWeight = FontWeight.ExtraBold)
+            }
+            // "민수 차" 15 bold, then " 9월 · 양양 여행" in small grey letters, on one line.
+            Text(
+                buildAnnotatedString {
+                    append(car.name)
+                    withStyle(SpanStyle(color = CdColors.Gray600, fontSize = 12.sp, fontWeight = FontWeight.Normal)) {
+                        append(" ${car.trip}")
+                    }
+                },
+                color = CdColors.Ink,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            CdChip(
+                "초대",
+                onClick = { status = NOT_READY },
+                style = ChipStyle.Blue,
+                height = 42.dp,
+                radius = 12.dp,
+                contentPadding = PaddingValues(horizontal = 18.dp),
+            )
+        }
+    }
+    status?.let { StatusText(it) }
 }
 
 /**

@@ -100,7 +100,7 @@ fun CarDropApp(container: AppContainer) {
     ) { socialMessage = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
-    // The trip just started (the host's 출발, every car joined, or the 3 minutes for joining are over): board 01 gives way to
+    // The trip just started (the host's 출발, every car joined, or the 2 minutes for joining are over): board 01 gives way to
     // board 04, on the host and on a car that looked at the crew. Only the change counts (drop(1)): a new activity
     // with the trip already started keeps the screen the driver chose.
     LaunchedEffect(container.crew) {

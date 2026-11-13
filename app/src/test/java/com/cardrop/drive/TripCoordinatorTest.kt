@@ -151,7 +151,7 @@ class TripCoordinatorTest {
         assertEquals(shared.decidedCandidate!!.place, nav.route.value.destination)
     }
 
-    // The trip's start (Crew.startedAtMillis): the host's 출발, or the end of the 3 minutes for joining.
+    // The trip's start (Crew.startedAtMillis): the host's 출발, or the end of the 2 minutes for joining.
 
     private fun runWithHost(
         myCar: String,
@@ -189,7 +189,7 @@ class TripCoordinatorTest {
     @Test fun theHostsGuidanceStartsWithTheTripToo() = runWithHost(DemoData.me.id) { crew, nav, _ ->
         yield()
         assertEquals(0, nav.launches)
-        crew.startTrip() // the host's 출발, or the end of the 3 minutes
+        crew.startTrip() // the host's 출발, or the end of the 2 minutes
         yield()
         assertEquals(1, nav.launches)
     }
@@ -200,7 +200,7 @@ class TripCoordinatorTest {
         assertEquals(0, nav.launches)
     }
 
-    @Test fun theHostsCarStartsTheTripWhenTheThreeMinutesAreOver() =
+    @Test fun theHostsCarStartsTheTripWhenTheTwoMinutesAreOver() =
         runWithHost(DemoData.me.id, joinDeadline = NOW - 1) { crew, nav, _ ->
             yield()
             assertEquals(1, crew.tripStarts)
@@ -228,7 +228,7 @@ class TripCoordinatorTest {
             assertEquals(0, crew.tripStarts) // 이모 차 is still on her way
             crew.crew.value = crew.crew.value!!.let { c -> c.copy(cars = c.cars.map { it.copy(connected = true) }) }
             yield()
-            assertEquals(1, crew.tripStarts) // the last car joined: no need to wait for the 3 minutes
+            assertEquals(1, crew.tripStarts) // the last car joined: no need to wait for the 2 minutes
             assertEquals(1, nav.launches)
         }
 

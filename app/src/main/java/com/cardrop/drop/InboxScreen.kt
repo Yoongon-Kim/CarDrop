@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -188,14 +189,19 @@ private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: Stri
     ) {
         CarBadge(sender, size = 40) // the design's default badge, 66 x 44 (target 289)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            // The tag (11/800, corners 6, padding 2 / 6) and only the time next to it (target 290).
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (decision) "결정 드랍" else "소셜 드랍",
-                    fontSize = 12.sp,
+                    text.tag,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (decision) CdColors.BlueDark else CdColors.VioletDark,
+                    color = text.look.text,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(text.look.background)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
-                Text("${sender.name} · $timeText", fontSize = 12.sp, color = CdColors.Gray600, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(timeText, fontSize = 12.sp, color = CdColors.Gray600, maxLines = 1)
             }
             Text(text.title, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (text.sub.isNotBlank()) {
@@ -256,11 +262,22 @@ internal fun Drop.status(myCarId: String, isSkipped: (dropId: String) -> Boolean
     else -> DropStatus.VOTING
 }
 
-/** What an inbox row says under its tag: a bold title and a grey line. Internal so InboxRowTest can check it. */
-internal data class InboxRowText(val title: String, val sub: String)
+/** The colours of a row's tag: red = waits for this car's answer, violet = social, grey = nothing left to do. */
+internal enum class TagLook(val text: Color, val background: Color) {
+    NEEDS_ANSWER(CdColors.Red, CdColors.RedLight),
+    SOCIAL(CdColors.VioletDark, CdColors.VioletLight),
+    DONE(CdColors.Gray600, CdColors.Gray100),
+}
 
 /**
- * The row texts from the design (target 290, 667-673):
+ * What an inbox row says: the small tag ("결정 · 투표") in its colours, a bold title and a grey line.
+ * Internal so InboxRowTest can check it.
+ */
+internal data class InboxRowText(val tag: String, val look: TagLook, val title: String, val sub: String)
+
+/**
+ * The row texts from the design (target 290, 667-673). Tags: "연료 알림" (a fuel invite), "결정 · 투표" (a vote),
+ * "소셜 · 한마디", "결정 · 완료"; red while the drop waits for this car's answer, else grey (violet for social).
  * - a vote: "아빠 차: 어디서 쉬어갈까요?", and while it is open "덕평 · 여주 · 문막 · 1:48 남음";
  * - a fuel invite: its own title, and "같이 갈지 아직 안 골랐어요" while this car hasn't answered;
  * - a 한마디: "삼촌 차: “천천히 와요~”" over "일행에게 한마디";
@@ -270,12 +287,14 @@ internal data class InboxRowText(val title: String, val sub: String)
  */
 internal fun inboxRowText(drop: Drop, senderName: String, status: DropStatus, nowMillis: Long): InboxRowText {
     val title = if (drop.title.startsWith(senderName)) drop.title else "$senderName: ${drop.title}"
+    val open = if (status == DropStatus.NEEDS_ANSWER) TagLook.NEEDS_ANSWER else TagLook.DONE
     return when {
-        status == DropStatus.SOCIAL -> InboxRowText("$senderName: “${drop.title}”", "일행에게 한마디")
-        status == DropStatus.DECIDED -> InboxRowText(title, drop.decidedCandidate?.let { "결정: ${it.place.name}" } ?: "결정됐어요")
+        status == DropStatus.SOCIAL -> InboxRowText("소셜 · 한마디", TagLook.SOCIAL, "$senderName: “${drop.title}”", "일행에게 한마디")
+        status == DropStatus.DECIDED ->
+            InboxRowText("결정 · 완료", TagLook.DONE, title, drop.decidedCandidate?.let { "결정: ${it.place.name}" } ?: "결정됐어요")
         drop.topic == DropTopic.FUEL ->
-            InboxRowText(title, if (status == DropStatus.NEEDS_ANSWER) "같이 갈지 아직 안 골랐어요" else drop.message)
-        else -> InboxRowText(title, openVoteText(drop, nowMillis))
+            InboxRowText("연료 알림", open, title, if (status == DropStatus.NEEDS_ANSWER) "같이 갈지 아직 안 골랐어요" else drop.message)
+        else -> InboxRowText("결정 · 투표", open, title, openVoteText(drop, nowMillis))
     }
 }
 

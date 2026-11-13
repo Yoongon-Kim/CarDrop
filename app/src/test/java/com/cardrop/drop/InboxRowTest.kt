@@ -31,36 +31,42 @@ class InboxRowTest {
     @Test
     fun anOpenVoteNamesTheSenderThePlacesAndTheTimeLeft() {
         val row = inboxRowText(drop(), "아빠 차", DropStatus.NEEDS_ANSWER, nowMillis = 12_000)
-        assertEquals(InboxRowText("아빠 차: 어디서 쉬어갈까요?", "덕평 · 여주 · 문막 · 1:48 남음"), row)
-        // Already answered: still open, same text. Time is up: no countdown.
-        assertEquals(row, inboxRowText(drop(), "아빠 차", DropStatus.VOTING, nowMillis = 12_000))
+        assertEquals(InboxRowText("결정 · 투표", TagLook.NEEDS_ANSWER, "아빠 차: 어디서 쉬어갈까요?", "덕평 · 여주 · 문막 · 1:48 남음"), row)
+        // Already answered: still open, same text, but the tag turns grey. Time is up: no countdown.
+        assertEquals(row.copy(look = TagLook.DONE), inboxRowText(drop(), "아빠 차", DropStatus.VOTING, nowMillis = 12_000))
         assertEquals("덕평 · 여주 · 문막", inboxRowText(drop(), "아빠 차", DropStatus.VOTING, nowMillis = 130_000).sub)
     }
 
     @Test
     fun aShoutIsQuotedUnderTheSendersName() {
         val shout = drop(DropTopic.MESSAGE, DropKind.SOCIAL, title = "천천히 와요~", candidates = 0)
-        assertEquals(InboxRowText("삼촌 차: “천천히 와요~”", "일행에게 한마디"), inboxRowText(shout, "삼촌 차", DropStatus.SOCIAL, 0))
+        assertEquals(
+            InboxRowText("소셜 · 한마디", TagLook.SOCIAL, "삼촌 차: “천천히 와요~”", "일행에게 한마디"),
+            inboxRowText(shout, "삼촌 차", DropStatus.SOCIAL, 0),
+        )
     }
 
     @Test
     fun aFuelInviteKeepsItsTitleAndSaysItIsNotAnsweredYet() {
         val demo = drop(DropTopic.FUEL, title = "민지 차 연료가 부족해요 · 같이 갈래요?", message = "민지 차 · 주행 가능 85km", candidates = 1)
         assertEquals(
-            InboxRowText("민지 차 연료가 부족해요 · 같이 갈래요?", "같이 갈지 아직 안 골랐어요"),
+            InboxRowText("연료 알림", TagLook.NEEDS_ANSWER, "민지 차 연료가 부족해요 · 같이 갈래요?", "같이 갈지 아직 안 골랐어요"),
             inboxRowText(demo, "민지 차", DropStatus.NEEDS_ANSWER, 0),
         )
         // A real invite's title doesn't name the car, so the name goes in front. Answered: its message.
         val real = drop(DropTopic.FUEL, title = "연료가 부족해요 · 같이 주유할까요?", message = "주행 가능 85km · 덕평자연휴게소 9km", candidates = 1)
         assertEquals(
-            InboxRowText("민지 차: 연료가 부족해요 · 같이 주유할까요?", "주행 가능 85km · 덕평자연휴게소 9km"),
+            InboxRowText("연료 알림", TagLook.DONE, "민지 차: 연료가 부족해요 · 같이 주유할까요?", "주행 가능 85km · 덕평자연휴게소 9km"),
             inboxRowText(real, "민지 차", DropStatus.VOTING, 0),
         )
     }
 
     @Test
     fun aFinishedVoteSaysWhatWasDecided() {
-        assertEquals("결정: 덕평자연휴게소", inboxRowText(drop(decided = true), "아빠 차", DropStatus.DECIDED, 0).sub)
+        val row = inboxRowText(drop(decided = true), "아빠 차", DropStatus.DECIDED, 0)
+        assertEquals("결정 · 완료", row.tag)
+        assertEquals(TagLook.DONE, row.look)
+        assertEquals("결정: 덕평자연휴게소", row.sub)
     }
 
     @Test

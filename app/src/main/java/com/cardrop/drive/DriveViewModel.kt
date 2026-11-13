@@ -6,6 +6,7 @@ import com.cardrop.ai.AiService
 import com.cardrop.ai.TripContext
 import com.cardrop.core.demo.DemoData
 import com.cardrop.core.model.*
+import com.cardrop.core.text.withRo
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.navi.InAppNavigation
@@ -219,7 +220,7 @@ class DriveViewModel(
         crewRepo.vote(current.id, station.id)
         ensureCrew(key)
         val destination = navigation.route.value.destination ?: requireCrew().destination
-        navigation.setRoute(destination, station.place, "경유지를 ${station.place.name}로 바꿨어요")
+        navigation.setRoute(destination, station.place, "경유지를 ${station.place.name.withRo()} 바꿨어요")
         onDone()
     }
 

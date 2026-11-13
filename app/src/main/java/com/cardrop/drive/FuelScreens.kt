@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Drop
+import com.cardrop.core.text.particle
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.voice.FakeVoiceService
@@ -242,7 +243,7 @@ internal fun FuelInviteBanner(vm: DriveViewModel, invite: FuelInvite, drop: Drop
     }
     val (title, sub) = when {
         joined -> "같이 ${station?.name ?: "주유소"}에 들러요" to "내 내비에도 경유지로 넣었어요 · ${name}에 응답이 전달됐어요"
-        passed -> "우리는 가던 길로 가요" to "경로는 그대로예요 · ${name}는 ${destination}에서 합류해요"
+        passed -> "우리는 가던 길로 가요" to "경로는 그대로예요 · ${name.particle("은", "는")} ${destination}에서 합류해요"
         drop.isDecided -> "이미 결정된 알림이에요" to drop.decidedCandidate?.place?.name.orEmpty()
         else -> "${name}에서 주유소 간대요, 같이 갈래요?" to
             ("아니면 그냥 가던 길 가도 돼요" + if (voice != null) " · “같이 가자”라고 말해도 돼요" else "")

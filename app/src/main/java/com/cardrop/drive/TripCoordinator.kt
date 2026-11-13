@@ -4,6 +4,7 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
+import com.cardrop.core.text.withRo
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.navi.NavigationHandoff
@@ -118,12 +119,12 @@ class TripCoordinator(
                 scope.launch { crew.setDestination(place) }
             } else {
                 // A destination chosen by only some cars must not change the entire crew.
-                navigation.setRoute(place, waypoint = null, reason = "우리 차 목적지를 ${place.name}로 바꿨어요")
+                navigation.setRoute(place, waypoint = null, reason = "우리 차 목적지를 ${place.name.withRo()} 바꿨어요")
             }
         } else {
             val destination = navigation.route.value.destination ?: currentCrew.destination
-            navigation.setRoute(destination, waypoint = place, reason = "경유지를 ${place.name}로 바꿨어요")
+            navigation.setRoute(destination, waypoint = place, reason = "경유지를 ${place.name.withRo()} 바꿨어요")
         }
-        runCatching { voice.speak("${place.name}로 결정되었어요") }
+        runCatching { voice.speak("${place.name.withRo()} 결정되었어요") }
     }
 }

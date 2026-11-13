@@ -56,7 +56,7 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun CarDropApp(container: AppContainer) {
-    // From AppContainer, not `remember`: an activity restart (window size, day/night theme) keeps the screen.
+    // From AppContainer, not `remember`: a new activity (day/night theme, a second MainActivity) keeps the screen.
     val navigator = container.navigator
     val crewVm: CrewViewModel = viewModel { CrewViewModel(container.crew) }
     val driveVm: DriveViewModel = viewModel {

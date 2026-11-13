@@ -10,7 +10,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * DropRoutingEffect starts again after every activity restart (window size, day/night theme, language).
+ * DropRoutingEffect starts again in every new activity (day/night theme, language, a second MainActivity).
  * Its memory lives in AppContainer, so a drop it already opened must not open (or be said aloud) again.
  */
 class DropRoutingMemoryTest {

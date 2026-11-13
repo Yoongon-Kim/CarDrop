@@ -43,8 +43,8 @@ sealed interface Screen {
 
 /**
  * Minimal navigation: one current screen plus a back stack. No library to learn.
- * The app's one navigator lives in AppContainer, not in a screen's `remember`, so an activity restart
- * (window size, day/night theme, language) keeps the driver on the same screen.
+ * The app's one navigator lives in AppContainer, not in a screen's `remember`, so a new activity
+ * (day/night theme, language, a second MainActivity on top) keeps the driver on the same screen.
  */
 class AppNavigator(start: Screen = Screen.CreateCrew) {
     var current: Screen by mutableStateOf(start)

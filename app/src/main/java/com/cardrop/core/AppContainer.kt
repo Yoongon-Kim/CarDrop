@@ -105,8 +105,8 @@ class AppContainer(context: Context) {
 
     /**
      * The open screen with its back stack, and which drops have already been opened. They live here, as long
-     * as the crew and trip data, so an activity restart (window size, day/night theme, language) keeps the
-     * driver on the same screen and doesn't open old drops again.
+     * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
+     * keeps the driver on the same screen and doesn't open old drops again.
      */
     val navigator = AppNavigator()
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)

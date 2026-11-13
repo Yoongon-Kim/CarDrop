@@ -11,6 +11,7 @@ import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
@@ -39,8 +40,8 @@ class PleosVoiceService(context: Context) : VoiceService {
 
     private val main = Handler(Looper.getMainLooper())
 
-    private val _lastSpoken = MutableStateFlow<String?>(null)
-    override val lastSpoken: StateFlow<String?> = _lastSpoken
+    private val _lastSpoken = MutableStateFlow<SpokenLine?>(null)
+    override val lastSpoken: StateFlow<SpokenLine?> = _lastSpoken
 
     private val _listening = MutableStateFlow(false)
     override val listening: StateFlow<Boolean> = _listening
@@ -128,7 +129,7 @@ class PleosVoiceService(context: Context) : VoiceService {
 
     /** Says [text] after anything already being said, and shows it as a caption. */
     override fun speak(text: String) {
-        _lastSpoken.value = text // the caption shows even when there is no sound
+        _lastSpoken.update { it.next(text) } // the caption shows even when there is no sound
         main.post {
             queue.addLast(text)
             speakNext()

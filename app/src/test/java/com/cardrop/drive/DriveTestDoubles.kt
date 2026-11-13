@@ -9,7 +9,9 @@ import com.cardrop.crew.DropDraft
 import com.cardrop.navi.NavigationHandoff
 import com.cardrop.navi.WaypointEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
+import com.cardrop.voice.SpokenLine
 import com.cardrop.voice.VoiceService
+import com.cardrop.voice.next
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -65,10 +67,10 @@ internal class TestRoute : RouteSimulator {
 }
 
 internal class TestVoice : VoiceService {
-    override val lastSpoken = MutableStateFlow<String?>(null)
+    override val lastSpoken = MutableStateFlow<SpokenLine?>(null)
     override val listening = MutableStateFlow(false)
     val spoken = mutableListOf<String>()
-    override fun speak(text: String) { spoken += text; lastSpoken.value = text }
+    override fun speak(text: String) { spoken += text; lastSpoken.value = lastSpoken.value.next(text) }
     override suspend fun listen(placeName: Boolean): String? = null
 }
 

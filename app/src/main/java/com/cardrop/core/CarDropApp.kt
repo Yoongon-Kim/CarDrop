@@ -190,7 +190,8 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
     val navRoute by container.navigation.route.collectAsStateWithLifecycle()
 
     // The voice keeps its last sentence forever, so the caption hides itself: each new sentence shows
-    // for SPOKEN_CAPTION_MILLIS, then fades out. (The same sentence twice in a row counts as one.)
+    // for SPOKEN_CAPTION_MILLIS, then fades out. The same words said again are a new line (SpokenLine),
+    // so they show again too.
     var spokenVisible by remember { mutableStateOf(false) }
     LaunchedEffect(spoken) {
         spokenVisible = spoken != null
@@ -209,7 +210,7 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
         ) {
             if (listening) Caption("마이크 · 듣고 있어요… 말씀하세요")
             AnimatedVisibility(visible = spokenVisible, enter = fadeIn(), exit = fadeOut()) {
-                spoken?.let { Caption("음성 · $it") }
+                spoken?.let { Caption("음성 · ${it.text}") }
             }
             socialMessage?.let { Caption("소셜 · $it") }
         }

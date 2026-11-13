@@ -266,9 +266,20 @@ private fun InviteCodeCard(vm: CrewViewModel, crew: Crew?, onShare: () -> Unit, 
 /** The cars of the crew, then the 출발 button and its hint at the bottom of the card (design line 143). */
 @Composable
 private fun MembersCard(crew: Crew?, onDepart: () -> Unit, modifier: Modifier = Modifier) {
-    CdCard(modifier = modifier, contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp)) {
+    // Design line 128: radius 26, padding 20 / 22, only 2 between the card's parts (the rows have their own room).
+    CdCard(modifier = modifier, contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp), gap = 2.dp) {
         val cars = crew?.cars.orEmpty()
-        Text("크루 멤버 · ${cars.count { it.connected }}/${cars.size}대 연결", style = MaterialTheme.typography.titleMedium)
+        // "크루 멤버" at the left, "3 / 4대 연결" in blue at the right, on the same baseline, 4 above the rows.
+        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("크루 멤버", color = CdColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.alignByBaseline())
+            Text(
+                "${cars.count { it.connected }} / ${cars.size}대 연결",
+                color = CdColors.BlueDark,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.alignByBaseline(),
+            )
+        }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             cars.forEach { car ->
                 InfoRow(
@@ -295,7 +306,7 @@ private fun MembersCard(crew: Crew?, onDepart: () -> Unit, modifier: Modifier = 
             color = CdColors.Gray600,
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp), // the board's margin-top: 6px
         )
     }
 }

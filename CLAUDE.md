@@ -5,7 +5,7 @@ send each other drops (a rest-stop vote, a fuel warning, a short message), and t
 into every car's navigation. It runs on Hyundai's Pleos Connect (Android Automotive).
 
 - Build plan, scope and owners: https://claude.ai/artifact/JYJGVXDzvwKVNPHmTigVZP
-- Design canvas: https://claude.ai/artifact/5g7v1Y5dL3wg6wk8H6sjMW
+- Design canvas: https://claude.ai/artifact/5g7v1Y5dL3wg6wk8H6sjMW (newer than our target; see "Design boards")
 - Deadline: demo on 2026-11-17. Gates: flow clickable on fakes by Nov 12, real services by Nov 14,
   feature freeze Nov 16.
 
@@ -78,11 +78,14 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 
 ## Design boards
 
-- `design/FinalApp.dc.html` holds all final screens (1600x900; left 1/3 = navigation, right 2/3 = CarDrop).
-  Each screen starts with a comment such as `<!-- 11 투표 (받는 차) + 돌림판 이스터에그 -->`;
-  the board numbers match `Screen.kt`.
+- `design/FinalApp.dc.html` is the target: all final screens (1600x900; left 1/3 = navigation, right 2/3 =
+  CarDrop). Each screen starts with a comment such as `<!-- 11 투표 (받는 차) + 돌림판 이스터에그 -->`;
+  the board numbers match `Screen.kt`. It is the 2026-11-10 version of the 최종 UI, the same screens as the
+  standalone export `CarDrop_최종UI.html` (chosen by the lead on 2026-11-13).
+- The live canvas (link above) has moved on since: empty quick-drop slots with 편집, a quick-drop pop-up with a
+  result notice, a feedback pill after sending, car nicknames, voice messages and shared `.cd-*` styles. We don't
+  build those. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
-- The live canvas (link above) can be read with the Artifact tool if the local copy is out of date.
 - Week 1 cuts: song drop (12, 13), omok/chess (15), safety race (16, 17), ads and points (18, 19).
 
 ## Build and run

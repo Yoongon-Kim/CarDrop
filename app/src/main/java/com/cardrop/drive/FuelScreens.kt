@@ -21,6 +21,7 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.text.particle
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.TightLetterSpacing
 import com.cardrop.voice.FakeVoiceService
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.delay
@@ -55,7 +56,8 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
     val fuel = snapshot.fuelPercent
     val listener = voice?.takeUnless { it is FakeVoiceService }
     ScreenColumn {
-        ScreenHeader("연료 경고 · 내 차", "연료가 얼마 안 남았어요", eyebrowColor = CdColors.OrangeDark) {
+        FuelHeader("연료가 얼마 안 남았어요") {
+            // Not in the design: the way out without answering.
             CdChip("나중에 확인", onDone, enabled = !action.busy)
         }
         // This car and its fuel.
@@ -128,6 +130,23 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
     }
 }
 
+/**
+ * Board 05's header, both steps (target 325): an orange 14/800 eyebrow ("내 차" where the design names its demo car,
+ * "민지 차 화면") and a 32/800 title, a little tighter.
+ */
+@Composable
+private fun FuelHeader(title: String, trailing: @Composable RowScope.() -> Unit = {}) {
+    ScreenHeader(
+        eyebrow = "연료 경고 · 내 차",
+        title = title,
+        eyebrowColor = CdColors.OrangeDark,
+        eyebrowWeight = FontWeight.ExtraBold,
+        titleSize = 32.sp,
+        titleLetterSpacing = TightLetterSpacing,
+        trailing = trailing,
+    )
+}
+
 /** Step 2: the stations the AI picked. The first is its top pick; the driver may choose another. */
 @Composable
 private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> Unit) {
@@ -135,7 +154,7 @@ private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> 
     val action by vm.action.collectAsStateWithLifecycle()
     var chosen by remember(plan) { mutableIntStateOf(0) }
     ScreenColumn {
-        ScreenHeader("연료 경고 · 내 차", "AI가 주유소 ${plan.stations.size}곳을 골랐어요", eyebrowColor = CdColors.OrangeDark)
+        FuelHeader("AI가 주유소 ${plan.stations.size}곳을 골랐어요")
         Text("가는 길에 있고, 남은 연료로 갈 수 있는 곳만 골랐어요", style = MaterialTheme.typography.bodyLarge, color = CdColors.Gray600)
         plan.stations.forEachIndexed { i, station ->
             StationRow(i + 1, station, selected = i == chosen, rangeKm = snapshot.rangeKm, enabled = !action.busy) { chosen = i }

@@ -37,40 +37,93 @@ fun FuelMeScreen(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceService? = 
     if (stations == null) FuelQuestion(vm, onDone, voice) else FuelStationPicker(vm, stations, onDone)
 }
 
-/** Step 1: the car's question. Either answer lets the AI pick stations; nothing is sent or routed yet. */
+/**
+ * Step 1, laid out like the design: this car with its fuel, then the AI's question with the two answers.
+ * Either answer lets the AI pick stations; nothing is sent or routed yet.
+ */
 @Composable
 private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceService?) {
     val snapshot by vm.snapshot.collectAsStateWithLifecycle()
     val action by vm.action.collectAsStateWithLifecycle()
-    val input by vm.inputMode.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
+    val positions by vm.positions.collectAsStateWithLifecycle()
     val ready = crew != null && !action.busy
     val share = { vm.planFuelStop(shared = true) }
     val alone = { vm.planFuelStop(shared = false) }
+    val myCar = crew?.cars?.firstOrNull { it.id == vm.myCarId }
+    val fuel = snapshot.fuelPercent
+    val listener = voice?.takeUnless { it is FakeVoiceService }
     ScreenColumn {
-        ScreenHeader("연료 경고 · 내 차", "연료 ${snapshot.fuelPercent ?: "—"}% · 주행 가능 ${snapshot.rangeKm?.toInt() ?: "—"}km")
-        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(CdColors.OrangeLight).padding(24.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Pill("연료가 부족해요", CdColors.Orange, CdColors.White)
-                Text("우리 지금 주유소에 들러야 할 것 같아요.\n다른 차들에게도 알릴까요?", style = MaterialTheme.typography.headlineLarge)
-                Text("어느 쪽이든 AI가 갈 수 있는 주유소를 골라드려요. 남은 주행 거리에서 5km를 여유로 남겨요.")
+        ScreenHeader("연료 경고 · 내 차", "연료가 얼마 안 남았어요", eyebrowColor = CdColors.OrangeDark) {
+            CdChip("나중에 확인", onDone, enabled = !action.busy)
+        }
+        // This car and its fuel.
+        Row(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CdColors.White).padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            myCar?.let { CarBadge(it, size = 110) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("연료", fontSize = 15.sp, color = CdColors.Gray600)
+                    Text(
+                        "${fuel ?: "—"}% · 주행 가능 ${snapshot.rangeKm?.toInt() ?: "—"}km",
+                        fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.OrangeDark,
+                    )
+                }
+                Box(Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(8.dp)).background(CdColors.Gray100)) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth((fuel ?: 0).coerceIn(0, 100) / 100f).background(CdColors.Orange))
+                }
+                val leftKm = positions[vm.myCarId]?.kmToDestination?.roundToInt()
+                Text(
+                    (leftKm?.let { "남은 경로 ${it}km · " } ?: "") + "Vehicle SDK 연료 데이터로 판단했어요",
+                    fontSize = 14.sp, color = CdColors.Gray600,
+                )
             }
         }
-        Pill(input.label)
-        DriveActionFeedback(action)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            PrimaryButton("응, 알려줘", share, Modifier.weight(1f), ready)
-            SecondaryButton("아니, 혼자 갈게", alone, Modifier.weight(1f), ready)
-        }
-        DriveVoiceReply(voice, "“알려줘” 또는 “혼자 갈게”라고 말해 주세요", ready,
-            setOf(DriveVoiceCommand.SHARE_FUEL, DriveVoiceCommand.ALONE)) {
-            when (it) {
-                DriveVoiceCommand.SHARE_FUEL -> share()
-                DriveVoiceCommand.ALONE -> alone()
-                else -> Unit
+        // The AI's question and the two answers.
+        Column(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(CdColors.White).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "AI",
+                    fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.White,
+                    modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(6.dp)).background(CdColors.Blue)
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                )
+                Text(
+                    "“우리 지금 주유소 가야 할 것 같아요.\n다른 차들에게도 알릴까요?”",
+                    fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.BlueDark, lineHeight = 29.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 20.dp))
+                        .background(CdColors.BlueLight)
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryButton("응, 알려줘", share, Modifier.weight(1f).height(78.dp), ready)
+                PrimaryButton(
+                    "아니, 혼자 갈게", alone, Modifier.weight(1f).height(78.dp), ready,
+                    containerColor = CdColors.Gray100, contentColor = CdColors.Ink2,
+                )
+            }
+            DriveActionFeedback(action)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    if (listener != null) "“응”, “알려줘”라고 말해도 돼요 · 어느 쪽이든 AI가 주유소를 골라드려요"
+                    else "어느 쪽이든 AI가 주유소를 골라드려요",
+                    fontSize = 13.sp, color = CdColors.Gray600, modifier = Modifier.weight(1f),
+                )
+                if (listener != null) {
+                    VoiceAnswerChip(listener, ready, setOf(DriveVoiceCommand.SHARE_FUEL, DriveVoiceCommand.ALONE)) {
+                        if (it == DriveVoiceCommand.SHARE_FUEL) share() else alone()
+                    }
+                }
             }
         }
-        SecondaryButton("나중에 확인", onDone, enabled = !action.busy)
     }
 }
 
@@ -81,7 +134,7 @@ private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> 
     val action by vm.action.collectAsStateWithLifecycle()
     var chosen by remember(plan) { mutableIntStateOf(0) }
     ScreenColumn {
-        ScreenHeader("연료 경고 · 내 차", "AI가 주유소 ${plan.stations.size}곳을 골랐어요")
+        ScreenHeader("연료 경고 · 내 차", "AI가 주유소 ${plan.stations.size}곳을 골랐어요", eyebrowColor = CdColors.OrangeDark)
         Text("가는 길에 있고, 남은 연료로 갈 수 있는 곳만 골랐어요", style = MaterialTheme.typography.bodyLarge, color = CdColors.Gray600)
         plan.stations.forEachIndexed { i, station ->
             StationRow(i + 1, station, selected = i == chosen, rangeKm = snapshot.rangeKm, enabled = !action.busy) { chosen = i }

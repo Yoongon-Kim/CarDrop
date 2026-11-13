@@ -59,6 +59,8 @@ import com.cardrop.core.ui.theme.CdColors
 fun ScreenHeader(
     eyebrow: String,
     title: String,
+    /** Grey by default; the design colours some, e.g. board 05's orange "연료 경고" ([CdColors.OrangeDark]). */
+    eyebrowColor: Color = Color.Unspecified,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -67,7 +69,7 @@ fun ScreenHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-            Text(eyebrow, style = MaterialTheme.typography.bodyMedium)
+            Text(eyebrow, style = MaterialTheme.typography.bodyMedium, color = eyebrowColor)
             Text(title, style = MaterialTheme.typography.headlineLarge)
         }
         Row(verticalAlignment = Alignment.CenterVertically, content = trailing)

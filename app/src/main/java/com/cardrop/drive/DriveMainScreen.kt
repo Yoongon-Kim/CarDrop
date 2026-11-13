@@ -30,6 +30,7 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.TightLetterSpacing
 
 /**
  * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick drops and the
@@ -68,6 +69,8 @@ fun DriveMainScreen(
     val waiting = drops.count { needsMyAnswer(it, vm) }
 
     ScreenColumn {
+        // The design's header (target 203-206): eyebrow 14/700, 2 px gap, title 28/800 a little tighter, and the
+        // pill and inbox button centred on the text.
         ScreenHeader(
             eyebrow = "${crew?.name ?: "크루 없음"} · ${cars.size}대 함께 · 음성 우선",
             title = when {
@@ -76,6 +79,11 @@ fun DriveMainScreen(
                 hasCrew && positions.isNotEmpty() -> "모두 잘 오고 있어요"
                 else -> "출발 준비 중"
             },
+            eyebrowWeight = FontWeight.Bold,
+            titleSize = 28.sp,
+            titleLetterSpacing = TightLetterSpacing,
+            gap = 2.dp,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 ModePill(input)

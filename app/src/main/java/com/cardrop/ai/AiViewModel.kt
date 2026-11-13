@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cardrop.core.demo.DemoData
 import com.cardrop.core.model.CarColor
+import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
@@ -87,6 +88,14 @@ class AiViewModel(
 
     private val _quiz = MutableStateFlow<Loadable<QuizQuestion>>(Loadable.Loading)
     val quiz: StateFlow<Loadable<QuizQuestion>> = _quiz
+
+    private val _round = MutableStateFlow(QuizRound())
+    /** Board 15: the game, question number, score and opponent. Kept here, so a game paused in D resumes in P. */
+    val round: StateFlow<QuizRound> = _round
+
+    /** The crew, for board 15's opponent picker. */
+    val crewState: StateFlow<Crew?> = crew.crew
+    val myCarId: String get() = crew.myCarId
 
     private val _listening = MutableStateFlow(false)
     val listening: StateFlow<Boolean> = _listening
@@ -363,13 +372,69 @@ class AiViewModel(
         }
     }
 
-    /** Board 15: a quiz about where the crew is right now. */
+    /**
+     * Board 15: the current question of the round. 초성 퀴즈 comes from the built-in list; 지역 퀴즈 asks the AI
+     * about the area the crew is driving through.
+     */
     fun loadQuiz() {
+        val round = _round.value
+        if (round.kind == QuizKind.INITIALS) {
+            _quiz.value = Loadable.Ready(InitialsQuiz.question(round.number))
+            return
+        }
         _quiz.value = Loadable.Loading
         viewModelScope.launch {
-            _quiz.value = runCatching { ai.localQuiz("이천") }
+            _quiz.value = runCatching { ai.localQuiz(currentRegion()) }
                 .fold({ Loadable.Ready(it) }, { Loadable.Failed(it.message ?: "퀴즈를 못 만들었어요") })
         }
+    }
+
+    /** Board 15 opened in P: load a question unless one is already showing (a paused game keeps its question). */
+    fun ensureQuiz() {
+        if (_quiz.value !is Loadable.Ready && !_round.value.finished) loadQuiz()
+    }
+
+    fun chooseQuiz(kind: QuizKind) {
+        if (kind == _round.value.kind) return
+        _round.update { it.restarted(kind) }
+        loadQuiz()
+    }
+
+    fun chooseOpponent(carId: String?) = _round.update { it.copy(opponentId = carId, challengeSent = false) }
+
+    fun answerQuiz(choice: String) {
+        val question = (_quiz.value as? Loadable.Ready)?.value ?: return
+        _round.update { it.answered(choice, question) }
+    }
+
+    fun nextQuestion() {
+        _round.update { it.next() }
+        if (!_round.value.finished) loadQuiz()
+    }
+
+    fun restartQuiz() {
+        _round.update { it.restarted() }
+        loadQuiz()
+    }
+
+    /** "도전장 드랍": invites the chosen car (or the whole crew) as a silent SOCIAL drop, like the design. */
+    fun sendChallenge() {
+        val round = _round.value
+        if (round.challengeSent) return
+        sendShout("${round.kind.title} 한 판 할까요? · 정차 중에 같이 해요", polish = false, toCarIds = listOfNotNull(round.opponentId)) {
+            _round.update { it.copy(challengeSent = true) }
+        }
+    }
+
+    /** The area the crew is driving through: the town of the nearest rest stop (이천 until there's a position). */
+    private fun currentRegion(): String {
+        val here = route.positions.value[crew.myCarId] ?: return "이천"
+        val nearest = DemoData.restStops.minByOrNull {
+            val dLat = it.lat - here.lat
+            val dLng = it.lng - here.lng
+            dLat * dLat + dLng * dLng
+        }
+        return REST_STOP_TOWNS[nearest?.id] ?: "이천"
     }
 
     fun topicTitle(topic: DropTopic): String = when (topic) {
@@ -382,3 +447,13 @@ class AiViewModel(
         DropTopic.CUSTOM -> "어디에 들를까요?"
     }
 }
+
+/** The town each rest stop on the demo trip is in (board 15's 지역 퀴즈). 덕평 is in 이천, 문막 in 원주. */
+private val REST_STOP_TOWNS = mapOf(
+    "deokpyeong" to "이천",
+    "yeoju" to "여주",
+    "munmak" to "원주",
+    "hoengseong" to "횡성",
+    "pyeongchang" to "평창",
+    "gangneung-rest" to "강릉",
+)

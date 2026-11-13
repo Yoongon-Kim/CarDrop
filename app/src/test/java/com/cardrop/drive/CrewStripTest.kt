@@ -30,6 +30,13 @@ class CrewStripTest {
         assertEquals(0.13f, strip[1].along, 0.001f)
         assertTrue(crewStrip(cars, emptyMap()).isEmpty())
     }
+    @Test fun theCarInFrontIsDrawnLastSoItIsOnTopWhenMarkersOverlap() {
+        // 아빠 차 leads with 삼촌 차 50 m behind (their markers overlap); 이모 차 is 3 km back.
+        val strip = crewStrip(cars, mapOf(
+            at(100f, 60, DemoData.me.id), at(100.05f, 60, DemoData.uncle.id), at(103f, 63, DemoData.aunt.id),
+        ))
+        assertEquals(listOf(DemoData.aunt.id, DemoData.uncle.id, DemoData.me.id), drawingOrder(strip).map { it.car.id })
+    }
     @Test fun theGapSaysWhoLeadsAndHowFarBehindTheOthersAre() {
         assertEquals("선두", gapText(100f, 100f))
         assertEquals("2.1km 뒤", gapText(100f, 102.1f))

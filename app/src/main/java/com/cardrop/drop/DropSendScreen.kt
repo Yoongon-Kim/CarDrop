@@ -103,7 +103,17 @@ fun DropSendScreen(
             )
         }
 
-        Text("무엇을 보낼까요?", style = MaterialTheme.typography.titleLarge)
+        // The heading with its hint at the right, on the same baseline, 6 px further down (target line 371).
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                "무엇을 보낼까요?",
+                color = CdColors.Ink,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.alignByBaseline(),
+            )
+            Text("누르면 바로 다음 단계로 넘어가요", color = CdColors.Gray600, fontSize = 14.sp, modifier = Modifier.alignByBaseline())
+        }
         Text("결정 드랍 · 음성으로 안내돼요", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             TopicCard("휴게소 가자", "AI가 3곳 추천", Modifier.weight(1f)) { onPickTopic(DropTopic.REST, toCarIds) }

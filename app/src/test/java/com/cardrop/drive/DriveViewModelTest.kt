@@ -30,40 +30,144 @@ class DriveViewModelTest {
         yield()
         assertTrue(vm.fuelWarningPending.value)
     }
-    @Test fun doubleTapSendsOnlyOneFuelDropAndFailuresCanBeRetried() = runScenario { vm, crew, _, ai, vehicle ->
-        vehicle.setFuelPercent(12)
+
+    // Board 05: step 1 asks the AI, step 2 sends or routes only the station the driver picked.
+
+    @Test fun doubleTapAsksTheAiOnceAndNothingIsSentBeforeTheDriverChooses() = runScenario { vm, crew, _, ai, vehicle ->
+        vehicle.setFuelPercent(30)
         ai.gate = CompletableDeferred()
-        var callbacks = 0
-        vm.alertCrewAboutFuel { callbacks++ }
-        vm.alertCrewAboutFuel { callbacks++ }
+        vm.planFuelStop(shared = true)
+        vm.planFuelStop(shared = true)
         assertTrue(vm.action.value.busy)
         assertEquals(1, ai.requests)
         ai.gate!!.complete(Unit)
         yield()
-        assertEquals(1, crew.sends)
-        assertEquals(1, callbacks)
+        val plan = vm.fuelPlan.value!!
+        assertTrue(plan.shared)
+        assertEquals(3, plan.stations.size)
         assertFalse(vm.action.value.busy)
+        assertEquals(0, crew.sends)
+    }
+    @Test fun onlyTheChosenStationIsSentOnceAndTheRouteWaitsForTheVote() = runScenario { vm, crew, nav, _, vehicle ->
+        vehicle.setFuelPercent(30)
+        vm.planFuelStop(shared = true)
+        yield()
+        val chosen = vm.fuelPlan.value!!.stations[1]
+        var done = 0
+        vm.confirmFuelStop(1) { done++ }
+        vm.confirmFuelStop(1) { done++ }
+        yield()
+        assertEquals(1, crew.sends)
+        assertEquals(1, done)
+        val drop = crew.drops.value.single()
+        assertEquals(listOf(chosen.candidate), drop.candidates)
+        assertTrue(chosen.candidate.place.name in drop.message)
+        assertNull(vm.fuelPlan.value)
+        assertTrue(nav.changes.isEmpty())
+    }
+    @Test fun goingAloneRoutesOnlyThisCarThroughTheChosenStation() = runScenario { vm, crew, nav, _, vehicle ->
+        vehicle.setFuelPercent(30)
+        vm.planFuelStop(shared = false)
+        yield()
+        val plan = vm.fuelPlan.value!!
+        assertFalse(plan.shared)
+        var done = false
+        vm.confirmFuelStop(plan.stations.lastIndex) { done = true }
+        yield()
+        assertTrue(done)
+        assertEquals(0, crew.sends)
+        assertEquals(1, nav.launches)
+        assertEquals(plan.stations.last().candidate.place, nav.route.value.waypoint)
+    }
+    @Test fun cancellingGoesBackToTheQuestionWithoutSending() = runScenario { vm, crew, _, _, vehicle ->
+        vehicle.setFuelPercent(12)
+        vm.planFuelStop(shared = true)
+        yield()
+        assertNotNull(vm.fuelPlan.value)
+        vm.cancelFuelPlan()
+        assertNull(vm.fuelPlan.value)
+        assertEquals(0, crew.sends)
+    }
+    @Test fun aFailedRecommendationShowsAnErrorAndCanBeRetried() = runScenario { vm, crew, _, ai, vehicle ->
+        vehicle.setFuelPercent(12)
         ai.fail = true
-        vm.alertCrewAboutFuel { callbacks++ }
+        vm.planFuelStop(shared = true)
         yield()
         assertNotNull(vm.action.value.error)
-        assertEquals(1, crew.sends)
+        assertNull(vm.fuelPlan.value)
         ai.fail = false
-        vm.alertCrewAboutFuel { callbacks++ }
+        vm.planFuelStop(shared = true)
         yield()
-        assertEquals(2, crew.sends)
+        assertNotNull(vm.fuelPlan.value)
         assertNull(vm.action.value.error)
+        assertEquals(0, crew.sends)
     }
-    @Test fun crewChangeDuringRecommendationDoesNotSendToTheNewCrew() = runScenario { vm, crew, _, ai, vehicle ->
+    @Test fun crewChangeDuringRecommendationShowsNoPlan() = runScenario { vm, crew, _, ai, vehicle ->
         vehicle.setFuelPercent(12)
         ai.gate = CompletableDeferred()
-        vm.alertCrewAboutFuel {}
+        vm.planFuelStop(shared = true)
         crew.crew.value = crew.crew.value!!.copy(code = "654321")
         ai.gate!!.complete(Unit)
         yield()
+        assertNull(vm.fuelPlan.value)
+        assertNotNull(vm.action.value.error)
+        assertEquals(0, crew.sends)
+    }
+    @Test fun crewChangeAfterPlanningDropsThePlan() = runScenario { vm, crew, _, _, vehicle ->
+        vehicle.setFuelPercent(12)
+        vm.planFuelStop(shared = true)
+        yield()
+        assertNotNull(vm.fuelPlan.value)
+        crew.crew.value = crew.crew.value!!.copy(code = "654321")
+        yield()
+        assertNull(vm.fuelPlan.value)
+        vm.confirmFuelStop(0) { fail("a plan made for the old crew must not be sent") }
+        yield()
+        assertEquals(0, crew.sends)
+    }
+    @Test fun fuelDroppingDuringRecommendationLeavesNoStationsToShow() = runScenario { vm, crew, _, ai, vehicle ->
+        vehicle.setFuelPercent(12)
+        ai.gate = CompletableDeferred()
+        vm.planFuelStop(shared = true)
+        vehicle.setFuelPercent(1)
+        ai.gate!!.complete(Unit)
+        yield()
+        assertNull(vm.fuelPlan.value)
+        assertNotNull(vm.action.value.error)
+        assertFalse(vm.action.value.busy)
+        assertEquals(0, crew.sends)
+    }
+    @Test fun aStationThatBecameUnreachableWhileTheDriverChoseIsNotSent() = runScenario { vm, crew, _, _, vehicle ->
+        vehicle.setFuelPercent(30)
+        vm.planFuelStop(shared = true)
+        yield()
+        val chosen = vm.fuelPlan.value!!.stations.first()
+        vehicle.setFuelPercent(1)
+        vm.confirmFuelStop(0) { fail("an unreachable station must not be sent") }
+        yield()
         assertEquals(0, crew.sends)
         assertNotNull(vm.action.value.error)
+        assertTrue(vm.fuelPlan.value?.stations.orEmpty().none { it == chosen })
     }
+    @Test fun noCandidatesOrFailedNavigationNeverReportSuccess() = runScenario { vm, crew, nav, ai, vehicle ->
+        vehicle.setFuelPercent(12)
+        ai.empty = true
+        vm.planFuelStop(shared = true)
+        yield()
+        assertNull(vm.fuelPlan.value)
+        assertNotNull(vm.action.value.error)
+        ai.empty = false
+        nav.available = false
+        vm.planFuelStop(shared = false)
+        yield()
+        var done = false
+        vm.confirmFuelStop(0) { done = true }
+        yield()
+        assertFalse(done)
+        assertNotNull(vm.action.value.error)
+        assertEquals(0, crew.sends)
+    }
+
     @Test fun joiningFuelOnlyVotesAndDoesNotLaunchOrReroute() = runScenario { vm, crew, nav, _, _ ->
         val drop = decision("invite", DropTopic.FUEL, decided = false)
         crew.drops.value = listOf(drop)
@@ -74,32 +178,6 @@ class DriveViewModelTest {
         assertEquals(1, crew.votes)
         assertEquals(0, nav.launches)
         assertTrue(nav.changes.isEmpty())
-    }
-    @Test fun fuelDroppingDuringRecommendationInvalidatesTheOldCandidates() = runScenario { vm, crew, _, ai, vehicle ->
-        vehicle.setFuelPercent(12)
-        ai.gate = CompletableDeferred()
-        vm.alertCrewAboutFuel { fail("outdated fuel candidates must not be sent") }
-        vehicle.setFuelPercent(1)
-        ai.gate!!.complete(Unit)
-        yield()
-        assertEquals(0, crew.sends)
-        assertNotNull(vm.action.value.error)
-        assertFalse(vm.action.value.busy)
-    }
-    @Test fun noCandidatesOrFailedNavigationNeverReportSuccess() = runScenario { vm, crew, nav, ai, vehicle ->
-        vehicle.setFuelPercent(12)
-        ai.empty = true
-        vm.alertCrewAboutFuel { fail("must not send") }
-        yield()
-        assertEquals(0, crew.sends)
-        assertNotNull(vm.action.value.error)
-        ai.empty = false
-        nav.available = false
-        var done = false
-        vm.goToStationAlone { done = true }
-        yield()
-        assertFalse(done)
-        assertNotNull(vm.action.value.error)
     }
     @Test fun guidanceWithoutDestinationDoesNotLaunch() = runScenario { vm, _, nav, _, _ ->
         assertFalse(vm.startGuidance())

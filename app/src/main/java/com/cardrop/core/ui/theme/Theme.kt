@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.model.CarColor
 
@@ -80,6 +81,12 @@ fun CarColor.tint(): Color = when (this) {
     CarColor.YELLOW -> CdColors.YellowLight
     CarColor.GRAY -> CdColors.Gray100
 }
+
+/**
+ * The design's `letter-spacing: -0.02em`, which some big titles have (boards 01, 04, 05, 11), e.g.
+ * `ScreenHeader(..., titleLetterSpacing = TightLetterSpacing)` or `Text(..., letterSpacing = TightLetterSpacing)`.
+ */
+val TightLetterSpacing = (-0.02).em
 
 private val CdTypography = Typography(
     headlineLarge = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink),

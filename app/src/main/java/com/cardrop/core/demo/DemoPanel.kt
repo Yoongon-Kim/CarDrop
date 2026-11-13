@@ -32,6 +32,7 @@ import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Gear
 import com.cardrop.core.model.Place
+import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
@@ -175,7 +176,7 @@ private fun MyCarPicker(current: String) {
     }
     pending?.let { car ->
         val then = if (car == DemoCar.HOST) "크루를 새로 만들어서, 다른 차는 다시 참여해야 해요." else "크루 코드로 다시 참여해 주세요."
-        Text("${carName(car)}로 바꾸면 앱이 다시 시작돼요. $then", color = CdColors.White, fontSize = 13.sp)
+        Text("${carName(car).withRo()} 바꾸면 앱이 다시 시작돼요. $then", color = CdColors.White, fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DemoButton("바꾸기") { DemoCar.pickAndRestart(context, car) }
             DemoButton("취소") { pending = null }

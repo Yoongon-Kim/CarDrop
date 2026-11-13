@@ -67,7 +67,6 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
-import com.cardrop.core.ui.TodoNote
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.TightLetterSpacing
 import com.cardrop.crew.CrewViewModel
@@ -261,7 +260,6 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                     modifier = Modifier.weight(1f),
                 )
             }
-            TodoNote("일행 위치 지도 (board 11)")
         }
         // The wheel pops over the top right of the screen (target line 440: right 28, top 100, 300 wide), rising
         // 18 px while it fades in for 0.35 s (the target's `cdPop`). Only the spin chip closes it again.

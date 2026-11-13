@@ -48,7 +48,7 @@ class DecidedScreenPickerTest {
 
     /** The real TripCoordinator and the picker watch the same drops, like in the app. */
     private class Trip(val crew: TestCrew, val nav: TestNavigation, val voice: TestVoice) {
-        private val picker = DecidedScreenPicker(crew.myCarId, nav.decisions::isSkipped)
+        private val picker = DecidedScreenPicker({ crew.myCarId }, nav.decisions::isSkipped)
 
         /** The crew's drops become [drops]. Returns the drop whose board 14 opens, or null. */
         suspend fun update(vararg drops: Drop): Drop? {
@@ -116,11 +116,21 @@ class DecidedScreenPickerTest {
 
     @Test fun aNewCrewStartsOver() {
         fun crew(code: String) = Crew(code, "test", DemoData.gyeongpo, me, listOf(DemoData.me, DemoData.uncle))
-        val picker = DecidedScreenPicker(me)
+        val picker = DecidedScreenPicker({ me })
         val first = decided("first", at = 10)
         assertEquals(first, picker.pick(crew("111111"), listOf(first)))
         // The new crew's votes can be older than the old crew's last decision.
         val next = decided("next", at = 5)
         assertEquals(next, picker.pick(crew("222222"), listOf(next)))
+    }
+
+    @Test fun theCarPickedWhenJoiningCountsEvenAfterThePickerStarted() {
+        var carId = me
+        val picker = DecidedScreenPicker({ carId })
+        val crew = Crew("111111", "test", DemoData.gyeongpo, me, listOf(DemoData.me, DemoData.aunt))
+        val forAunt = decided("aunt-only", at = 1, toCarIds = listOf(DemoData.aunt.id))
+        assertNull(picker.pick(crew, listOf(forAunt)))
+        carId = DemoData.aunt.id // this device joined as 이모 차
+        assertEquals(forAunt, picker.pick(crew, listOf(forAunt)))
     }
 }

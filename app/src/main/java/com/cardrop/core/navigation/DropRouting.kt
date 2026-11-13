@@ -31,7 +31,7 @@ fun DropRoutingEffect(
 ) {
     LaunchedEffect(crew) {
         val seen = mutableSetOf<String>()
-        val decided = DecidedScreenPicker(crew.myCarId, isSkipped)
+        val decided = DecidedScreenPicker({ crew.myCarId }, isSkipped)
         crew.drops.collect { drops ->
             for (drop in drops) {
                 // A drop sent only to other cars (board 08 "받는 차") never shows up on this car.
@@ -69,9 +69,11 @@ fun DropRoutingEffect(
  *   keeps the newer stop), and when several decisions arrive together, only the newest one opens.
  *
  * It starts over when the crew changes. Pure Kotlin, so it is unit tested (DecidedScreenPickerTest).
+ * [myCarId] is asked on every pick: with the real crew the car is picked when joining (board 03),
+ * after this starts.
  */
 internal class DecidedScreenPicker(
-    private val myCarId: String,
+    private val myCarId: () -> String,
     private val isSkipped: (dropId: String) -> Boolean = { false },
 ) {
     private val order = TripDecisions()
@@ -79,15 +81,16 @@ internal class DecidedScreenPicker(
     /** The drop whose board 14 should open now, or null. Each finished vote is looked at once. */
     fun pick(crew: Crew?, drops: List<Drop>): Drop? {
         order.forCrew(crew?.let { "${it.code}:${it.hostCarId}" })
+        val me = myCarId()
         val pending = drops.filter {
-            it.isFor(myCarId) && it.kind == DropKind.DECISION && it.decidedCandidate != null && !order.wasHandled(it.id)
+            it.isFor(me) && it.kind == DropKind.DECISION && it.decidedCandidate != null && !order.wasHandled(it.id)
         }
-        val newest = pending.filter { order.canApply(it) && involved(it) && !isSkipped(it.id) }
+        val newest = pending.filter { order.canApply(it) && involved(it, me) && !isSkipped(it.id) }
             .maxWithOrNull(compareBy<Drop> { it.createdAtMillis }.thenBy { it.id })
         pending.forEach { order.markHandled(it, applied = it.id == newest?.id) }
         return newest
     }
 
-    private fun involved(drop: Drop): Boolean =
-        drop.topic != DropTopic.FUEL || drop.fromCarId == myCarId || myCarId in drop.votes
+    private fun involved(drop: Drop, me: String): Boolean =
+        drop.topic != DropTopic.FUEL || drop.fromCarId == me || me in drop.votes
 }

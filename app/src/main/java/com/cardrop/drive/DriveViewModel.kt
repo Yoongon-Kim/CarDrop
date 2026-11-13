@@ -32,8 +32,13 @@ class DriveViewModel(
     val positions = route.positions
     val navRoute = navigation.route
     val crew = crewRepo.crew
-    val myCarId = crewRepo.myCarId
-    val drops: StateFlow<List<Drop>> = crewRepo.drops.map { list -> list.filter { it.isFor(myCarId) } }
+    /**
+     * Read every time, never copied: with the real crew the car is picked when joining (board 03),
+     * after this ViewModel is made at app start. Joining changes [crew], so [drops] are filtered
+     * again for the new car then.
+     */
+    val myCarId: String get() = crewRepo.myCarId
+    val drops: StateFlow<List<Drop>> = combine(crewRepo.drops, crewRepo.crew) { list, _ -> list.filter { it.isFor(myCarId) } }
         .stateIn(scope, SharingStarted.Eagerly, crewRepo.drops.value.filter { it.isFor(myCarId) })
     private val liveNavigation = navigation as? InAppNavigation
     private val warnings = FuelWarningTracker()

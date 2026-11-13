@@ -44,6 +44,8 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // Member A
+    // TODO(Member A): `if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope) else FakeCrewRepository(appScope)`
+    //  once crew/FirebaseCrewRepository.kt exists (cardrop.useRealCrew in local.properties, see CLAUDE.md).
     val crew: CrewRepository = FakeCrewRepository(appScope)
 
     // Member B
@@ -69,7 +71,7 @@ class AppContainer(context: Context) {
                 kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
             )
         }
-    val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, crew.myCarId) }
+    val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, myCarId = { crew.myCarId }) }
         ?: ScriptedRouteSimulator(
             scope = appScope,
             // This car stands still in P; the bot cars always drive.

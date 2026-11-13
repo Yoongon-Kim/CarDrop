@@ -22,7 +22,8 @@ import kotlinx.coroutines.flow.stateIn
 class GpsCrewPositions(
     scope: CoroutineScope,
     navigation: InAppNavigation,
-    private val myCarId: String,
+    /** Asked on every GPS fix: with the real crew the car is picked when joining (board 03), after this starts. */
+    private val myCarId: () -> String,
 ) : RouteSimulator {
 
     private val carIds = MutableStateFlow<List<String>>(emptyList())
@@ -45,7 +46,8 @@ class GpsCrewPositions(
 
     private fun build(state: NavigatorState, ids: List<String>): Map<String, CarPosition> {
         val fix = state.fix ?: return emptyMap()
-        if (myCarId !in ids) return emptyMap()
+        val me = myCarId()
+        if (me !in ids) return emptyMap()
         val here = state.snapped?.let { GeoPoint(it.lat, it.lng) } ?: GeoPoint(fix.lat, fix.lng)
         if (trail.isEmpty() || haversineKm(trail.last(), here) > 0.02) trail += here
         if (trail.size > MAX_TRAIL) trail.subList(0, trail.size - MAX_TRAIL).clear()
@@ -53,8 +55,8 @@ class GpsCrewPositions(
         val route = state.route
         val myKmLeft = route?.let { (it.totalKm - state.progressKm).coerceAtLeast(0.0) } ?: 0.0
         val myMinutes = route?.let { it.secondsBetween(state.progressKm, it.totalKm) / 60 } ?: 0.0
-        val result = mutableMapOf(myCarId to CarPosition(myCarId, here.lat, here.lng, myKmLeft.toFloat(), myMinutes.toInt()))
-        ids.filter { it != myCarId }.forEachIndexed { i, id ->
+        val result = mutableMapOf(me to CarPosition(me, here.lat, here.lng, myKmLeft.toFloat(), myMinutes.toInt()))
+        ids.filter { it != me }.forEachIndexed { i, id ->
             val (point, behindKm) = behind(BOT_GAPS_KM.getOrElse(i) { 1.0 + i })
             val minutes = myMinutes + behindKm / 85.0 * 60
             result[id] = CarPosition(id, point.lat, point.lng, (myKmLeft + behindKm).toFloat(), minutes.toInt())

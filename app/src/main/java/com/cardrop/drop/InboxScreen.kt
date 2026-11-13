@@ -182,9 +182,9 @@ private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: Stri
             .clickable(enabled = decision, onClick = onOpen)
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        CarBadge(sender, size = 30)
+        CarBadge(sender, size = 40) // the design's default badge, 66 x 44 (target 289)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(

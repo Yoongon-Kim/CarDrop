@@ -6,6 +6,7 @@ import com.cardrop.core.model.CarPosition
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
+import com.cardrop.drop.VoteRules
 import com.cardrop.navi.WaypointResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,9 +51,9 @@ class ArrivalsTest {
     @Test fun everyCarIsTimedFromThisCarsWayToTheStop() {
         val rows = rows(decided())
         assertEquals(listOf(me, uncle, minji, aunt), rows.map { it.car.id })
-        assertEquals("9.0km", rows[0].status)
+        assertEquals("9km", rows[0].status)
         assertEquals(clockIn(6), rows[0].time)
-        assertEquals("9.8km", rows[1].status)
+        assertEquals("10km", rows[1].status) // 9.8 km
         assertEquals(clockIn(7), rows[1].time)
         assertEquals("12km", rows[3].status)
     }
@@ -66,6 +67,17 @@ class ArrivalsTest {
         val rows = rows(decided(from = me, toCarIds = listOf(uncle)), skipped = true)
         assertEquals(listOf(uncle), rows.filter { it.stops }.map { it.car.id })
         assertEquals("패스 · 강릉 경포해변에서 합류", rows.first { it.car.id == me }.status)
+    }
+    @Test fun aCarThatPassedOnTheVoteDrivesOn() {
+        // 이모 said "난 패스, 먼저 갈게" on board 11 (target line 753: "패스 · 경포해변에서 합류").
+        val rows = rows(decided(votes = mapOf(aunt to VoteRules.PASS)))
+        val row = rows.first { it.car.id == aunt }
+        assertEquals("패스 · 강릉 경포해변에서 합류", row.status)
+        assertEquals("계속", row.time)
+        assertEquals(listOf(me, uncle, minji), rows.filter { it.stops }.map { it.car.id })
+        // The sender of a fuel stop who passed on it doesn't stop either.
+        val fuel = rows(decided(DropTopic.FUEL, from = minji, votes = mapOf(minji to VoteRules.PASS)))
+        assertFalse(fuel.first { it.car.id == minji }.stops)
     }
     @Test fun nearTheStopWithoutAMessageIsAlmostThereAndUnknownPositionsAreSaidPlainly() {
         val rows = rows(decided(), myKm = 0.1, myMinutes = 0.0, at = mapOf(me to positions.getValue(me)))
@@ -91,6 +103,6 @@ class ArrivalsTest {
         assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", rows[me])
         assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", rows[uncle]) // 1.2 km past
         assertEquals("곧 도착해요", rows[minji]) // 0.2 km past
-        assertEquals("1.0km", rows[aunt])
+        assertEquals("1km", rows[aunt])
     }
 }

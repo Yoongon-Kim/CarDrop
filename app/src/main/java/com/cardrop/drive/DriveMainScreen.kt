@@ -30,6 +30,7 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.TightLetterSpacing
 
 /**
  * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick drops and the
@@ -67,7 +68,10 @@ fun DriveMainScreen(
     val inviteFrom = if (invite != null && inviteDrop != null) invite.carName(inviteDrop.fromCarId) else null
     val waiting = drops.count { needsMyAnswer(it, vm) }
 
-    ScreenColumn {
+    // 드랍하기 sits at the bottom of the screen, as in the design (`margin-top: auto`, target 274).
+    ScreenColumn(bottom = { DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak) }) {
+        // The design's header (target 203-206): eyebrow 14/700, 2 px gap, title 28/800 a little tighter, and the
+        // pill and inbox button centred on the text.
         ScreenHeader(
             eyebrow = "${crew?.name ?: "크루 없음"} · ${cars.size}대 함께 · 음성 우선",
             title = when {
@@ -76,6 +80,11 @@ fun DriveMainScreen(
                 hasCrew && positions.isNotEmpty() -> "모두 잘 오고 있어요"
                 else -> "출발 준비 중"
             },
+            eyebrowWeight = FontWeight.Bold,
+            titleSize = 28.sp,
+            titleLetterSpacing = TightLetterSpacing,
+            gap = 2.dp,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 ModePill(input)
@@ -90,15 +99,16 @@ fun DriveMainScreen(
             onMyLowFuel = if (hasCrew) onFuelWarning else null,
         )
 
-        Text("퀵 드랍 · 누르면 바로 보낼 곳을 골라요", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
-            QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
-            QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
-            QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
+        // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
+        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
+                QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
+                QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
+                QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
+            }
         }
-
-        DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak)
     }
 }
 
@@ -214,7 +224,7 @@ private fun DropButton(enabled: Boolean, onOpenDropSend: () -> Unit, onSpeak: ()
         }
         Column {
             Text("드랍하기", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.White)
-            Text("마이크를 누르면 말로 제안해요", fontSize = 14.sp, color = CdColors.White.copy(alpha = 0.9f))
+            Text("말로 제안해요 · 스티어링 음성 버튼", fontSize = 14.sp, color = CdColors.White.copy(alpha = 0.9f))
         }
     }
 }

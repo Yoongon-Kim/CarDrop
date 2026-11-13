@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
+import com.cardrop.core.ui.theme.CdColors
 
 /**
  * The line icons drawn in the design boards, copied from their SVG paths (24 x 24, round ends).
@@ -53,6 +54,37 @@ object CdIcons {
     )
     /** 한마디 (a speech bubble). */
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
+    /** 목적지 변경 (a flag): board 08's tile, target line 657 (`dest`). */
+    val Flag = lineIcon("Flag", strokeWidth = 2.2f, "M4 22V4M4 4h12l-2 4 2 4H4")
+    /** 노래 드랍 (a note): board 08's tile, target line 657 (`song`). */
+    val Music = lineIcon(
+        "Music",
+        strokeWidth = 2.2f,
+        "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+    )
+    /** 같이 켜기 (a power button): board 08's tile, target line 657 (`together`). */
+    val Power = lineIcon("Power", strokeWidth = 2.2f, "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04")
+    /**
+     * A magnifier (board 02's search box, target line 156: 26 px, blue). The design's
+     * `<circle cx="11" cy="11" r="7">` is written here as two half circles.
+     */
+    val Search = lineIcon("Search", strokeWidth = 2.4f, "M18 11a7 7 0 1 1-14 0a7 7 0 1 1 14 0z", "m20 20-3.5-3.5")
+    /**
+     * Board 11's roulette wheel in three colours (the "고민되면 돌려보기" chip, target line 434). It has
+     * its own colours, so show it with `tint = Color.Unspecified` (or [CdChip]'s `iconTint = Color.Unspecified`).
+     * The design draws it around (0, 0) (`viewBox="-12 -12 24 24"`); here every point is moved by 12.
+     */
+    val Wheel: ImageVector = ImageVector.Builder(
+        name = "Wheel",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        addPath(addPathNodes("M12 12 L12 1 A11 11 0 0 1 21.5 17.5 Z"), fill = SolidColor(CdColors.Blue))
+        addPath(addPathNodes("M12 12 L21.5 17.5 A11 11 0 0 1 2.5 17.5 Z"), fill = SolidColor(CdColors.Orange))
+        addPath(addPathNodes("M12 12 L2.5 17.5 A11 11 0 0 1 12 1 Z"), fill = SolidColor(WHEEL_TEAL))
+    }.build()
 
     // The side rail's icons.
     val Home = lineIcon("Home", strokeWidth = 2f, "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z")
@@ -68,6 +100,9 @@ object CdIcons {
         "M6 12h4M8 10v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.98 3.59L2 15a3 3 0 0 0 5.2 2.1L9 15h6l1.8 2.1A3 3 0 0 0 22 15l-.7-6.41A4 4 0 0 0 17.32 5z",
     )
 }
+
+/** The wheel's third slice (#11A08D, the design's darker teal; [CdColors.Teal] is #00B8A9). */
+private val WHEEL_TEAL = Color(0xFF11A08D)
 
 /** Builds an icon from SVG path strings, drawn as lines (no fill), like the design's `<svg>` tags. */
 private fun lineIcon(name: String, strokeWidth: Float, vararg svgPaths: String): ImageVector {

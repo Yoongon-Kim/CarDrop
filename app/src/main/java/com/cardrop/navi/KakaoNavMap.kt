@@ -83,6 +83,7 @@ fun KakaoNavMap(
     val density = LocalDensity.current
     // Our UI is scaled to the design (DesignScale); our markers use the same size as on the MapLibre map.
     val pixelRatio = density.density * MAP_SCALE
+    val fonts = rememberMarkerFonts()
     val logo = LogoSpot(sidePx = with(density) { 18.dp.toPx() }, bottomPx = logoBottomPx.toFloat())
     val userMoved by rememberUpdatedState(onUserMovedMap)
     val failed by rememberUpdatedState(onFailed)
@@ -126,7 +127,7 @@ fun KakaoNavMap(
                         if (gesture != GestureType.Unknown) main.execute { userMoved() }
                     }
                     main.execute {
-                        layers = KakaoMapLayers(kakaoMap, MapMarkers(pixelRatio), pixelRatio)
+                        layers = KakaoMapLayers(kakaoMap, MapMarkers(pixelRatio, fonts), pixelRatio)
                         map = kakaoMap
                     }
                 }
@@ -271,9 +272,12 @@ private class KakaoMapLayers(map: KakaoMap, private val markers: MapMarkers, pri
         LabelLayerOptions.from(MARKER_LAYER).setCompetitionType(CompetitionType.None),
     )!!
 
-    private val doneStyle = RouteLineStyles.from(RouteLineStyle.from(LINE_WIDTH, DONE_GRAY, LINE_CASING, MARKER_WHITE))
-    private val aheadStyle = RouteLineStyles.from(RouteLineStyle.from(LINE_WIDTH, MARKER_BLUE, LINE_CASING, MARKER_WHITE))
-    private var doneLine: RouteLine? = null
+    // The design's route (target lines 50-52): a white road with a grey edge along the whole route, and the
+    // blue line on it from this car on. Kakao draws a line's stroke on each side, so the edge is 4 + 18 + 4 = 26.
+    private val roadStyle = RouteLineStyles.from(RouteLineStyle.from(ROAD_WIDTH, MARKER_WHITE, ROAD_EDGE, ROAD_EDGE_GRAY))
+    private val aheadStyle = RouteLineStyles.from(RouteLineStyle.from(LINE_WIDTH, MARKER_BLUE))
+    private var roadLine: RouteLine? = null
+    private var roadRoute: LiveRoute? = null
     private var aheadLine: RouteLine? = null
 
     private var meLabel: Label? = null
@@ -283,7 +287,11 @@ private class KakaoMapLayers(map: KakaoMap, private val markers: MapMarkers, pri
 
     fun update(route: LiveRoute?, progressKm: Double, me: RoutePoint?, cars: List<MapCar>, waypoint: Place?, destination: Place?) {
         val geometry = route?.geometry
-        doneLine = line(doneLine, geometry?.slice(0.0, progressKm).orEmpty(), doneStyle, zOrder = 0)
+        // The road is the whole route, so it changes only with a new route (not on every GPS reading).
+        if (route !== roadRoute) {
+            roadLine = line(roadLine, geometry?.points.orEmpty(), roadStyle, zOrder = 0)
+            roadRoute = route
+        }
         aheadLine = line(aheadLine, geometry?.slice(progressKm, geometry.totalKm).orEmpty(), aheadStyle, zOrder = 1)
 
         // This car: the puck turns with the driving direction.
@@ -341,7 +349,7 @@ private class KakaoMapLayers(map: KakaoMap, private val markers: MapMarkers, pri
         if (old?.first == place) return old
         old?.second?.remove()
         if (place == null) return null
-        val (image, anchorY) = withTag(icon(), gap = 22f, text = place.name)
+        val (image, anchorY) = withTag(icon(), gap = PIN_TAG_GAP, text = place.name)
         val label = labels.addLabel(LabelOptions.from(at(place.lat, place.lng)).setStyles(style(image, anchorY)).setRank(RANK_PIN))
         return label?.let { place to it }
     }
@@ -393,9 +401,12 @@ private const val KAKAO_TEXT_SCALE = 0.9f
 private const val FOLLOW_ZOOM = 15
 private const val FOLLOW_TILT = 50.0
 
+/** The blue route line, 9 wide as in the design. */
 private const val LINE_WIDTH = 9f
-private const val LINE_CASING = 2.5f
-private const val DONE_GRAY = 0xFFB0B8C1.toInt()
+/** The white road under it (18) and its grey edge on each side (4): 26 across, as in the design. */
+private const val ROAD_WIDTH = 18f
+private const val ROAD_EDGE = 4f
+private const val ROAD_EDGE_GRAY = 0xFFCBD3DD.toInt()
 
 private const val MARKER_LAYER = "cd-markers"
 private const val RANK_CAR = 1L

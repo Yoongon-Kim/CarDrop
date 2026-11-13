@@ -61,9 +61,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun show(container: AppContainer) {
-        if (container.inAppNavigation != null &&
-            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             askLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
         setContent {

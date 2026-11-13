@@ -41,6 +41,8 @@ enum class WaypointResult {
  * - waypoint PASSED = came within [nearMetres], then got more than [passedMetres] away without
  *   arriving. The motorway passes rest areas 70-100 m from their map point, so distance alone can't
  *   tell a stop from a drive-by; slowing down can.
+ * - still parked at a stop it ARRIVED at = within [arriveMetres] of it and not faster than [slowKmh]
+ *   ([isStillAt]); the navigator shows "… · 정차 중" until then.
  */
 class GuidanceTracker(
     private val offRouteMetres: Double = 60.0,
@@ -106,6 +108,15 @@ class GuidanceTracker(
             // trigger could be lost during cooldown or when a previous request failed.
             needsReroute = !onRoute && offCount >= offRouteFixes && !nearWaypoint,
         )
+    }
+
+    /**
+     * True while the car is still parked at [stop], a stop it ARRIVED at: within [arriveMetres] of it and
+     * not faster than [slowKmh]. Driving off (faster, or further away) ends it.
+     */
+    fun isStillAt(stop: Place, fix: GpsFix): Boolean {
+        val metres = haversineKm(GeoPoint(fix.lat, fix.lng), GeoPoint(stop.lat, stop.lng)) * 1000
+        return metres <= arriveMetres && (fix.speedKmh ?: 0.0) <= slowKmh
     }
 
     /** No waypoint now: a later vote for the same place is watched afresh. */

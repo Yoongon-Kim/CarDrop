@@ -10,16 +10,12 @@ import kotlinx.coroutines.flow.emptyFlow
 /**
  * Owner: Member B.
  *
- * Hands the crew's route to a navigation app installed from the Pleos app market.
- * Choose the app with `cardrop.navApp` in local.properties:
- * - `inapp` -> InAppNavigation: a real map drawn inside CarDrop (default; use on the emulator)
- * - `naver` -> NaverMapHandoff (Naver Map deep link, up to 5 waypoints, no API key)
- * - `kakao` -> TODO: Kakao Navi SDK (needs a Kakao native app key; Kakao Navi has no URL scheme)
+ * Takes the crew's route to the navigator. Today that is [InAppNavigation], a real map drawn inside CarDrop.
  *
- * Two steps on purpose. Pleos allows only one navigation app to hold the active route, and
- * switching needs an explicit user choice, so:
+ * Two steps on purpose, so another map app could be plugged in later: Pleos allows only one navigation app
+ * to hold the active route, and switching needs an explicit user choice, so:
  * - [setRoute] records what the crew agreed on and never opens another app;
- * - [launch] opens the map app. Call it only from a button the driver pressed.
+ * - [launch] starts the guidance (another map app: opens it; call that only from a button the driver pressed).
  */
 interface NavigationHandoff {
     val decisions: TripDecisions

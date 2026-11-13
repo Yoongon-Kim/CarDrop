@@ -156,6 +156,7 @@ fun CdCard(
 /**
  * The big button. The defaults are today's look; the boards' buttons are 50-80 high, so set the board's
  * [height], [radius] (`border-radius`), [fontSize] / [fontWeight] and [horizontalPadding] per screen.
+ * A greyed-out button (`enabled = false`) is light grey with grey text (an app choice: the board draws none).
  */
 @Composable
 fun PrimaryButton(
@@ -180,14 +181,14 @@ fun PrimaryButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = height),
         shape = RoundedCornerShape(radius),
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor, disabledContainerColor = DisabledButtonBackground),
         contentPadding = PaddingValues(horizontal = horizontalPadding),
     ) {
         Text(
             text,
             fontSize = fontSize,
             fontWeight = fontWeight,
-            color = contentColor,
+            color = if (enabled) contentColor else DisabledButtonText,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -212,12 +213,24 @@ fun SecondaryButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = height),
         shape = RoundedCornerShape(radius),
-        colors = ButtonDefaults.buttonColors(containerColor = CdColors.Gray100, contentColor = CdColors.Ink2),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = CdColors.Gray100,
+            contentColor = CdColors.Ink2,
+            disabledContainerColor = DisabledButtonBackground,
+            disabledContentColor = DisabledButtonText,
+        ),
         contentPadding = PaddingValues(horizontal = horizontalPadding),
     ) {
         Text(text, fontSize = fontSize, fontWeight = fontWeight)
     }
 }
+
+/*
+ * Greyed-out buttons: #E5E8EB with #8B95A1 text, so the text stays readable (Material's default is white
+ * text on light grey). The 11-10 boards draw no greyed-out button; these are the newer canvas's colours.
+ */
+private val DisabledButtonBackground = CdColors.Gray200
+private val DisabledButtonText = CdColors.Gray450
 
 /** The square "뒤로" button at the top left of a sub-screen (design: `.cd-back`). */
 @Composable

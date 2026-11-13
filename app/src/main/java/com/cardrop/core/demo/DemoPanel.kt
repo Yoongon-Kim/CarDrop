@@ -43,6 +43,8 @@ import kotlin.math.roundToInt
 /**
  * Owner: lead. A small "DEMO" button (in the rail: [DemoRailButton]) that stages the 시연 moments on one emulator:
  * low fuel, P/D, and drops arriving from bot cars. Those only act on the fake implementations.
+ * "내 내비를 서울 신촌역으로" points this car's navigator at 신촌역, so board
+ * 03 offers "서울 신촌역 들렀다 가기" when the car then joins a crew.
  * It also switches this device between the bot crew and the real crew ("크루", [DemoCrew]), and with the
  * real crew it picks which car this device drives ("내 차", [DemoCar]).
  */
@@ -106,6 +108,16 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                 }
             } else if (crewRepo != null) {
                 Text("크루를 먼저 만들어 주세요", color = CdColors.Gray400, fontSize = 13.sp)
+            }
+            // Board 03's "…들렀다 가기" shows only when this car's navigator was heading somewhere else before it
+            // joined. The app has no way to set a route without a crew, so this button stages that moment:
+            // press it, then join with the code.
+            DemoButton("내 내비를 ${DemoData.seoul.name.withRo()} (03 들렀다 가기)") {
+                container.navigation.setRoute(
+                    DemoData.seoul,
+                    waypoint = null,
+                    reason = "${DemoData.seoul.name.withRo()} 안내해요",
+                )
             }
             DemoButton("닫기", onClick = onClose)
         }

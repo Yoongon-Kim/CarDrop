@@ -17,6 +17,7 @@ import com.cardrop.crew.DropDraft
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.haversineKm
+import com.cardrop.drop.voteTag
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
 import com.cardrop.navi.PlaceSuggestion
@@ -285,7 +286,7 @@ class AiViewModel(
                     _picker.update { it.copy(inputError = notSentText(e)) }
                     return@launch
                 }
-                voice.speak("${topicTitle(topic)} 투표를 보냈어요")
+                voice.speak(voteSentLine(topic))
                 onSent(drop)
             } finally {
                 sending = false
@@ -546,6 +547,13 @@ internal fun voteReason(cars: Int, aiPicks: Int, added: Int): String = when {
     aiPicks == 0 -> "직접 고른 ${added}곳 중에서 골라요"
     else -> "AI가 고른 ${aiPicks}곳에 직접 고른 ${added}곳을 더했어요"
 }
+
+/**
+ * What the voice says once board 10 (page or quick-drop pop-up) has sent its vote: "휴게소 투표를 보냈어요", with the
+ * topic named as on board 11's tag and on 04's tiles (휴게소 / 식사 / 주유 / 목적지 변경 / 카페 / 들를 곳).
+ * Internal (not private) only so VoteReasonTest can check it.
+ */
+internal fun voteSentLine(topic: DropTopic): String = "${topic.voteTag()} 투표를 보냈어요"
 
 /**
  * True when [other] is the same spot: within 1 km. The crew destination can be Kakao's place for the same beach

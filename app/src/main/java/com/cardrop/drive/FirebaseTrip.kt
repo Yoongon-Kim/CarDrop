@@ -3,6 +3,7 @@ package com.cardrop.drive
 import android.util.Log
 import com.cardrop.core.model.CarPosition
 import com.cardrop.core.model.Crew
+import com.cardrop.core.model.VehicleSnapshot
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
 import com.google.firebase.database.DataSnapshot
@@ -16,23 +17,26 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
  * Owner: lead. With the real crew (`cardrop.useRealCrew=true`): what the cars share while driving, next
- * to the crew and its drops (Member A's FirebaseCrewRepository): when the host started the trip, and
- * where each car is, so every device draws the other cars where they really are.
+ * to the crew and its drops (Member A's FirebaseCrewRepository): when the host started the trip, where
+ * each car is, so every device draws the other cars where they really are, and each car's fuel (board 04).
  *
  * Database, apart from `crews/<code>` so that a position every second doesn't wake the crew listener,
  * and so tools/drive_gps.py can read the start without the app:
  * ```
  * trips/482917/startedAt              server time of the host's 출발; missing = not started yet
  * trips/482917/positions/car-uncle    {lat, lng, km (to the destination), min (to the destination)}
+ * trips/482917/fuel/car-uncle         {pct (fuel %), km (range left; missing = not known)}
  * ```
  * The host clears it when it creates the crew. Logs: `adb logcat -s CarDropTrip`.
  */
@@ -40,7 +44,7 @@ class FirebaseTrip(
     private val scope: CoroutineScope,
     private val crew: CrewRepository,
     databaseUrl: String = FirebaseCrewRepository.DATABASE_URL,
-) : TripStart {
+) : TripStart, CrewFuel {
 
     private val db = FirebaseDatabase.getInstance(databaseUrl)
 
@@ -54,6 +58,10 @@ class FirebaseTrip(
     val positions: StateFlow<Map<String, CarPosition>> =
         combine(shared, crew.crew) { all, current -> sharedCarsToShow(all, current, crew.myCarId) }
             .stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
+    /** Every car's fuel as shared, this car's too. Board 04 shows only the connected cars' ([crewCardFuel]). */
+    private val sharedFuel = MutableStateFlow<Map<String, CarFuel>>(emptyMap())
+    override val fuel: StateFlow<Map<String, CarFuel>> = sharedFuel
 
     /** The trip branch we follow, e.g. trips/482917. Null outside a crew. */
     private var tripRef: DatabaseReference? = null
@@ -94,11 +102,36 @@ class FirebaseTrip(
         }
     }
 
+    /**
+     * Shares this car's fuel from [vehicle] while in a crew: at once when it changes, and within a second when
+     * the trip doesn't hold it (a trip just joined, or the host's new crew cleared it). Unchanged, it isn't sent.
+     */
+    fun shareMyFuel(vehicle: StateFlow<VehicleSnapshot>) {
+        scope.launch {
+            vehicle.map { it.carFuel() }.distinctUntilChanged().collectLatest { fuel ->
+                while (true) {
+                    shareFuelIfStale(fuel)
+                    delay(SHARE_EVERY_MS)
+                }
+            }
+        }
+    }
+
+    /** Writes [fuel] when the trip holds another value for this car, or none (null = the car reports none). */
+    private fun shareFuelIfStale(fuel: CarFuel?) {
+        val ref = tripRef ?: return
+        if (sharedFuel.value[crew.myCarId] == fuel) return
+        val node = ref.child("fuel").child(crew.myCarId)
+        (if (fuel == null) node.removeValue() else node.setValue(fuelToShare(fuel)))
+            .addOnFailureListener { Log.w(TAG, "Could not share the fuel: ${it.message}") }
+    }
+
     private fun follow(current: Crew?) {
         listener?.let { l -> tripRef?.removeEventListener(l) }
         listener = null
         tripRef = null
         _started.value = false
+        sharedFuel.value = emptyMap()
         shared.value = emptyMap()
         if (current == null) return
 
@@ -113,6 +146,7 @@ class FirebaseTrip(
                 if (nowStarted != _started.value) Log.i(TAG, if (nowStarted) "trip started" else "trip not started")
                 _started.value = nowStarted
                 shared.value = snapshot.child("positions").children.mapNotNull(::parsePosition).associateBy { it.carId }
+                sharedFuel.value = snapshot.child("fuel").children.mapNotNull(::parseFuel).toMap()
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -135,6 +169,11 @@ class FirebaseTrip(
         )
     }
 
+    private fun parseFuel(s: DataSnapshot): Pair<String, CarFuel>? {
+        val id = s.key ?: return null
+        return parseCarFuel(s.child("pct").value, s.child("km").value)?.let { id to it }
+    }
+
     private companion object {
         const val TAG = "CarDropTrip"
         const val SHARE_EVERY_MS = 1_000L
@@ -148,4 +187,17 @@ class FirebaseTrip(
 internal fun sharedCarsToShow(shared: Map<String, CarPosition>, crew: Crew?, myCarId: String): Map<String, CarPosition> {
     val connected = crew?.cars.orEmpty().filter { it.connected && it.id != myCarId }.map { it.id }.toSet()
     return shared.filterKeys { it in connected }
+}
+
+/** A car's fuel as written to trips/<code>/fuel/<car>: {pct, km}, without km when the range isn't known. */
+internal fun fuelToShare(fuel: CarFuel): Map<String, Int> =
+    buildMap {
+        put("pct", fuel.percent)
+        fuel.rangeKm?.let { put("km", it) }
+    }
+
+/** A car's fuel read back from the trip (Firebase returns whole numbers as Long); null when it isn't usable. */
+internal fun parseCarFuel(pct: Any?, km: Any?): CarFuel? {
+    val percent = (pct as? Number)?.toInt()?.takeIf { it in 0..100 } ?: return null
+    return CarFuel(percent, (km as? Number)?.toInt()?.takeIf { it >= 0 })
 }

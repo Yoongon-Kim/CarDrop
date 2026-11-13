@@ -75,6 +75,11 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
     with no AI picks.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
+- Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
+  another car's only while it is connected. Real crew: each device writes its own to `trips/<code>/fuel/<car>`
+  (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks it (the host's new crew
+  clears the trip). Bot crew: 삼촌 48%, 이모 55%, 민지 23%; a bot that sent a fuel warning (the DEMO panel's 민지 차)
+  shows 12% · 85km, as on board 05. Under 20% a card turns orange ("연료 경고" + range); only this car's opens board 05.
 
 ## Design boards
 

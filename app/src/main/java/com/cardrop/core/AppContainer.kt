@@ -15,6 +15,8 @@ import com.cardrop.core.demo.DemoCar
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
+import com.cardrop.drive.BotFuel
+import com.cardrop.drive.CrewFuel
 import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
@@ -72,6 +74,8 @@ class AppContainer(context: Context) {
     private val firebaseTrip: FirebaseTrip? = if (BuildConfig.USE_REAL_CREW) FirebaseTrip(appScope, crew) else null
     /** With the real crew the cars wait for the host's 출발; the bot crew never waits. */
     val tripStart: TripStart = firebaseTrip ?: TripStart.AlwaysStarted
+    /** Board 04's crew cards: the other cars' fuel, from their own devices (real crew) or the bots' ([BotFuel]). */
+    val crewFuel: CrewFuel = firebaseTrip ?: BotFuel(appScope, crew.drops)
 
     // Member B
     val vehicle: VehicleRepository =
@@ -154,6 +158,7 @@ class AppContainer(context: Context) {
 
     init {
         trip.start()
+        firebaseTrip?.shareMyFuel(vehicle.snapshot)
         firebaseTrip?.shareMyPosition(route.positions)
     }
 }

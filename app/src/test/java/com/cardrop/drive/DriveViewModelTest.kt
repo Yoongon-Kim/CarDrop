@@ -4,6 +4,7 @@ import com.cardrop.core.model.DropTopic
 import com.cardrop.core.demo.DemoData
 import com.cardrop.vehicle.FakeVehicleRepository
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -231,5 +232,23 @@ class DriveViewModelTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val vm = DriveViewModel(FakeVehicleRepository(), TestRoute(), TestNavigation(), TestCrew(), TestAi(), scope, tripStart = TestTripStart())
         try { assertNull(vm.waitingForHost.value) } finally { scope.cancel() }
+    }
+
+    // Board 04's crew cards: this car's fuel from its own car, the other cars' as they shared it.
+
+    @Test fun crewCardsShowThisCarsFuelAndTheOtherCarsShared() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val vehicle = FakeVehicleRepository()
+        val others = object : CrewFuel {
+            override val fuel = MutableStateFlow(mapOf(DemoData.uncle.id to CarFuel(48, 312)))
+        }
+        val vm = DriveViewModel(vehicle, TestRoute(), TestNavigation(), TestCrew(), TestAi(), scope, crewFuel = others)
+        try {
+            assertEquals(mapOf(DemoData.me.id to CarFuel(64, 420), DemoData.uncle.id to CarFuel(48, 312)), vm.fuelByCar.value)
+            vehicle.setFuelPercent(12)
+            others.fuel.value = mapOf(DemoData.uncle.id to CarFuel(15, 98))
+            yield()
+            assertEquals(mapOf(DemoData.me.id to CarFuel(12, 78), DemoData.uncle.id to CarFuel(15, 98)), vm.fuelByCar.value)
+        } finally { scope.cancel() }
     }
 }

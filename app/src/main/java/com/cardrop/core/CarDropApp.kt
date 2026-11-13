@@ -67,7 +67,10 @@ fun CarDropApp(container: AppContainer) {
             container.crew, container.placeSearch, container::myPosition, container.voice, container.destinationTrip,
         ) }
     val driveVm: DriveViewModel = viewModel {
-        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai, tripStart = container.tripStart)
+        DriveViewModel(
+            container.vehicle, container.route, container.navigation, container.crew, container.ai,
+            tripStart = container.tripStart, crewFuel = container.crewFuel,
+        )
     }
     val aiVm: AiViewModel = viewModel {
         AiViewModel(

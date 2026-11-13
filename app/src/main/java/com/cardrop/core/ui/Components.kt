@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -48,9 +47,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cardrop.core.model.Car
 import com.cardrop.core.ui.theme.CdColors
-import com.cardrop.core.ui.theme.toColor
 
 /*
  * Shared building blocks that match the design's look. Use these instead of styling raw
@@ -295,20 +292,6 @@ fun Pill(text: String, background: Color = CdColors.BlueLight, color: Color = Cd
             .background(background)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
-}
-
-/** Coloured circle with the car's first letter. TODO(design): swap for the car images in the boards. */
-@Composable
-fun CarBadge(car: Car, size: Int = 44) {
-    Box(
-        modifier = Modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(if (car.connected) car.color.toColor() else CdColors.Gray200),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(car.name.take(1), color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = (size / 2.6).sp)
-    }
 }
 
 /** A list row: badge or icon on the left, two lines of text, something on the right. */

@@ -208,7 +208,7 @@ private fun OpponentChip(car: Car, selected: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        CarBadge(car, size = 24)
+        CarBadge(car, size = 24, bob = false) // 40 x 27 and still, as in the design (740)
         Text(car.name, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = if (selected) CdColors.BlueDark else CdColors.Ink2, maxLines = 1)
     }
 }

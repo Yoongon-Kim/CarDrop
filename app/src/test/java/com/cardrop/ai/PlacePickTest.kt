@@ -3,6 +3,8 @@ package com.cardrop.ai
 import com.cardrop.core.demo.DemoData
 import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.Place
+import com.cardrop.navi.knownPlaceMatches
+import com.cardrop.navi.placeQuery
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

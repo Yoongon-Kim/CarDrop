@@ -16,6 +16,7 @@ import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
 import com.cardrop.drive.DemoRoute
+import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.ScriptedRouteSimulator
 import com.cardrop.drive.StopNotice
@@ -94,6 +95,14 @@ class AppContainer(context: Context) {
     // TODO(Member B): "kakao" -> KakaoNaviHandoff (Kakao Navi SDK, see CLAUDE.md)
     val navigation: NavigationHandoff = inAppNavigation ?: NaverMapHandoff(context.applicationContext)
 
+    /**
+     * Where this car is: the navigator's GPS fix (there before departure too), else its place in the crew
+     * positions (`cardrop.navApp=naver`). Null before the first fix. Board 02 and 10 search near it.
+     */
+    fun myPosition(): GeoPoint? =
+        inAppNavigation?.state?.value?.fix?.let { GeoPoint(it.lat, it.lng) }
+            ?: route.positions.value[crew.myCarId]?.let { GeoPoint(it.lat, it.lng) }
+
     /** Rest stops / stations still ahead of every car: what the AI and the DEMO panel may offer. */
     fun stopsAhead(pool: List<Place>): List<Place> =
         inAppNavigation?.placesAhead(pool) ?: DemoRoute.placesAhead(pool, route.positions.value.values)
@@ -113,7 +122,7 @@ class AppContainer(context: Context) {
      */
     val voice: VoiceService = if (BuildConfig.USE_REAL_VOICE) PleosVoiceService(context) else FakeVoiceService()
     /**
-     * Board 10's place search while typing: Kakao Local (any place in Korea) with `cardrop.kakaoRestKey`.
+     * Board 02's and 10's place search while typing: Kakao Local (any place in Korea) with `cardrop.kakaoRestKey`.
      * Without the key, null: the driver can add only the places the app knows (rest stops, cafés, destinations).
      */
     val placeSearch: PlaceSearch? = BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoPlaceSearch)

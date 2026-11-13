@@ -1,8 +1,8 @@
 # CarDrop
 
 A Pleos Connect app for groups of cars driving to the same place: form a crew, vote on a rest stop,
-share a fuel warning, and send the agreed stop to every car's navigation (an in-app navigator on the emulator, Naver Map
-from the Pleos app market on a car).
+share a fuel warning, and send the agreed stop to every car's navigation (an in-app navigator drawn in the
+left third of the screen).
 
 ## Quick start
 

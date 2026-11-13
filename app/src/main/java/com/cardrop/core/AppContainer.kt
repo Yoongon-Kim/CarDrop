@@ -15,11 +15,9 @@ import com.cardrop.core.demo.DemoCar
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
-import com.cardrop.drive.DemoRoute
 import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
-import com.cardrop.drive.ScriptedRouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
 import com.cardrop.drive.TripStart
@@ -34,7 +32,6 @@ import com.cardrop.navi.KakaoPlaceSearch
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.OsrmDirections
 import com.cardrop.navi.NavigationHandoff
-import com.cardrop.navi.NaverMapHandoff
 import com.cardrop.vehicle.FakeVehicleRepository
 import com.cardrop.vehicle.PleosVehicleRepository
 import com.cardrop.vehicle.VehicleRepository
@@ -44,7 +41,6 @@ import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -80,56 +76,42 @@ class AppContainer(context: Context) {
     // Member B
     val vehicle: VehicleRepository =
         if (BuildConfig.USE_REAL_VEHICLE) PleosVehicleRepository(context) else FakeVehicleRepository()
-    /**
-     * `inapp` (default): a real navigator inside CarDrop - GPS + live routes (Kakao, then OSRM).
-     * `naver`: hand the route to Naver Map; car positions then come from the scripted simulator.
-     */
-    val inAppNavigation: InAppNavigation? =
-        if (BuildConfig.NAV_APP == "naver") {
-            null
-        } else {
-            InAppNavigation(
-                scope = appScope,
-                location = AndroidLocationSource(context.applicationContext),
-                router = FallbackRouteProvider(
-                    listOfNotNull(
-                        BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoDirections),
-                        OsrmDirections(),
-                    ),
-                ),
-                kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
-            )
-        }
-    val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions) }
-        ?: ScriptedRouteSimulator(
+    /** The navigator inside CarDrop (the left third): GPS + live routes (Kakao, then OSRM). */
+    val inAppNavigation: InAppNavigation =
+        InAppNavigation(
             scope = appScope,
-            // This car stands still in P; the bot cars always drive.
-            isParked = { carId -> carId == crew.myCarId && vehicle.snapshot.value.isParked },
+            location = AndroidLocationSource(context.applicationContext),
+            router = FallbackRouteProvider(
+                listOfNotNull(
+                    BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoDirections),
+                    OsrmDirections(),
+                ),
+            ),
+            kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
         )
-    // TODO(Member B): "kakao" -> KakaoNaviHandoff (Kakao Navi SDK, see CLAUDE.md)
-    val navigation: NavigationHandoff = inAppNavigation ?: NaverMapHandoff(context.applicationContext)
+    /** Every car's position: this car from GPS, the others from their devices (real crew) or behind it (bots). */
+    val route: RouteSimulator = GpsCrewPositions(appScope, inAppNavigation, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions)
+    val navigation: NavigationHandoff = inAppNavigation
 
     /**
      * Board 01's "약 62km · 1시간 5분": road distance and drive time from this car to the crew destination, on
-     * the navigator's live route. Null until that route is there, and always with `cardrop.navApp=naver`.
+     * the navigator's live route. Null until that route is there.
      */
     val destinationTrip: StateFlow<DestinationTrip?> =
-        inAppNavigation?.let { nav ->
-            combine(nav.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
-                .stateIn(appScope, SharingStarted.Eagerly, null)
-        } ?: MutableStateFlow(null)
+        combine(inAppNavigation.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
+            .stateIn(appScope, SharingStarted.Eagerly, null)
 
     /**
-     * Where this car is: the navigator's GPS fix (there before departure too), else its place in the crew
-     * positions (`cardrop.navApp=naver`). Null before the first fix. Board 02 and 10 search near it.
+     * Where this car is: the navigator's GPS fix (there before departure too). Null before the first fix.
+     * Board 02 and 10 search near it.
      */
-    fun myPosition(): GeoPoint? =
-        inAppNavigation?.state?.value?.fix?.let { GeoPoint(it.lat, it.lng) }
-            ?: route.positions.value[crew.myCarId]?.let { GeoPoint(it.lat, it.lng) }
+    fun myPosition(): GeoPoint? = inAppNavigation.state.value.fix?.let { GeoPoint(it.lat, it.lng) }
 
-    /** Rest stops / stations still ahead of every car: what the AI and the DEMO panel may offer. */
-    fun stopsAhead(pool: List<Place>): List<Place> =
-        inAppNavigation?.placesAhead(pool) ?: DemoRoute.placesAhead(pool, route.positions.value.values)
+    /**
+     * Rest stops / stations still ahead of every car: what the AI and the DEMO panel may offer.
+     * Empty until the navigator has a route (the callers then offer the pool's last places).
+     */
+    fun stopsAhead(pool: List<Place>): List<Place> = inAppNavigation.placesAhead(pool).orEmpty()
 
     // Lead
     /** Claude when local.properties has `cardrop.claudeApiKey`; the fake without one, or when a Claude call fails. */
@@ -164,7 +146,7 @@ class AppContainer(context: Context) {
     private val trip = TripCoordinator(
         appScope, crew, route, navigation, voice,
         tripStart = tripStart,
-        autoStartsGuidance = inAppNavigation != null,
+        autoStartsGuidance = true,
     )
 
     /** This car got to the crew's stop, stopped there or drove past it: the card on the CarDrop side. */

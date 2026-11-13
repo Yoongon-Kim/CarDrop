@@ -98,7 +98,7 @@ fun CarDropApp(container: AppContainer) {
     CarDropShell(
         current = navigator.current,
         onTab = navigator::switchTab,
-        navPanel = container.inAppNavigation?.let { nav -> { InAppNavigatorPanel(nav, driveVm) } },
+        navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)
             DemoPanel(container)

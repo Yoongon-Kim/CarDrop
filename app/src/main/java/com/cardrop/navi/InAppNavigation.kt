@@ -40,7 +40,7 @@ data class NavigatorState(
 )
 
 /**
- * Owner: Member B. `cardrop.navApp=inapp` (the default).
+ * Owner: Member B.
  *
  * A real navigator inside CarDrop, drawn by [InAppNavigatorPanel]:
  * - position: this car's GPS ([LocationSource]); on the emulator, `tools/drive_gps.py` feeds it;

@@ -37,8 +37,8 @@ Rules:
 Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
                                        CrewRepository      FakeCrewRepository (bots) -> FirebaseCrewRepository
                                        VehicleRepository   FakeVehicleRepository     -> PleosVehicleRepository
-                                       RouteSimulator      GpsCrewPositions (inapp) / ScriptedRouteSimulator
-                                       NavigationHandoff   InAppNavigation (GPS + Kakao/OSRM) -> NaverMapHandoff
+                                       RouteSimulator      GpsCrewPositions (GPS; tools/drive_gps.py on the emulator)
+                                       NavigationHandoff   InAppNavigation (GPS + Kakao/OSRM)
                                        AiService           FakeAiService             -> Claude API
                                        VoiceService        FakeVoiceService          -> Android TTS/STT
 ```
@@ -135,7 +135,6 @@ landed on `main`.
 | `cardrop.myCar` | `dad` / `uncle` / `minji` / `aunt` | The car this device drives in the real crew (empty = `dad`) until the DEMO panel's 내 차 picks another one on the device. Give each device a different car; any other value stops the build |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
-| `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |
 | `cardrop.claudeApiKey` | key | Set = the real AI (`ai/ClaudeAiService.kt`, Anthropic Java SDK); empty = the fake. If a Claude call fails, the fake answers (`adb logcat -s CarDropAi`). The key is built into the APK, so don't share the APK |
 | `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes and the place search on boards 02 and 10 (empty = OSRM only, and boards 02 / 10 offer only places the app knows) |
 | `cardrop.kakaoNativeKey` | key | Kakao Developers native app key: the in-app navigator draws Kakao's map (`navi/KakaoNavMap.kt`); empty = MapLibre + OpenFreeMap. If Kakao refuses the key, the app falls back to MapLibre (`adb logcat -s CarDropKakaoMap`) |
@@ -152,8 +151,7 @@ landed on `main`.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
   If gear stays `UNKNOWN`, the game (board 15) stays closed: it opens only in P (`ai/QuizScreen.kt`).
-- The SDK has no vehicle speed or location API. Car positions come from GPS (`navi/GpsCrewPositions.kt`), or
-  from `ScriptedRouteSimulator` with `cardrop.navApp=naver`.
+- The SDK has no vehicle speed or location API. Car positions come from GPS (`navi/GpsCrewPositions.kt`).
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 
 ## Voice notes (Pleos speech SDKs 3.3.1, checked on the emulator 2026-11-13)
@@ -179,7 +177,7 @@ landed on `main`.
 - adb on this image: apps run as Android user 10, so use `--user 10`, e.g.
   `adb shell pm grant --user 10 com.cardrop <permission>` and `adb shell am start --user 10 -n com.cardrop/.MainActivity`.
 
-## In-app navigator (`cardrop.navApp=inapp`, the default)
+## In-app navigator
 
 The first demo round runs on the emulator, and the emulator's built-in Pleos navigation shows a blank
 grey map (its developer map style `connect_empty` has no roads). So CarDrop has its own real navigator:
@@ -198,7 +196,7 @@ the car at its place in the convoy (아빠 km 40, 삼촌 39.2, 민지 38.2, 이�
 presses 출발 (it reads `trips/<code>/startedAt` from Firebase); `--no-wait` drives right away. Every device
 shares its position through Firebase about once a second, so each one draws the others where they really are.
 
-- Layout: with `inapp`, our window holds the whole 1600 x 900 design. The navigator is the left 533 px
+- Layout: our window holds the whole 1600 x 900 design. The navigator is the left 533 px
   (`core/ui/Shell.kt`), CarDrop is the right 2/3. Everything is scaled down a little to fit.
 - `navi/GpsLocation.kt` - Android GPS (1 fix/s). The emulator reports bearing 0, so direction comes from movement.
 - `navi/InAppNavigation.kt` - the navigator (`NavigationHandoff`): asks for a route from the GPS position to
@@ -223,7 +221,7 @@ shares its position through Firebase about once a second, so each one draws the 
   is not drawn. Bot crew: the bots follow this car's GPS trail 0.8 / 1.8 / 3 km behind.
 - Board 01's destination card adds the road distance and drive time ("약 62km · 1시간 5분") from the live
   route (`navi/DestinationTrip.kt`, `AppContainer.destinationTrip`). Nothing shows until the route is there,
-  or while the route still ends at the old destination after a change. None with `cardrop.navApp=naver`.
+  or while the route still ends at the old destination after a change.
 - `navi/InAppNavigatorPanel.kt` + `navi/NavPanelState.kt` - the design's overlays (turn banner, CarDrop
   toast, speed from GPS, ETA card), "전체 경로" and, after dragging the map, "현재 위치".
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles
@@ -243,32 +241,29 @@ shares its position through Firebase about once a second, so each one draws the 
   25 km ahead, so a 2-minute vote ends before the car passes the stop. Cafés (`DemoData.cafes`, real places
   from OpenStreetMap near 경포해변) and destinations are near the end of the trip and skip this filter.
 - `drive/DemoRoute.kt` + `drive/DemoRouteData.kt` - the baked 244 km trip (OSRM, `tools/bake_route.py`).
-  Used by `tools/drive_gps.py` and, with `cardrop.navApp=naver`, by `ScriptedRouteSimulator`.
+  Used by `tools/drive_gps.py`.
 
-## Navigation handoff (researched 2026-11-10)
+## Other navigation apps (researched 2026-11-10, none built)
 
-Pleos allows only one navigation app to hold the active route, and switching needs an explicit user
-choice. So `NavigationHandoff.setRoute()` only records the route, and `launch()` opens the map app.
-Call `launch()` only from a button the driver pressed.
+CarDrop uses only its in-app navigator. The Naver Map handoff (`cardrop.navApp=naver`) was removed on
+2026-11-13. If another map app is ever added: Pleos allows only one navigation app to hold the active route,
+and switching needs an explicit user choice. So `NavigationHandoff.setRoute()` only records the route, and
+`launch()` would open the map app; call it only from a button the driver pressed.
 
 Options, in order of fit:
-1. **Naver Map** (in the Pleos app market) — built: `navi/NaverMapHandoff.kt`.
-   `nmap://navigation?dlat&dlng&dname&v1lat&v1lng&v1name&appname=<applicationId>`, package
-   `com.nhn.android.nmap`, up to 5 waypoints (`v1`..`v5`), no API key.
-   Source: https://guide.ncloud-docs.com/docs/application-maps-url-scheme-vpc.md
-2. **Kakao Navi** (in the Pleos app market) — not built. It has no URL scheme; use the Kakao Navi SDK:
+1. **Kakao Navi** (in the Pleos app market) — not built. It has no URL scheme; use the Kakao Navi SDK:
    `com.kakao.sdk:v2-navi` from `https://devrepo.kakao.com/nexus/content/groups/public/`,
    `KakaoSdk.init(context, NATIVE_APP_KEY)`, then
    `NaviClient.instance.navigateIntent(destination, NaviOption(coordType = CoordType.WGS84), viaList)`.
    Needs a Kakao developer app (native key + key hash). Package `com.locnall.KimGiSa`.
    Source: https://developers.kakao.com/docs/ko/kakaonavi/android
-3. **KakaoMap** — not found in the Pleos app market; no official deep-link spec. Skip.
-4. **Pleos built-in navigation (NaviHelper SDK)** — `ai.pleos.playground:NaviHelper:3.0.5` on the same
+2. **KakaoMap** — not found in the Pleos app market; no official deep-link spec. Skip.
+3. **Pleos built-in navigation (NaviHelper SDK)** — `ai.pleos.playground:NaviHelper:3.0.5` on the same
    Pleos Maven repo. It drives the built-in nav (`requestRoute`, `addWaypoint`, max 2 waypoints) with no
    app switch. Permissions `pleos.car.permission.NAVI_ROUTE_SEARCH` and `NAVI_ROUTE`. Not built.
    Source: https://document.pleos.ai/en/docs/pleos-only/connect-sdk-pleos/NaviHelper/intro
 
-Unverified until tested on Pleos: that the app-market builds of Naver Map and Kakao Navi keep the same
-package names and honour these intents, and whether `market://` links work (do not rely on them).
+Unverified until tested on Pleos: that the app-market build of Kakao Navi keeps the same package name and
+honours this intent, and whether `market://` links work (do not rely on them).
 Window behaviour (https://document.pleos.ai/en/docs/connect/guide/docs-design/getting-started/window):
 on Connect-S two apps split the screen 1:1; on Connect-W a deep-linked app opens over ours.

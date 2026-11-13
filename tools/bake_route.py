@@ -1,6 +1,6 @@
 """Bakes an OSRM route (JSON) into app/src/main/java/com/cardrop/drive/DemoRouteData.kt.
 
-The in-app navigator and ScriptedRouteSimulator drive this route. Re-run only to change the demo trip.
+tools/drive_gps.py drives this route. Re-run only to change the demo trip.
 
 1. Get the route from the public OSRM demo server (OpenStreetMap data). The two middle points are on the
    영동고속도로 (eastbound) so the route passes the rest stops in DemoData; bearings keep them on the

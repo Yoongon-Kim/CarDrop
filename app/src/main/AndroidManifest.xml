@@ -24,16 +24,6 @@
     <uses-permission android:name="pleos.car.permission.CAR_INFO" />
     <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />
 
-    <!-- Android 11+ package visibility: lets NavigationHandoff see the Pleos app market map apps. -->
-    <queries>
-        <package android:name="com.nhn.android.nmap" />
-        <package android:name="com.locnall.KimGiSa" />
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="nmap" />
-        </intent>
-    </queries>
-
     <application
         android:name=".CarDropApplication"
         android:allowBackup="false"

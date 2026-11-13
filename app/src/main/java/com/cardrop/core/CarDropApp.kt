@@ -28,6 +28,8 @@ import com.cardrop.ai.AiViewModel
 import com.cardrop.ai.QuizScreen
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
+import com.cardrop.core.model.Car
+import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingEffect
@@ -80,6 +82,10 @@ fun CarDropApp(container: AppContainer) {
     ) { socialMessage = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
+    val crewNow by container.crew.crew.collectAsStateWithLifecycle()
+    val myCar = crewNow?.cars?.firstOrNull { it.id == container.crew.myCarId }
+        ?: Car(container.crew.myCarId, "내 차", CarColor.BLUE, isMe = true)
+
     CarDropShell(
         current = navigator.current,
         onTab = navigator::switchTab,
@@ -88,6 +94,7 @@ fun CarDropApp(container: AppContainer) {
             Captions(container, socialMessage)
             DemoPanel(container)
         },
+        myCar = myCar,
     ) {
         // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
         val driveScreen: @Composable (FuelInvite?) -> Unit = { invite ->

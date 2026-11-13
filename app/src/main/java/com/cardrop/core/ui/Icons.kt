@@ -46,6 +46,20 @@ object CdIcons {
     )
     /** 한마디 (a speech bubble). */
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
+
+    // The side rail's icons.
+    val Home = lineIcon("Home", strokeWidth = 2f, "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z")
+    val Send = lineIcon("Send", strokeWidth = 2f, "M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z")
+    val Crew = lineIcon(
+        "Crew",
+        strokeWidth = 2f,
+        "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+    )
+    val Game = lineIcon(
+        "Game",
+        strokeWidth = 2f,
+        "M6 12h4M8 10v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 0 0-3.98 3.59L2 15a3 3 0 0 0 5.2 2.1L9 15h6l1.8 2.1A3 3 0 0 0 22 15l-.7-6.41A4 4 0 0 0 17.32 5z",
+    )
 }
 
 /** Builds an icon from SVG path strings, drawn as lines (no fill), like the design's `<svg>` tags. */

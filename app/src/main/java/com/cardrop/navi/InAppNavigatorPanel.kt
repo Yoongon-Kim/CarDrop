@@ -1,6 +1,8 @@
 package com.cardrop.navi
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -141,7 +144,13 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Banner(state.banner)
-            AnimatedVisibility(visible = toast != null, enter = fadeIn() + slideInVertically(), exit = fadeOut()) {
+            // The design's toast entrance (cdPop): it rises 18 px while it fades in, in 0.5 s, slowing down at the end.
+            val rise = with(LocalDensity.current) { 18.dp.roundToPx() }
+            AnimatedVisibility(
+                visible = toast != null,
+                enter = fadeIn(tween(500, easing = EaseOut)) + slideInVertically(tween(500, easing = EaseOut)) { rise },
+                exit = fadeOut(),
+            ) {
                 Toast(toast.orEmpty())
             }
         }

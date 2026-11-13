@@ -6,6 +6,7 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.text.particle
 import com.cardrop.crew.CrewRepository
 import com.cardrop.drive.TripDecisions
 import com.cardrop.voice.VoiceService
@@ -41,7 +42,7 @@ fun DropRoutingEffect(
                         navigator.go(Screen.FuelThem(drop.id))
                     }
                     else -> {
-                        voice.speak("${sender}가 투표를 보냈어요. ${drop.title}")
+                        voice.speak("${sender.particle("이", "가")} 투표를 보냈어요. ${drop.title}")
                         navigator.go(Screen.Vote(drop.id))
                     }
                 }

@@ -113,9 +113,11 @@ landed on `main`.
   Installing over `com.cardrop` replaces the other session's build and wipes its trip. Before
   `adb shell input tap`, check which app is in front: `adb shell dumpsys activity activities | grep ResumedActivity`.
 - To test while another session's CarDrop stays installed, build a side-by-side copy: add
-  `debug { applicationIdSuffix = ".test" }` to `buildTypes` for that build only (don't commit it), with the
-  fake crew and without `app/google-services.json` (Firebase and the Kakao key know only `com.cardrop`, so the
-  copy shows the MapLibre map). Start it with `adb shell am start --user 10 -n com.cardrop.test/com.cardrop.MainActivity`
+  `debug { applicationIdSuffix = ".test.<task>" }` to `buildTypes` for that build only (don't commit it), with
+  the fake crew and without `app/google-services.json` (Firebase and the Kakao key know only `com.cardrop`, so
+  the copy shows the MapLibre map). Use your own `<task>` (letters, digits, `_`; no `-`), e.g. `.test.roulette`:
+  another session's copy may be installed (`adb shell pm list packages --user 10 | grep cardrop`), and the same
+  name would overwrite it. Start it with `adb shell am start --user 10 -n com.cardrop.test.<task>/com.cardrop.MainActivity`
   and uninstall it afterwards.
 
 ## Local settings (`local.properties`, not committed)

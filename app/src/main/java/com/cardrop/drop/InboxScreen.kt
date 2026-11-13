@@ -154,13 +154,13 @@ fun InboxScreen(
     }
 }
 
-/** The white-grey panel on the right, 560 wide, rounded on the left (design board 07). */
+/** The white-grey panel on the right, 520 wide, rounded on the left (design board 07, target 283). */
 @Composable
 private fun BoxScope.Sheet(slide: Float, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .align(Alignment.CenterEnd)
-            .width(560.dp)
+            .width(520.dp)
             .fillMaxHeight()
             .graphicsLayer { translationX = slide * size.width }
             .shadow(30.dp, RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))

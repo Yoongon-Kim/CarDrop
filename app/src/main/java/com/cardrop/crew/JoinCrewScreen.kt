@@ -1,11 +1,15 @@
 package com.cardrop.crew
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,13 +24,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +42,7 @@ import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.ErrorText
+import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
@@ -42,6 +50,7 @@ import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.TodoNote
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.NotoSansKr
 
 /** Board 03 코드로 참여 · Owner: Member A. With the fake, code 482917 always works. */
 @Composable
@@ -191,28 +200,63 @@ private fun Key(label: String, onClick: () -> Unit, modifier: Modifier = Modifie
 @Composable
 private fun CrewFound(vm: CrewViewModel, join: CrewViewModel.JoinState, onJoined: () -> Unit) {
     when (join) {
-        CrewViewModel.JoinState.Idle -> Unit
-        CrewViewModel.JoinState.Searching -> Text("크루를 찾는 중…", style = MaterialTheme.typography.bodyLarge)
-        CrewViewModel.JoinState.NotFound -> ErrorText("그 코드의 크루가 없어요")
-        is CrewViewModel.JoinState.Found -> CdCard(modifier = Modifier.fillMaxSize()) {
-            Text("크루를 찾았어요", style = MaterialTheme.typography.labelMedium)
-            Text(join.crew.name, style = MaterialTheme.typography.headlineLarge)
-            Text(
-                "${vm.carName(join.crew.hostCarId)} 크루 · ${join.crew.cars.size}대 참여 중 · ${join.crew.destination.name}",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            // withRo() picks 로 or 으로 for the name: "강릉 경포해변으로", "속초 해수욕장으로", "서울로".
-            val toDestination = join.crew.destination.name.withRo()
-            Text("$toDestination 안내할까요?", style = MaterialTheme.typography.titleLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton("신촌역 들렀다 가기", onClick = onJoined)
-                PrimaryButton("바로 $toDestination", onClick = onJoined)
-            }
-            TodoNote("신촌역 경유 버튼은 지금 경로를 경유지로 넣어야 해요 (board 03)")
-            Text(
-                "참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+        // The board draws only the found crew; before that, one quiet line in the middle (app extra).
+        CrewViewModel.JoinState.Idle -> RightHalfNote { Text("코드 6자리를 넣으면 여기에 크루가 보여요", style = NoteStyle) }
+        CrewViewModel.JoinState.Searching -> RightHalfNote { Text("크루를 찾는 중…", style = NoteStyle) }
+        CrewViewModel.JoinState.NotFound -> RightHalfNote {
+            ErrorText("그 코드의 크루가 없어요")
+            Text("코드를 확인하고 지우기로 고쳐 주세요", style = NoteStyle)
         }
+        is CrewViewModel.JoinState.Found -> FoundCrewCard(vm, join, onJoined)
+    }
+}
+
+/** Centred in the right half, on the grey page. */
+@Composable
+private fun RightHalfNote(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content,
+    )
+}
+
+private val NoteStyle = TextStyle(color = CdColors.Gray600, fontSize = 15.sp, fontFamily = NotoSansKr)
+
+/**
+ * The crew found with the code (design lines 186-196): a white card, padding 24, 12 between its lines,
+ * that pops in like the design's `cdPop` (line 21): it rises 18 px into place while it fades in, 0.5 s.
+ */
+@Composable
+private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found, onJoined: () -> Unit) {
+    val pop = remember(join.crew.code) { Animatable(0f) } // 0 = not shown yet, 1 = in place
+    LaunchedEffect(join.crew.code) { pop.animateTo(1f, tween(durationMillis = 500, easing = EaseOut)) }
+    CdCard(
+        modifier = Modifier.fillMaxSize().graphicsLayer {
+            alpha = pop.value
+            translationY = (1f - pop.value) * 18.dp.toPx()
+        },
+        contentPadding = PaddingValues(24.dp),
+        gap = 12.dp,
+    ) {
+        Pill("크루를 찾았어요", fontSize = 13.sp, padding = PaddingValues(horizontal = 12.dp, vertical = 6.dp))
+        Text(join.crew.name, style = MaterialTheme.typography.headlineLarge)
+        Text(
+            "${vm.carName(join.crew.hostCarId)} 크루 · ${join.crew.cars.size}대 참여 중 · ${join.crew.destination.name}",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        // withRo() picks 로 or 으로 for the name: "강릉 경포해변으로", "속초 해수욕장으로", "서울로".
+        val toDestination = join.crew.destination.name.withRo()
+        Text("$toDestination 안내할까요?", style = MaterialTheme.typography.titleLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SecondaryButton("신촌역 들렀다 가기", onClick = onJoined)
+            PrimaryButton("바로 $toDestination", onClick = onJoined)
+        }
+        TodoNote("신촌역 경유 버튼은 지금 경로를 경유지로 넣어야 해요 (board 03)")
+        Text(
+            "참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요",
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }

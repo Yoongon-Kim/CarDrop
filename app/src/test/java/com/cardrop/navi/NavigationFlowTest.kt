@@ -79,6 +79,10 @@ class NavigationFlowTest {
             val nav = InAppNavigation(scope, location, router) { now }
             val events = mutableListOf<WaypointEvent>()
             scope.launch { nav.waypointEvents.collect { events += it } }
+            val reached = mutableListOf<Place>()
+            val toasts = mutableListOf<String?>()
+            scope.launch { nav.reachedWaypoint.collect { reached += it } }
+            scope.launch { nav.route.collect { toasts += it.lastAction } }
             val stop = geometry.pointAt(5.0).let { Place("yeoju", "여주휴게소", it.lat + 100 / 111_320.0, it.lng) }
             location.fix.value = fix(4.0, now)
             nav.setRoute(DemoData.gyeongpo, waypoint = stop)
@@ -91,7 +95,9 @@ class NavigationFlowTest {
                 location.fix.value = fix(km, now)
                 yield()
             }
-            assertEquals(listOf(WaypointEvent(stop, WaypointResult.PASSED)), events)
+            assertEquals(listOf(stop), reached) // got there first...
+            assertTrue("여주휴게소에 왔어요" in toasts)
+            assertEquals(listOf(WaypointEvent(stop, WaypointResult.PASSED)), events) // ...then drove past
             assertNull(nav.route.value.waypoint)
             assertEquals("여주휴게소를 지나쳤어요 · 목적지로 안내해요", nav.route.value.lastAction)
             assertEquals(2, router.requests) // a new route straight to the destination

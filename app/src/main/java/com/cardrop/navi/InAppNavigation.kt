@@ -77,6 +77,8 @@ class InAppNavigation(
     // Room for a few events, so a slow listener never holds up the GPS.
     private val _waypointEvents = MutableSharedFlow<WaypointEvent>(extraBufferCapacity = 8)
     override val waypointEvents: SharedFlow<WaypointEvent> = _waypointEvents
+    private val _reachedWaypoint = MutableSharedFlow<Place>(extraBufferCapacity = 8)
+    override val reachedWaypoint: SharedFlow<Place> = _reachedWaypoint
 
     private val tracker = GuidanceTracker()
     private var routing: Job? = null
@@ -175,6 +177,11 @@ class InAppNavigation(
                 _route.update { it.copy(waypoint = null, lastAction = text) }
                 _waypointEvents.tryEmit(WaypointEvent(waypoint, update.waypoint))
                 requestRoute()
+            }
+            update.atWaypoint && waypoint != null -> {
+                // Feedback the moment the car gets there; whether it stopped is decided a little later.
+                _route.update { it.copy(lastAction = "${waypoint.name}에 왔어요") }
+                _reachedWaypoint.tryEmit(waypoint)
             }
             justArrived -> _route.update { it.copy(lastAction = "목적지에 도착했어요") }
             routing?.isActive != true &&

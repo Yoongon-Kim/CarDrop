@@ -13,6 +13,8 @@ data class TrackUpdate(
     val offRoute: Boolean,
     /** The GPS point moved onto the route ("map matching"); null while off the route. */
     val snapped: RoutePoint?,
+    /** This reading is the first within [GuidanceTracker]'s arrive distance of the waypoint (once per waypoint). */
+    val atWaypoint: Boolean,
     /** This reading decided what happened at the waypoint (once per waypoint); null = nothing yet. */
     val waypoint: WaypointResult?,
     val arrived: Boolean,
@@ -34,6 +36,7 @@ enum class WaypointResult {
  * (`GuidanceTrackerTest`):
  * - progress = the nearest route point, searched a little behind and ahead of the last one;
  * - off route = more than [offRouteMetres] away for [offRouteFixes] readings in a row -> reroute;
+ * - at the waypoint = the first reading within [arriveMetres] of it (shown at once, before it is decided);
  * - waypoint ARRIVED = within [arriveMetres] of it and slower than [slowKmh] for [stopMillis];
  * - waypoint PASSED = came within [nearMetres], then got more than [passedMetres] away without
  *   arriving. The motorway passes rest areas 70-100 m from their map point, so distance alone can't
@@ -55,6 +58,7 @@ class GuidanceTracker(
     // The waypoint being watched, and what we know about it so far.
     private var waypointId: String? = null
     private var cameNear = false
+    private var wasAt = false
     private var slowSinceMillis: Long? = null
     private var decided = false
 
@@ -90,10 +94,12 @@ class GuidanceTracker(
         val toWaypointMetres = waypoint?.let { haversineKm(GeoPoint(fix.lat, fix.lng), GeoPoint(it.lat, it.lng)) * 1000 }
         // Near the waypoint the car may skip the rest-area ramp; that is not "lost", so no reroute.
         val nearWaypoint = toWaypointMetres != null && toWaypointMetres <= 2_000
+        val justAt = waypoint != null && toWaypointMetres != null && justReached(waypoint, toWaypointMetres)
         return TrackUpdate(
             km = lastKm,
             offRoute = !onRoute,
             snapped = if (onRoute) route.geometry.pointAt(lastKm) else null,
+            atWaypoint = justAt,
             waypoint = if (waypoint != null && toWaypointMetres != null) waypointResult(waypoint, toWaypointMetres, fix) else forgetWaypoint(),
             arrived = onRoute && route.totalKm - lastKm < 0.05,
             // Keep requesting until the navigator's cooldown allows a reroute. A one-shot
@@ -108,14 +114,27 @@ class GuidanceTracker(
         return null
     }
 
+    /** Starts watching [waypoint] afresh when it is a different one. */
+    private fun watch(waypoint: Place) {
+        if (waypoint.id == waypointId) return
+        waypointId = waypoint.id
+        cameNear = false
+        wasAt = false
+        slowSinceMillis = null
+        decided = false
+    }
+
+    /** True on the first reading within [arriveMetres] of [waypoint]. */
+    private fun justReached(waypoint: Place, metres: Double): Boolean {
+        watch(waypoint)
+        if (wasAt || decided || metres > arriveMetres) return false
+        wasAt = true
+        return true
+    }
+
     /** ARRIVED or PASSED once per waypoint; null until one of them happens. */
     private fun waypointResult(waypoint: Place, metres: Double, fix: GpsFix): WaypointResult? {
-        if (waypoint.id != waypointId) {
-            waypointId = waypoint.id
-            cameNear = false
-            slowSinceMillis = null
-            decided = false
-        }
+        watch(waypoint)
         if (decided) return null
         if (metres <= nearMetres) cameNear = true
         val slow = fix.speedKmh != null && fix.speedKmh <= slowKmh

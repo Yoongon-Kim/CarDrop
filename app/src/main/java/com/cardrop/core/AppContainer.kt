@@ -15,6 +15,7 @@ import com.cardrop.core.model.Place
 import com.cardrop.drive.DemoRoute
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.ScriptedRouteSimulator
+import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.FallbackRouteProvider
@@ -33,6 +34,7 @@ import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Owner: lead. The one place that decides fake vs real for every interface.
@@ -107,6 +109,9 @@ class AppContainer(context: Context) {
     val phrases: PhraseStore = PrefsPhraseStore(context)
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice)
+
+    /** This car got to the crew's stop, stopped there or drove past it: the card on the CarDrop side. */
+    val stopNotice: StateFlow<StopNotice?> get() = trip.notice
 
     init {
         trip.start()

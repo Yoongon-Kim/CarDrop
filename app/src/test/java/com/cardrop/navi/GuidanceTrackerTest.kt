@@ -68,6 +68,23 @@ class GuidanceTrackerTest {
     }
 
     @Test
+    fun getsToTheStopOnceBeforeItIsDecided() {
+        // Driving past: "at the stop" within 300 m, then PASSED well after it.
+        val past = GuidanceTracker().let { t -> (0..80).map { s -> t.update(route, fix(4.0 + s * step, second = s), restAreaAt(5.0)) } }
+        assertEquals(1, past.count { it.atWaypoint })
+        assertTrue(past.indexOfFirst { it.atWaypoint } < past.indexOfFirst { it.waypoint == WaypointResult.PASSED })
+        assertTrue(past.first { it.atWaypoint }.km > 4.7) // about 300 m before the stop, not 600
+
+        // Stopping: "at the stop" first, ARRIVED 10 s of standing still later.
+        val tracker = GuidanceTracker()
+        val stop = restAreaAt(5.0)
+        val updates = (0..20).map { s -> tracker.update(route, fix(4.4 + s * step, second = s), stop) } +
+            (21..40).map { s -> tracker.update(route, fix(5.0, offNorthMetres = 100.0, second = s, kmh = 0.0), stop) }
+        assertEquals(1, updates.count { it.atWaypoint })
+        assertTrue(updates.indexOfFirst { it.atWaypoint } < updates.indexOfFirst { it.waypoint == WaypointResult.ARRIVED })
+    }
+
+    @Test
     fun aShortSlowdownBesideTheStopIsNotAnArrival() {
         val tracker = GuidanceTracker()
         val restArea = restAreaAt(5.0)

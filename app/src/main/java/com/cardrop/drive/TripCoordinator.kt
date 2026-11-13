@@ -12,6 +12,8 @@ import com.cardrop.navi.WaypointResult
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -22,7 +24,8 @@ import kotlinx.coroutines.launch
  * - the crew destination changes -> record it as the route (the driver opens the map app)
  * - the crew forms -> start moving the cars on the route
  * - a vote ends -> record the winner as the waypoint and say it aloud
- * - this car stops at the waypoint or drives past it -> say it aloud and tell the crew
+ * - this car gets to the waypoint -> show it ([notice]); it stops there or drives past it -> say it aloud,
+ *   tell the crew, and show that too
  */
 class TripCoordinator(
     private val scope: CoroutineScope,
@@ -30,19 +33,29 @@ class TripCoordinator(
     private val route: RouteSimulator,
     private val navigation: NavigationHandoff,
     private val voice: VoiceService,
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     private var job: Job? = null
+
+    private val _notice = MutableStateFlow<StopNotice?>(null)
+
+    /** What the CarDrop side shows about the crew's stop ([StopNoticeCard]); null = nothing. */
+    val notice: StateFlow<StopNotice?> = _notice
 
     fun start() {
         if (job?.isActive == true) return
         job = scope.launch {
             launch { navigation.waypointEvents.collect(::onWaypoint) }
+            launch {
+                navigation.reachedWaypoint.collect { _notice.value = StopNotice(it, StopNotice.Kind.AT_STOP, atMillis = now()) }
+            }
             var previousKey: String? = null
             var previousCars = emptyList<String>()
             var previousDestination: Place? = null
             combine(crew.crew, crew.drops) { current, drops -> current to drops }.collect { (current, drops) ->
                 val key = current?.let { "${it.code}:${it.hostCarId}" }
                 if (key != previousKey) {
+                    _notice.value = null
                     navigation.clear()
                     route.stop()
                     navigation.decisions.forCrew(key)
@@ -85,7 +98,9 @@ class TripCoordinator(
             WaypointResult.PASSED -> "${StopNews.passed(event.place)}. 목적지로 안내할게요" to StopNews.passed(event.place)
         }
         runCatching { voice.speak(spoken) }
-        runCatching { crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = forCrew)) }
+        val told = runCatching { crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = forCrew)) }.isSuccess
+        val kind = if (event.result == WaypointResult.ARRIVED) StopNotice.Kind.ARRIVED else StopNotice.Kind.PASSED
+        _notice.value = StopNotice(event.place, kind, crewTold = told, atMillis = now())
     }
 
     private fun involved(drop: Drop): Boolean = drop.topic != DropTopic.FUEL ||

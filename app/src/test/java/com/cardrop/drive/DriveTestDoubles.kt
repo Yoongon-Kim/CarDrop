@@ -52,6 +52,7 @@ internal class TestNavigation : NavigationHandoff {
     }
     override fun launch(): Boolean { launches++; return available && route.value.destination != null }
     override val waypointEvents = MutableSharedFlow<WaypointEvent>(extraBufferCapacity = 8)
+    override val reachedWaypoint = MutableSharedFlow<Place>(extraBufferCapacity = 8)
 }
 
 internal class TestRoute : RouteSimulator {

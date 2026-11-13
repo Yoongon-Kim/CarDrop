@@ -83,9 +83,11 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays
   empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in
   the order ticked; 노래, 같이 켜기 and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`,
-  SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names
-  (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09, 게임 초대 15, 편지함 07.
-  Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+  SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names: 휴게소 / 식사 / 주유
+  board 10 as a pop-up over 04 for the whole crew (`QuickDrop.popupTopic()`, `QuickDropPicker`; lead, 2026-11-14). After
+  보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
+  vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
+  page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
 - Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
   another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
   `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks
@@ -101,8 +103,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   standalone export `CarDrop_최종UI.html` (chosen by the lead on 2026-11-13).
 - The live canvas (link above) has moved on since: empty quick-drop slots with 편집, a quick-drop pop-up with a
   result notice, a feedback pill after sending, car nicknames, voice messages and shared `.cd-*` styles. We build
-  only the quick-drop slots with 편집 (see board 04's quick drops above), not the others. Read the canvas only for
-  reference; never copy it over `design/FinalApp.dc.html`.
+  only the quick-drop slots with 편집 and the quick-drop pop-up without its result notice (see board 04's quick drops
+  above), not the others. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
 - Week 1 cuts: song drop (12, 13), omok/chess (15), safety race (16, 17), ads and points (18, 19).
 

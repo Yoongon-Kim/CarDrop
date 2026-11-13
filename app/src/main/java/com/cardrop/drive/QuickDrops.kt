@@ -30,17 +30,25 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
     ;
 
     /**
-     * Where its tile on board 04 goes: 휴게소 / 식사 / 주유 open board 10 for the whole crew (no pop-up, as before),
-     * 한마디 board 09, 게임 초대 board 15, 편지함 board 07. Null for the cut ones.
+     * 휴게소 / 식사 / 주유: their tile opens board 10 as a pop-up over board 04 (`QuickDropPicker`, for the whole
+     * crew) with this topic, and the driver stays on 04 after sending. Null for the other tiles ([screen]).
+     */
+    fun popupTopic(): DropTopic? = when (this) {
+        REST -> DropTopic.REST
+        FOOD -> DropTopic.FOOD
+        FUEL -> DropTopic.FUEL
+        SHOUT, SONG, GAME, TOGETHER, INBOX, SCORE -> null
+    }
+
+    /**
+     * Where the other tiles go: 한마디 board 09, 게임 초대 board 15, 편지함 board 07. Null for the pop-up ones
+     * ([popupTopic]) and the cut ones.
      */
     fun screen(): Screen? = when (this) {
-        REST -> Screen.AiRecommend(DropTopic.REST)
-        FOOD -> Screen.AiRecommend(DropTopic.FOOD)
-        FUEL -> Screen.AiRecommend(DropTopic.FUEL)
         SHOUT -> Screen.Shout()
         GAME -> Screen.Games
         INBOX -> Screen.Inbox
-        SONG, TOGETHER, SCORE -> null
+        REST, FOOD, FUEL, SONG, TOGETHER, SCORE -> null
     }
 }
 

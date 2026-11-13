@@ -28,12 +28,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cardrop.ai.AiRecommendScreen
 import com.cardrop.ai.AiViewModel
+import com.cardrop.ai.QuickDropPicker
 import com.cardrop.ai.QuizScreen
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
 import com.cardrop.core.demo.DemoRailButton
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
+import com.cardrop.core.model.DropTopic
 import com.cardrop.core.navigation.DropRoutingEffect
 import com.cardrop.core.navigation.Screen
 import com.cardrop.core.navigation.inboxScreenFor
@@ -116,6 +118,9 @@ fun CarDropApp(container: AppContainer) {
         ?: Car(container.crew.myCarId, "내 차", CarColor.BLUE, isMe = true)
     // The DEMO panel: its button sits in the rail (so it never covers a screen's bottom buttons), the panel over the screen.
     var demoOpen by remember { mutableStateOf(false) }
+    // Board 04's 휴게소 / 식사 / 주유 tiles: board 10 as a pop-up over 04 (null = closed). Keyed on the screen, so any
+    // other screen closes it, e.g. another car's vote that opens board 11.
+    var quickDropTopic by remember(navigator.current) { mutableStateOf<DropTopic?>(null) }
 
     CarDropShell(
         current = navigator.current,
@@ -130,12 +135,15 @@ fun CarDropApp(container: AppContainer) {
         railExtra = { DemoRailButton(onClick = { demoOpen = !demoOpen }) },
     ) {
         // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
-        val driveScreen: @Composable (FuelInvite?) -> Unit = { invite ->
+        val driveScreen: @Composable (FuelInvite?) -> Unit = { invite -> Box(modifier = Modifier.fillMaxSize()) {
             val quickDrops by container.quickDrops.chosen.collectAsStateWithLifecycle()
             DriveMainScreen(
                 vm = driveVm,
                 quickDrops = quickDrops,
-                onQuickDrop = { drop -> drop.screen()?.let(navigator::go) },
+                onQuickDrop = { drop ->
+                    val topic = drop.popupTopic()
+                    if (topic != null) quickDropTopic = topic else drop.screen()?.let(navigator::go)
+                },
                 onEditQuickDrops = { navigator.go(Screen.QuickDropEdit) },
                 onOpenDropSend = { navigator.go(Screen.DropSend) },
                 onOpenInbox = { navigator.go(Screen.Inbox) },
@@ -148,7 +156,17 @@ fun CarDropApp(container: AppContainer) {
                 },
                 invite = invite,
             )
-        }
+            // After sending, the pop-up closes and the driver stays on 04; the voice says "휴게소 투표를 보냈어요".
+            quickDropTopic?.let { topic ->
+                QuickDropPicker(
+                    vm = aiVm,
+                    topic = topic,
+                    placeTimes = container.placeTimes,
+                    onClose = { quickDropTopic = null },
+                    onSent = { quickDropTopic = null },
+                )
+            }
+        } }
         when (val screen = navigator.current) {
             Screen.CreateCrew -> CreateCrewScreen(
                 vm = crewVm,

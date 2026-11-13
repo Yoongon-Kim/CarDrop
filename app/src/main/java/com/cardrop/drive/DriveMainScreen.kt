@@ -90,7 +90,7 @@ fun DriveMainScreen(
             onMyLowFuel = if (hasCrew) onFuelWarning else null,
         )
 
-        Text("퀵 드랍 · 누르면 바로 보낼 곳을 골라요", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+        Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
             QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }

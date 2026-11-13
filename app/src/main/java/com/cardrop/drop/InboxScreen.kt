@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -111,14 +113,11 @@ fun InboxScreen(
                     Icon(CdIcons.Close, contentDescription = "닫기", tint = CdColors.Ink2, modifier = Modifier.size(22.dp))
                 }
             }
+            // "전체 5", "응답 필요 2", "소셜 2", "지난 결정" (target 675): a count on every tab but the last.
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 InboxTab.entries.forEach { t ->
                     val count = mine.count { t.matches(it, vm.myCarId, isSkipped) }
-                    CdChip(
-                        text = if (t == InboxTab.NEEDS_ANSWER && count > 0) "${t.label} $count" else t.label,
-                        onClick = { tab = t },
-                        style = if (t == tab) ChipStyle.Primary else ChipStyle.White,
-                    )
+                    TabPill(if (t == InboxTab.DECIDED) t.label else "${t.label} $count", selected = t == tab) { tab = t }
                 }
             }
             Column(
@@ -211,6 +210,22 @@ private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: Stri
             DropStatus.DECIDED -> CdChip("결과 보기", onClick = onOpen, style = ChipStyle.Blue)
             DropStatus.SOCIAL -> Unit
         }
+    }
+}
+
+/** One tab: a round pill 40 high, dark with white text when chosen, white with grey text otherwise (target 285, 675). */
+@Composable
+private fun TabPill(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (selected) CdColors.Ink else CdColors.White)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (selected) CdColors.White else CdColors.Gray600, maxLines = 1)
     }
 }
 

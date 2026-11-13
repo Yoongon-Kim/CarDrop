@@ -18,7 +18,10 @@ words, keep changes small, and run the build before saying something works.
 | --- | --- | --- | --- |
 | Lead | `ai/`, `voice/`, `core/` | 09, 10, 15 (quiz) | `AiService`, `VoiceService` |
 | Member A | `crew/`, `drop/` | 01, 02, 03, 07, 08, 11 | `CrewRepository` |
-| Member B | `vehicle/`, `drive/`, `navi/` | 04, 05, 06, 14, in-app navigator (left third) | `VehicleRepository`, `RouteSimulator`, `NavigationHandoff` |
+| Lead (was Member B) | `vehicle/`, `drive/`, `navi/` | 04, 05, 06, 14, in-app navigator (left third) | `VehicleRepository`, `RouteSimulator`, `NavigationHandoff` |
+
+Member B finished on 2026-11-13 (PR #9) and does no further work. The lead now owns B's folders and
+remaining tasks (use `lead/...` branches there); code comments that still say "Member B" mean the lead.
 
 Rules:
 - Edit only your own folders. `core/` (models, navigation, theme, `AppContainer`, `CarDropApp`) changes

@@ -98,12 +98,15 @@ fun DriveMainScreen(
             onMyLowFuel = if (hasCrew) onFuelWarning else null,
         )
 
-        Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
-            QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
-            QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
-            QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
+        // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
+        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
+                QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
+                QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
+                QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
+            }
         }
 
         DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak)

@@ -1,5 +1,11 @@
 package com.cardrop.drop
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -10,10 +16,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +44,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -106,151 +115,163 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
     val sender = if (drop.fromCarId == vm.myCarId) "우리 차" else vm.carName(drop.fromCarId)
     val vote = pick.vote(drop.candidates)
 
-    // 응답하기 sits at the bottom of the screen (target line 467, `margin-top: auto`): 72 high, corners 22, 20 / 800.
-    ScreenColumn(bottom = {
-        PrimaryButton(
-            text = if (alreadyVoted) "응답했어요" else "응답하기",
-            enabled = !alreadyVoted && vote != null,
-            onClick = {
-                if (vote != null) {
-                    // A pass skips the stop first, so the stop never reaches this car's route, even if this
-                    // answer is the last one and ends the vote at once.
-                    if (pick == VotePick.Pass) onPass(dropId)
-                    vm.vote(dropId, vote)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            height = 72.dp,
-            radius = 22.dp,
-            fontSize = 20.sp,
-        )
-    }) {
-        // Target lines 426-430 and 711-713: an orange tag, the big title and why these places, at the top.
-        ScreenHeader(
-            eyebrow = null,
-            title = drop.title,
-            tag = {
-                Pill(
-                    "${sender}의 제안 · ${drop.topic.voteTag()}",
-                    background = CdColors.OrangeLight,
-                    color = CdColors.OrangeDark,
-                    fontSize = 13.sp,
-                    padding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                )
-            },
-            titleSize = 32.sp,
-            titleLetterSpacing = TightLetterSpacing,
-            subtitle = drop.message.ifBlank { null },
-            subtitleSize = 15.sp,
-            gap = 6.dp,
-            verticalAlignment = Alignment.Top,
-        ) {
-            // The spin chip over the time left, at the right (target lines 432-436, 784). The chip opens the
-            // wheel and closes it again, so it stays while the wheel is open.
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (canSpin) {
-                    CdChip(
-                        "고민되면 돌려보기",
-                        onClick = { wheelOpen = !wheelOpen },
-                        style = ChipStyle.Dashed,
-                        icon = CdIcons.Wheel,
-                        height = 36.dp,
-                        radius = 999.dp,
-                        fontSize = 12.sp,
-                        iconSize = 24.dp,
-                        iconTint = Color.Unspecified, // the wheel keeps its three colours
-                        contentPadding = PaddingValues(start = 6.dp, end = 12.dp),
+    // The screen, with the wheel's pop-over above it.
+    Box(Modifier.fillMaxSize()) {
+        // 응답하기 sits at the bottom of the screen (target line 467, `margin-top: auto`): 72 high, corners 22, 20 / 800.
+        ScreenColumn(bottom = {
+            PrimaryButton(
+                text = if (alreadyVoted) "응답했어요" else "응답하기",
+                enabled = !alreadyVoted && vote != null,
+                onClick = {
+                    if (vote != null) {
+                        // A pass skips the stop first, so the stop never reaches this car's route, even if this
+                        // answer is the last one and ends the vote at once.
+                        if (pick == VotePick.Pass) onPass(dropId)
+                        vm.vote(dropId, vote)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                height = 72.dp,
+                radius = 22.dp,
+                fontSize = 20.sp,
+            )
+        }) {
+            // Target lines 426-430 and 711-713: an orange tag, the big title and why these places, at the top.
+            ScreenHeader(
+                eyebrow = null,
+                title = drop.title,
+                tag = {
+                    Pill(
+                        "${sender}의 제안 · ${drop.topic.voteTag()}",
+                        background = CdColors.OrangeLight,
+                        color = CdColors.OrangeDark,
+                        fontSize = 13.sp,
+                        padding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     )
-                }
-                Text(
-                    "%d:%02d".format(secondsLeft / 60, secondsLeft % 60),
-                    color = CdColors.Alert,
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 38.sp,
-                )
-            }
-        }
-        // The places, 3 to a row and 12 apart; a 4th and 5th place start a new row (target lines 450-456). Cards in
-        // a row are as tall as the tallest, like the target's grid.
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            drop.candidates.withIndex().chunked(3).forEach { row ->
-                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { (index, candidate) ->
-                        // The cars that voted for it, in crew order; this car too once it picked it (target line 718).
-                        val voters = cars.filter { car ->
-                            drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !alreadyVoted && counted == candidate.id)
-                        }
-                        CandidateCard(
-                            number = index + 1,
-                            candidate = candidate,
-                            trip = times.trip(candidate.place),
-                            voters = voters,
-                            picked = pick == VotePick.Place(candidate.id),
-                            counted = counted == candidate.id,
-                            onClick = if (alreadyVoted) null else ({ pick = VotePick.Place(candidate.id) }),
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                },
+                titleSize = 32.sp,
+                titleLetterSpacing = TightLetterSpacing,
+                subtitle = drop.message.ifBlank { null },
+                subtitleSize = 15.sp,
+                gap = 6.dp,
+                verticalAlignment = Alignment.Top,
+            ) {
+                // The spin chip over the time left, at the right (target lines 432-436, 784). The chip opens the
+                // wheel and closes it again, so it stays while the wheel is open.
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canSpin) {
+                        CdChip(
+                            "고민되면 돌려보기",
+                            onClick = { wheelOpen = !wheelOpen },
+                            style = ChipStyle.Dashed,
+                            icon = CdIcons.Wheel,
+                            height = 36.dp,
+                            radius = 999.dp,
+                            fontSize = 12.sp,
+                            iconSize = 24.dp,
+                            iconTint = Color.Unspecified, // the wheel keeps its three colours
+                            contentPadding = PaddingValues(start = 6.dp, end = 12.dp),
                         )
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    Text(
+                        "%d:%02d".format(secondsLeft / 60, secondsLeft % 60),
+                        color = CdColors.Alert,
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        lineHeight = 38.sp,
+                    )
                 }
             }
-        }
-        // 아무 데나 좋아 and 난 패스 at the left; what the driver can say and how many cars answered at the right
-        // (target lines 460-465, 722). Voting by voice isn't built yet; the hint is the design's.
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ChoiceButton(
-                "아무 데나 좋아",
-                on = pick == VotePick.Anywhere,
-                onBackground = CdColors.BlueLight,
-                onText = CdColors.BlueDark,
-                onEdge = CdColors.Blue,
-                enabled = !alreadyVoted,
-            ) { pick = VotePick.Anywhere }
-            if (canPass) {
-                ChoiceButton(
-                    "난 패스, 먼저 갈게",
-                    on = pick == VotePick.Pass,
-                    onBackground = CdColors.RedLight,
-                    onText = CdColors.Red,
-                    onEdge = CdColors.Alert,
-                    enabled = !alreadyVoted,
-                ) { pick = VotePick.Pass }
+            // The places, 3 to a row and 12 apart; a 4th and 5th place start a new row (target lines 450-456). Cards in
+            // a row are as tall as the tallest, like the target's grid.
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                drop.candidates.withIndex().chunked(3).forEach { row ->
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        row.forEach { (index, candidate) ->
+                            // The cars that voted for it, in crew order; this car too once it picked it (target line 718).
+                            val voters = cars.filter { car ->
+                                drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !alreadyVoted && counted == candidate.id)
+                            }
+                            CandidateCard(
+                                number = index + 1,
+                                candidate = candidate,
+                                trip = times.trip(candidate.place),
+                                voters = voters,
+                                picked = pick == VotePick.Place(candidate.id),
+                                counted = counted == candidate.id,
+                                onClick = if (alreadyVoted) null else ({ pick = VotePick.Place(candidate.id) }),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
             }
-            Spacer(Modifier.weight(1f))
-            Text(if (canPass) "“1번”, “아무 데나”, “패스”" else "“1번”, “아무 데나”", color = CdColors.Gray600, fontSize = 14.sp)
-            Pill(
-                "${drop.votes.size}/$carCount 응답",
-                background = CdColors.White,
-                color = CdColors.Ink,
-                padding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-            )
+            // 아무 데나 좋아 and 난 패스 at the left; what the driver can say and how many cars answered at the right
+            // (target lines 460-465, 722). Voting by voice isn't built yet; the hint is the design's.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ChoiceButton(
+                    "아무 데나 좋아",
+                    on = pick == VotePick.Anywhere,
+                    onBackground = CdColors.BlueLight,
+                    onText = CdColors.BlueDark,
+                    onEdge = CdColors.Blue,
+                    enabled = !alreadyVoted,
+                ) { pick = VotePick.Anywhere }
+                if (canPass) {
+                    ChoiceButton(
+                        "난 패스, 먼저 갈게",
+                        on = pick == VotePick.Pass,
+                        onBackground = CdColors.RedLight,
+                        onText = CdColors.Red,
+                        onEdge = CdColors.Alert,
+                        enabled = !alreadyVoted,
+                    ) { pick = VotePick.Pass }
+                }
+                Spacer(Modifier.weight(1f))
+                Text(if (canPass) "“1번”, “아무 데나”, “패스”" else "“1번”, “아무 데나”", color = CdColors.Gray600, fontSize = 14.sp)
+                Pill(
+                    "${drop.votes.size}/$carCount 응답",
+                    background = CdColors.White,
+                    color = CdColors.Ink,
+                    padding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+            // What this car's answer means, said by the AI: "**{1번}에 1표** · “1번”, “첫 번째”도 같은 표예요" (target
+            // lines 466, 724). White, corners 18, padding 14 x 16, the small AI tag 12 to the left of the 15px text.
+            val (meaning, aside) = pick.explain(drop.candidates)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(CdColors.White)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AiTag(small = true)
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(meaning) }
+                        append(" · ")
+                        withStyle(SpanStyle(color = CdColors.Gray600)) { append(aside) }
+                    },
+                    color = CdColors.Ink,
+                    fontSize = 15.sp,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            TodoNote("일행 위치 지도 (board 11)")
         }
-        // What this car's answer means, said by the AI: "**{1번}에 1표** · “1번”, “첫 번째”도 같은 표예요" (target
-        // lines 466, 724). White, corners 18, padding 14 x 16, the small AI tag 12 to the left of the 15px text.
-        val (meaning, aside) = pick.explain(drop.candidates)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(CdColors.White)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        // The wheel pops over the top right of the screen (target line 440: right 28, top 100, 300 wide), rising
+        // 18 px while it fades in for 0.35 s (the target's `cdPop`). Only the spin chip closes it again.
+        val rise = with(LocalDensity.current) { 18.dp.roundToPx() }
+        AnimatedVisibility(
+            visible = canSpin && wheelOpen,
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 100.dp, end = 28.dp),
+            enter = fadeIn(tween(350, easing = EaseOut)) + slideInVertically(tween(350, easing = EaseOut)) { rise },
+            exit = ExitTransition.None,
         ) {
-            AiTag(small = true)
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(meaning) }
-                    append(" · ")
-                    withStyle(SpanStyle(color = CdColors.Gray600)) { append(aside) }
-                },
-                color = CdColors.Ink,
-                fontSize = 15.sp,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        if (canSpin && wheelOpen) {
             VoteRoulette(
                 candidates = drop.candidates,
                 // Only selects it; the driver still presses 응답하기 to send the vote.
@@ -258,10 +279,9 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                     pick = VotePick.Place(candidateId)
                     wheelOpen = false
                 },
-                onClose = { wheelOpen = false },
+                modifier = Modifier.width(300.dp),
             )
         }
-        TodoNote("일행 위치 지도 (board 11)")
     }
 }
 

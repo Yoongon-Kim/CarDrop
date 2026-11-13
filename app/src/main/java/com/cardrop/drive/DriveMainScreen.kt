@@ -1,29 +1,39 @@
 package com.cardrop.drive
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Drop
+import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
-import com.cardrop.core.ui.CdCard
-import com.cardrop.core.ui.InfoRow
+import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.Pill
-import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
-import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.theme.CdColors
 
 /**
- * Board 04 주행 메인 · Owner: Member B (now the lead).
- * With an [invite] it is board 06: another car's fuel invitation shows as a banner on this screen, as in the design.
+ * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick drops and the
+ * big "드랍하기" button (its mic suggests a drop by voice). Owner: Member B (now the lead).
+ * With an [invite] it is board 06: another car's fuel invitation shows as a banner under the road.
  */
 @Composable
 fun DriveMainScreen(
@@ -33,6 +43,7 @@ fun DriveMainScreen(
     onOpenInbox: () -> Unit,
     onFuelWarning: () -> Unit,
     onSpeak: () -> Unit,
+    onShout: () -> Unit = {},
     invite: FuelInvite? = null,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
@@ -50,48 +61,157 @@ fun DriveMainScreen(
     }
     val hasCrew = crew != null
     val cars = crew?.cars.orEmpty()
-    val myEta = positions[vm.myCarId]?.etaMinutes
     val inviteDrop = invite?.let { i -> drops.firstOrNull { it.id == i.dropId } }
     val inviteFrom = if (invite != null && inviteDrop != null) invite.carName(inviteDrop.fromCarId) else null
+    val waiting = drops.count { needsMyAnswer(it, vm) }
 
     ScreenColumn {
         ScreenHeader(
             eyebrow = "${crew?.name ?: "크루 없음"} · ${cars.size}대 함께 · 음성 우선",
             title = when {
                 inviteFrom != null -> "$inviteFrom 소식이 왔어요"
-                myEta != null -> "${navRoute.destination?.name ?: crew?.destination?.name}까지 ${myEta / 60}시간 ${myEta % 60}분"
+                hasCrew && positions.isNotEmpty() -> "모두 잘 오고 있어요"
                 else -> "출발 준비 중"
             },
         ) {
-            Pill(input.label)
-        }
-
-        val fuel = snapshot.fuelPercent
-        if (fuel != null && fuel <= LOW_FUEL_PERCENT) {
-            CdCard(modifier = Modifier.fillMaxWidth(), onClick = if (hasCrew) onFuelWarning else null) {
-                InfoRow(
-                    title = "연료 $fuel% · 주행 가능 ${snapshot.rangeKm?.toInt() ?: "—"}km",
-                    subtitle = if (hasCrew) "눌러서 주유소 추천 받기" else "크루를 만들면 주유소를 추천해요",
-                    trailing = { Pill("연료 경고", CdColors.OrangeLight, CdColors.OrangeDark) },
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                ModePill(input)
+                InboxButton(waiting, enabled = hasCrew, onClick = onOpenInbox)
             }
         }
 
-        CrewDriveOverview(cars, positions, vm.myCarId, snapshot.fuelPercent) {
-            if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
+        CrewRoad(cars, positions, vm.myCarId, navRoute.destination?.name ?: crew?.destination?.name)
+        if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
+        CrewCards(
+            cars, positions, vm.myCarId, snapshot.fuelPercent, snapshot.rangeKm,
+            onMyLowFuel = if (hasCrew) onFuelWarning else null,
+        )
+
+        Text("퀵 드랍 · 누르면 바로 보낼 곳을 골라요", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
+            QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
+            QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
+            QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
         }
 
-        Text("퀵 드랍 · 보낼 곳을 골라요", style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            SecondaryButton("휴게소", onClick = { onQuickDrop(DropTopic.REST) }, modifier = Modifier.weight(1f), enabled = hasCrew)
-            SecondaryButton("식사", onClick = { onQuickDrop(DropTopic.FOOD) }, modifier = Modifier.weight(1f), enabled = hasCrew)
-            SecondaryButton("주유", onClick = { onQuickDrop(DropTopic.FUEL) }, modifier = Modifier.weight(1f), enabled = hasCrew)
-            SecondaryButton("편지함", onClick = onOpenInbox, modifier = Modifier.weight(1f), enabled = hasCrew)
+        DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak)
+    }
+}
+
+/** A vote or invite from another car that this car hasn't answered yet (the inbox badge's count). */
+private fun needsMyAnswer(drop: Drop, vm: DriveViewModel): Boolean =
+    drop.kind == DropKind.DECISION && !drop.isDecided && drop.fromCarId != vm.myCarId &&
+        vm.myCarId !in drop.votes && !vm.skipped(drop.id)
+
+/** The design's green "● 음성 모드" pill while driving; parked or not known yet keep their plain labels. */
+@Composable
+private fun ModePill(input: DrivingInput) {
+    if (input != DrivingInput.MOVING) {
+        Pill(input.label)
+        return
+    }
+    Row(
+        modifier = Modifier.height(44.dp).clip(RoundedCornerShape(999.dp)).background(CdColors.GreenLight).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(CdColors.Green))
+        Text("음성 모드", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Green)
+    }
+}
+
+/** The inbox button with a red count of drops waiting for this car's answer. */
+@Composable
+private fun InboxButton(waiting: Int, enabled: Boolean, onClick: () -> Unit) {
+    Box {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(CdColors.White)
+                .clickable(enabled = enabled, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(CdIcons.Inbox, contentDescription = "드랍 편지함, 답할 드랍 ${waiting}개", tint = CdColors.Ink2, modifier = Modifier.size(26.dp))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            PrimaryButton("말로 제안해요", onClick = onSpeak, modifier = Modifier.weight(1f), enabled = crew != null)
-            SecondaryButton("드랍하기", onClick = onOpenDropSend, modifier = Modifier.weight(1f), enabled = hasCrew)
+        if (waiting > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .sizeIn(minWidth = 22.dp, minHeight = 22.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(CdColors.Alert)
+                    .padding(horizontal = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("$waiting", color = CdColors.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+            }
         }
-        Text("내 차 연료 ${snapshot.fuelPercent ?: "—"}% · 주행 가능 ${snapshot.rangeKm?.toInt() ?: "—"}km · 연속 운전 ${snapshot.drivingMinutes ?: "—"}분")
+    }
+}
+
+/** One of the four quick drops: an icon in its colour and a label, on a white tile. */
+@Composable
+private fun QuickTile(
+    label: String,
+    icon: ImageVector,
+    iconBackground: Color,
+    iconColor: Color,
+    enabled: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier = modifier
+            .height(72.dp)
+            .alpha(if (enabled) 1f else 0.4f)
+            .clip(shape)
+            .background(CdColors.White)
+            .border(2.dp, CdColors.White, shape)
+            .clickable(enabled = enabled, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+    ) {
+        Box(
+            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(iconBackground),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+        }
+        Text(label, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+    }
+}
+
+/** The design's big blue "드랍하기" button. Its mic circle is a separate button that suggests a drop by voice. */
+@Composable
+private fun DropButton(enabled: Boolean, onOpenDropSend: () -> Unit, onSpeak: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(if (enabled) CdColors.Blue else CdColors.Gray300)
+            .clickable(enabled = enabled, onClick = onOpenDropSend)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(CdColors.White.copy(alpha = 0.22f))
+                .clickable(enabled = enabled, onClick = onSpeak),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(CdIcons.Mic, contentDescription = "말로 제안하기", tint = CdColors.White, modifier = Modifier.size(26.dp))
+        }
+        Column {
+            Text("드랍하기", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.White)
+            Text("마이크를 누르면 말로 제안해요", fontSize = 14.sp, color = CdColors.White.copy(alpha = 0.9f))
+        }
     }
 }

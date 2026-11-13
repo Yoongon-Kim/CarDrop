@@ -157,8 +157,11 @@ private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> 
     ScreenColumn {
         FuelHeader("AI가 주유소 ${plan.stations.size}곳을 골랐어요")
         Text("가는 길에 있고, 남은 연료로 갈 수 있는 곳만 골랐어요", style = MaterialTheme.typography.bodyLarge, color = CdColors.Gray600)
-        plan.stations.forEachIndexed { i, station ->
-            StationRow(i + 1, station, selected = i == chosen, rangeKm = snapshot.rangeKm, enabled = !action.busy) { chosen = i }
+        // The stations 10 apart (target 349).
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            plan.stations.forEachIndexed { i, station ->
+                StationRow(i + 1, station, selected = i == chosen, rangeKm = snapshot.rangeKm, enabled = !action.busy) { chosen = i }
+            }
         }
         DriveActionFeedback(action)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {

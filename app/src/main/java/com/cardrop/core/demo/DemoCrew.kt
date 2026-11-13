@@ -7,8 +7,9 @@ import com.cardrop.BuildConfig
 /**
  * Owner: lead. Bot crew or real crew on this device, for the demo.
  *
- * `cardrop.useRealCrew` in local.properties is the default. The DEMO panel's "크루" switch picks the other
- * one on this device and restarts the app, because AppContainer picks the crew once, when the app starts.
+ * `cardrop.useRealCrew` in local.properties is the default. The start question (StartModeScreen) picks
+ * the crew when the app starts; the DEMO panel's "크루" switch picks the other one later and restarts the
+ * app, because AppContainer picks the crew once, when it is made.
  * The device keeps the pick until `cardrop.useRealCrew` itself changes: after editing local.properties and
  * installing again, local.properties decides again. The real crew needs the Firebase settings
  * (app/google-services.json) in the build; a build without them has only the bot crew.
@@ -36,13 +37,18 @@ object DemoCrew {
         return resolve(picked, defaultWhenPicked, BuildConfig.USE_REAL_CREW, BuildConfig.HAS_FIREBASE)
     }
 
-    /** Remembers [realCrew] and restarts the app with that crew. */
-    fun pickAndRestart(context: Context, realCrew: Boolean) {
-        // commit(), not apply(): the process ends right below, before apply() would write.
+    /** Remembers [realCrew] (the start question, StartModeScreen). */
+    fun pick(context: Context, realCrew: Boolean) {
+        // commit(), not apply(): pickAndRestart ends the process right after, before apply() would write.
         demoPrefs(context).edit()
             .putBoolean(PICKED_KEY, realCrew)
             .putBoolean(DEFAULT_WHEN_PICKED_KEY, BuildConfig.USE_REAL_CREW)
             .commit()
+    }
+
+    /** Remembers [realCrew] and restarts the app with that crew. */
+    fun pickAndRestart(context: Context, realCrew: Boolean) {
+        pick(context, realCrew)
         restartApp(context)
     }
 

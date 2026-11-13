@@ -102,9 +102,10 @@ fun CarDropShell(
  * The design's CarDrop area is 1067 x 900 px (1600 x 900 minus the 533 px navigation third).
  * This scales the UI so 1 dp in our code = 1 design px when the window is [designWidth] x 900, and
  * grows or shrinks everything together on other windows. Write sizes straight from the design boards.
+ * Also used by the start question (core/demo/StartModeScreen.kt), shown before this shell.
  */
 @Composable
-private fun DesignScale(designWidth: Float, content: @Composable () -> Unit) {
+internal fun DesignScale(designWidth: Float, content: @Composable () -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val current = LocalDensity.current
         val scale = minOf(maxWidth.value / designWidth, maxHeight.value / DESIGN_HEIGHT)

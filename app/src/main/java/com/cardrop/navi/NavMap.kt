@@ -219,6 +219,7 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
 
     private val markers = MapMarkers(ratio)
     private val labelImages = mutableSetOf<String>()
+    private var roadRoute: LiveRoute? = null
     private var waypointLabel: String? = null
     private var destinationLabel: String? = null
 
@@ -228,7 +229,7 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
         style.addImage(IMG_WAYPOINT, markers.waypointPin())
         style.addImage(IMG_DESTINATION, markers.destinationPin())
 
-        listOf(SRC_DONE, SRC_AHEAD, SRC_CARS, SRC_ME, SRC_PLACES).forEach {
+        listOf(SRC_ROUTE, SRC_AHEAD, SRC_CARS, SRC_ME, SRC_PLACES).forEach {
             style.addSource(GeoJsonSource(it, FeatureCollection.fromFeatures(emptyList())))
         }
         // Route lines go under the base map's labels, markers on top of everything.
@@ -236,9 +237,10 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
         fun addBelowLabels(layer: Layer) {
             if (firstLabel != null) style.addLayerBelow(layer, firstLabel) else style.addLayer(layer)
         }
-        addBelowLabels(routeLine(LYR_DONE_CASING, SRC_DONE, "#FFFFFF", 5f, 13f))
-        addBelowLabels(routeLine(LYR_DONE, SRC_DONE, "#B0B8C1", 3f, 8f))
-        addBelowLabels(routeLine(LYR_AHEAD_CASING, SRC_AHEAD, "#FFFFFF", 5f, 14f))
+        // The design's route (target lines 50-52): a white road 18 wide with a grey edge (26 across) along the
+        // whole route, and the blue line (9) on it from this car on. Thinner when zoomed out.
+        addBelowLabels(routeLine(LYR_ROAD_EDGE, SRC_ROUTE, "#CBD3DD", 7f, 26f))
+        addBelowLabels(routeLine(LYR_ROAD, SRC_ROUTE, "#FFFFFF", 5f, 18f))
         addBelowLabels(routeLine(LYR_AHEAD, SRC_AHEAD, "#2F6FE0", 3f, 9f))
 
         style.addLayer(
@@ -273,7 +275,11 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
 
     fun update(route: LiveRoute?, progressKm: Double, me: RoutePoint?, cars: List<MapCar>, waypoint: Place?, destination: Place?) {
         val geometry = route?.geometry
-        source(SRC_DONE).setGeoJson(line(geometry?.slice(0.0, progressKm).orEmpty()))
+        // The road is the whole route, so it changes only with a new route (not on every GPS reading).
+        if (route !== roadRoute) {
+            source(SRC_ROUTE).setGeoJson(line(geometry?.points.orEmpty()))
+            roadRoute = route
+        }
         source(SRC_AHEAD).setGeoJson(line(geometry?.slice(progressKm, geometry.totalKm).orEmpty()))
 
         source(SRC_ME).setGeoJson(
@@ -383,15 +389,14 @@ private const val OFFLINE_STYLE =
 private const val FOLLOW_ZOOM = 13.0
 private const val FOLLOW_TILT = 50.0
 
-private const val SRC_DONE = "cd-route-done"
+private const val SRC_ROUTE = "cd-route"
 private const val SRC_AHEAD = "cd-route-ahead"
 private const val SRC_CARS = "cd-cars"
 private const val SRC_ME = "cd-me"
 private const val SRC_PLACES = "cd-places"
-private const val LYR_DONE = "cd-route-done"
-private const val LYR_DONE_CASING = "cd-route-done-casing"
+private const val LYR_ROAD_EDGE = "cd-route-road-edge"
+private const val LYR_ROAD = "cd-route-road"
 private const val LYR_AHEAD = "cd-route-ahead"
-private const val LYR_AHEAD_CASING = "cd-route-ahead-casing"
 private const val LYR_CARS = "cd-cars"
 private const val LYR_CAR_LABELS = "cd-car-labels"
 private const val LYR_PLACES = "cd-places"

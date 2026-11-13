@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -38,6 +39,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,6 +64,9 @@ import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CarDropTheme
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.navi.PlaceSuggestion
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Board 10 AI 추천 (휴게소 · 식사 · 주유) · Owner: lead.
@@ -129,10 +136,21 @@ private fun PlacePicker(
         typed = typed,
         popup = popup,
         modifier = modifier,
-        onTypedChange = { typed = it },
+        onTypedChange = {
+            typed = it
+            vm.onTyped(it) // searches after a short pause; the suggestions replace the list
+        },
+        onClearTyped = {
+            typed = ""
+            vm.onTyped("")
+        },
+        onPickSuggestion = {
+            vm.pickSuggestion(it)
+            typed = ""
+        },
         onClose = onClose,
         onToggle = vm::togglePlace,
-        onAddTyped = { if (vm.addTypedPlace(typed)) typed = "" },
+        onAddTyped = { vm.addTypedPlace(typed) { typed = "" } },
         onListen = vm::listenForPlace,
         onConfirmHeard = vm::confirmHeardPlace,
         onRetry = { vm.loadCandidates(topic, toCarIds) },
@@ -150,6 +168,8 @@ private fun PlacePickerContent(
     popup: Boolean,
     modifier: Modifier = Modifier,
     onTypedChange: (String) -> Unit = {},
+    onClearTyped: () -> Unit = {},
+    onPickSuggestion: (PlaceSuggestion) -> Unit = {},
     onClose: () -> Unit = {},
     onToggle: (String) -> Unit = {},
     onAddTyped: () -> Unit = {},
@@ -161,8 +181,14 @@ private fun PlacePickerContent(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         PickerHeader(title, subtitle, popup, onClose)
 
+        // While the driver types, the screen works like Kakao Map's search: the list steps aside, the
+        // text box moves up under the title and the places that fit show below it. Pleos's keyboard
+        // covers the lower third of the screen without shrinking our window, so the box must not
+        // sit low while typing.
+        val suggesting = state.suggest.shown
+
         // The list scrolls on its own when it is long; the controls below stay in view.
-        Column(
+        if (!suggesting) Column(
             modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -189,6 +215,7 @@ private fun PlacePickerContent(
         }
 
         if (!state.loading) {
+            // Always composed here, whatever the mode, so the text box keeps focus and the keyboard stays up.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CdChip(
                     "말해서 추가",
@@ -204,6 +231,7 @@ private fun PlacePickerContent(
                     maxLength = 48,
                     modifier = Modifier.weight(1f),
                     onDone = onAddTyped,
+                    onClear = onClearTyped,
                 )
                 CdChip(
                     "추가",
@@ -216,6 +244,19 @@ private fun PlacePickerContent(
             state.inputError?.let { ErrorText(it) }
             state.heard?.let { place ->
                 CdChip("‘${place.name}’ 후보에 넣기", onClick = onConfirmHeard, style = ChipStyle.Blue)
+            }
+            if (suggesting) {
+                val scroll = rememberScrollState()
+                LaunchedEffect(state.suggest.query) { scroll.scrollTo(0) }
+                Column(
+                    modifier = Modifier.weight(1f, fill = false).verticalScroll(scroll),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SuggestionList(state.suggest, state.pick, popup, onPickSuggestion)
+                    // Room to scroll the last places up above the keyboard.
+                    Spacer(Modifier.height(KEYBOARD_ROOM))
+                }
+                return@Column // the send button comes back once a place is picked or the box is emptied
             }
             val count = state.pick.selected.size
             PrimaryButton(
@@ -257,6 +298,9 @@ private fun PickerHeader(title: String, subtitle: String, popup: Boolean, onClos
         }
     }
 }
+
+/** About the height of Pleos's on-screen keyboard, in this screen's units. */
+private val KEYBOARD_ROOM = 320.dp
 
 /** Tile colours for the AI's 1st, 2nd and 3rd place (design: blue, orange, teal). */
 private val tileColors = listOf(
@@ -320,8 +364,11 @@ private fun PlaceRow(
                 )
                 if (aiPick && rank == 0) AiPickBadge()
             }
-            val meta = if (aiPick) candidate.place.detail else candidate.reason
-            if (meta.isNotBlank()) Text(meta, color = CdColors.Gray600, fontSize = 14.sp)
+            // A place the driver added: "직접 추가한 장소 · <its address>", so two 스타벅스 can be told apart.
+            val meta = if (aiPick) candidate.place.detail else joinNonBlank(candidate.reason, candidate.place.detail)
+            if (meta.isNotBlank()) {
+                Text(meta, color = CdColors.Gray600, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             if (aiPick && !popup && candidate.reason.isNotBlank()) {
                 Text(candidate.reason, color = CdColors.BlueDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
@@ -333,6 +380,112 @@ private fun PlaceRow(
         CheckCircle(selected)
     }
 }
+
+/**
+ * The places that fit what the driver is typing, as one white card of rows (like Kakao Map's list).
+ * Tapping one puts it into the list, ticked.
+ */
+@Composable
+private fun SuggestionList(
+    suggest: AiViewModel.Suggestions,
+    pick: PlacePick,
+    popup: Boolean,
+    onPick: (PlaceSuggestion) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("‘${suggest.query}’ 검색 결과", color = CdColors.Gray600, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        if (suggest.searching) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+    }
+    suggest.note?.let { Text(it, color = CdColors.OrangeDark, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+    if (suggest.places.isEmpty()) {
+        if (!suggest.searching) {
+            Text("‘${suggest.query}’에 맞는 장소가 없어요", color = CdColors.Ink2, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        }
+        return
+    }
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(CdColors.White)
+            .then(if (popup) Modifier.border(2.dp, CdColors.Gray100, shape) else Modifier),
+    ) {
+        suggest.places.forEachIndexed { index, suggestion ->
+            if (index > 0) {
+                Spacer(Modifier.fillMaxWidth().padding(start = 74.dp).height(1.dp).background(CdColors.Gray100))
+            }
+            SuggestionRow(
+                suggestion = suggestion,
+                query = suggest.query,
+                inList = pick.find(suggestion.place) != null,
+                popup = popup,
+                onClick = { onPick(suggestion) },
+            )
+        }
+    }
+}
+
+/** One suggestion: pin, name (the typed part in blue), category · address, distance from the car. */
+@Composable
+private fun SuggestionRow(suggestion: PlaceSuggestion, query: String, inList: Boolean, popup: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = if (popup) 11.dp else 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(CdColors.Gray100),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(CdIcons.Pin, contentDescription = null, tint = CdColors.Gray500, modifier = Modifier.size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                highlighted(suggestion.place.name, query),
+                color = CdColors.Ink,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val meta = joinNonBlank(suggestion.category, suggestion.address)
+            if (meta.isNotEmpty()) {
+                Text(meta, color = CdColors.Gray600, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (inList) Text("후보에 있어요", color = CdColors.BlueDark, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+        suggestion.distanceKm?.let {
+            Text(distanceText(it), color = CdColors.Gray500, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** [name] with each typed word in blue, as Kakao Map marks what matched. */
+private fun highlighted(name: String, query: String): AnnotatedString = buildAnnotatedString {
+    append(name)
+    query.split(' ').filter { it.isNotBlank() }.forEach { word ->
+        var from = 0
+        while (true) {
+            val at = name.indexOf(word, from, ignoreCase = true)
+            if (at < 0) break
+            addStyle(SpanStyle(color = CdColors.Blue, fontWeight = FontWeight.ExtraBold), at, at + word.length)
+            from = at + word.length
+        }
+    }
+}
+
+/** "850m", "3.2km", "145km". */
+private fun distanceText(km: Double): String = when {
+    km < 1 -> "${(km * 1000).roundToInt()}m"
+    km < 10 -> String.format(Locale.US, "%.1fkm", km)
+    else -> "${km.roundToInt()}km"
+}
+
+private fun joinNonBlank(vararg parts: String): String = parts.filter { it.isNotBlank() }.joinToString(" · ")
 
 /** The small "AI 추천" label on the AI's best place. */
 @Composable
@@ -436,6 +589,33 @@ private fun PlacePickerPagePreview() {
             subtitle = "“휴게소 들렀다 가자” · 받는 차 크루 전체",
             state = previewState,
             typed = "",
+            popup = false,
+            modifier = Modifier.fillMaxSize().background(CdColors.Gray100).padding(horizontal = 28.dp, vertical = 24.dp),
+        )
+    }
+}
+
+@Preview(widthDp = 979, heightDp = 900)
+@Composable
+private fun PlaceSuggestionsPreview() {
+    val stop = DemoData.restStops[0]
+    CarDropTheme {
+        PlacePickerContent(
+            title = "AI가 휴게소 3곳을 골랐어요",
+            subtitle = "“휴게소 들렀다 가자” · 받는 차 크루 전체",
+            state = previewState.copy(
+                status = null,
+                heard = null,
+                suggest = AiViewModel.Suggestions(
+                    query = "덕평",
+                    places = listOf(
+                        PlaceSuggestion(stop.copy(id = "kakao-1", name = "덕평자연휴게소 양방향"), "고속도로휴게소", "경기 이천시 마장면 덕이로154번길 287-76", 0.9),
+                        PlaceSuggestion(stop.copy(id = "kakao-2", name = "덕평휴게소주유소 양방향"), "SK주유소", "경기 이천시 마장면 덕이로154번길 287-74", 0.75),
+                        PlaceSuggestion(stop.copy(id = "kakao-3", name = "덕평IC"), "고속도로IC", "경기 이천시 마장면 덕평리", 1.3),
+                    ),
+                ),
+            ),
+            typed = "덕평",
             popup = false,
             modifier = Modifier.fillMaxSize().background(CdColors.Gray100).padding(horizontal = 28.dp, vertical = 24.dp),
         )

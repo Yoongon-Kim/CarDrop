@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -213,6 +214,7 @@ fun CdChip(
  * One-line text box (design: `.cd-field`). Text longer than [maxLength] is cut off; the design
  * uses 80 for 한마디 and 48 for place names. [focusColor] is the border while typing: blue, or
  * [CdColors.Violet] on social screens. [onDone] runs when the keyboard's done key is pressed.
+ * With [onClear], a round ✕ at the right end empties the box (shown only when there is text).
  */
 @Composable
 fun CdTextField(
@@ -223,6 +225,7 @@ fun CdTextField(
     maxLength: Int = Int.MAX_VALUE,
     focusColor: Color = CdColors.Blue,
     onDone: () -> Unit = {},
+    onClear: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -241,19 +244,34 @@ fun CdTextField(
         }),
         interactionSource = interactionSource,
         decorationBox = { innerTextField ->
-            Box(
+            val showClear = onClear != null && value.isNotEmpty()
+            Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(shape)
                     .background(CdColors.White)
                     .border(2.dp, if (focused) focusColor else CdColors.Gray200, shape)
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart,
+                    .padding(start = 16.dp, end = if (showClear) 10.dp else 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (value.isEmpty()) {
-                    Text(placeholder, color = CdColors.Gray450, fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) {
+                        Text(placeholder, color = CdColors.Gray450, fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    }
+                    innerTextField()
                 }
-                innerTextField()
+                if (showClear) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(CdColors.Gray200)
+                            .clickable(role = Role.Button) { onClear?.invoke() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(CdIcons.Close, contentDescription = "지우기", tint = CdColors.Gray600, modifier = Modifier.size(14.dp))
+                    }
+                }
             }
         },
     )

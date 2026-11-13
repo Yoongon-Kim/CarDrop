@@ -25,6 +25,13 @@ object CdIcons {
         "M12 18v3",
     )
     val Check = lineIcon("Check", strokeWidth = 3f, "M20 6 9 17l-5-5")
+    /** A map pin (board 10's place suggestions). */
+    val Pin = lineIcon(
+        "Pin",
+        strokeWidth = 2.2f,
+        "M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21z",
+        "M12 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+    )
     val Fuel = lineIcon(
         "Fuel",
         strokeWidth = 2f,

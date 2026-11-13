@@ -25,6 +25,8 @@ import com.cardrop.navi.FallbackRouteProvider
 import com.cardrop.navi.GpsCrewPositions
 import com.cardrop.navi.InAppNavigation
 import com.cardrop.navi.KakaoDirections
+import com.cardrop.navi.KakaoPlaceSearch
+import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.OsrmDirections
 import com.cardrop.navi.NavigationHandoff
 import com.cardrop.navi.NaverMapHandoff
@@ -110,6 +112,11 @@ class AppContainer(context: Context) {
      * captions only, and the mic always hears "배고파" (good for rehearsing without speaking).
      */
     val voice: VoiceService = if (BuildConfig.USE_REAL_VOICE) PleosVoiceService(context) else FakeVoiceService()
+    /**
+     * Board 10's place search while typing: Kakao Local (any place in Korea) with `cardrop.kakaoRestKey`.
+     * Without the key, null: the driver can add only the places the app knows (rest stops, cafés, destinations).
+     */
+    val placeSearch: PlaceSearch? = BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoPlaceSearch)
     /** Board 09's phrases, kept on this device. */
     val phrases: PhraseStore = PrefsPhraseStore(context)
 

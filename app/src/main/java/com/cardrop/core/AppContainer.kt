@@ -11,6 +11,8 @@ import com.cardrop.ai.PrefsPhraseStore
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.core.model.Place
+import com.cardrop.core.navigation.AppNavigator
+import com.cardrop.core.navigation.DropRoutingMemory
 import com.cardrop.drive.DemoRoute
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.ScriptedRouteSimulator
@@ -100,6 +102,14 @@ class AppContainer(context: Context) {
     val voice: VoiceService = if (BuildConfig.USE_REAL_VOICE) PleosVoiceService(context) else FakeVoiceService()
     /** Board 09's phrases, kept on this device. */
     val phrases: PhraseStore = PrefsPhraseStore(context)
+
+    /**
+     * The open screen with its back stack, and which drops have already been opened. They live here, as long
+     * as the crew and trip data, so an activity restart (window size, day/night theme, language) keeps the
+     * driver on the same screen and doesn't open old drops again.
+     */
+    val navigator = AppNavigator()
+    val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice)
 

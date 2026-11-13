@@ -41,7 +41,11 @@ sealed interface Screen {
     data object Games : Screen
 }
 
-/** Minimal navigation: one current screen plus a back stack. No library to learn. */
+/**
+ * Minimal navigation: one current screen plus a back stack. No library to learn.
+ * The app's one navigator lives in AppContainer, not in a screen's `remember`, so an activity restart
+ * (window size, day/night theme, language) keeps the driver on the same screen.
+ */
 class AppNavigator(start: Screen = Screen.CreateCrew) {
     var current: Screen by mutableStateOf(start)
         private set

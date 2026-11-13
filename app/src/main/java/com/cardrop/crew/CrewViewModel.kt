@@ -212,6 +212,15 @@ class CrewViewModel(
         viewModelScope.launch { repo.vote(dropId, candidateId) }
     }
 
+    /** Board 01 "말로 읽어주기": says the join code aloud, digit by digit. Nothing without a voice service. */
+    fun speakCode() {
+        val code = crew.value?.code ?: return
+        voice?.speak(CrewVoice.codeSentence(code))
+    }
+
+    /** Board 01 "말로 읽어주기" is shown only with a voice service. */
+    val canSpeak: Boolean get() = voice != null
+
     fun carName(carId: String): String =
         crew.value?.cars?.firstOrNull { it.id == carId }?.name ?: "알 수 없는 차"
 }

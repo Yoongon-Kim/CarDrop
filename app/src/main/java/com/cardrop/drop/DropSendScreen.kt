@@ -128,7 +128,10 @@ fun DropSendScreen(
                 TopicTile("주유 · 충전", "잔량 기준 추천", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f)) {
                     onPickTopic(DropTopic.FUEL, toCarIds)
                 }
-                Spacer(Modifier.weight(1f)) // 목적지 변경 comes here
+                // A vote on a new crew destination, through board 10 like the others (D8).
+                TopicTile("목적지 변경", "모두 함께", CdIcons.Flag, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f)) {
+                    onPickTopic(DropTopic.DESTINATION, toCarIds)
+                }
             }
         }
         TopicGroup("소셜 드랍 · 화면에만 조용히", CdColors.VioletDark, CdColors.VioletLight) {

@@ -16,6 +16,7 @@ import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
+import com.cardrop.drive.haversineKm
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
 import com.cardrop.navi.PlaceSuggestion
@@ -148,7 +149,8 @@ class AiViewModel(
         loadJob = viewModelScope.launch {
             _picker.value = try {
                 val pool = when (topic) {
-                    DropTopic.DESTINATION -> DemoData.destinations
+                    // Not where the crew is already going: a vote to change it must offer somewhere else.
+                    DropTopic.DESTINATION -> DemoData.destinations.filterNot { it.isNear(currentCrew.destination) }
                     DropTopic.CAFE -> DemoData.cafes
                     else -> DemoData.restStops
                 }
@@ -511,6 +513,13 @@ internal fun voteReason(cars: Int, aiPicks: Int, added: Int): String = when {
     aiPicks == 0 -> "직접 고른 ${added}곳 중에서 골라요"
     else -> "AI가 고른 ${aiPicks}곳에 직접 고른 ${added}곳을 더했어요"
 }
+
+/**
+ * True when [other] is the same spot: within 1 km. The crew destination can be Kakao's place for the same beach
+ * under another id and name ("경포해변" for the app's "강릉 경포해변"), so the id alone can't tell.
+ */
+private fun Place.isNear(other: Place): Boolean =
+    id == other.id || haversineKm(GeoPoint(lat, lng), GeoPoint(other.lat, other.lng)) < 1.0
 
 /** The town each rest stop on the demo trip is in (board 15's 지역 퀴즈). 덕평 is in 이천, 문막 in 원주. */
 private val REST_STOP_TOWNS = mapOf(

@@ -135,7 +135,9 @@ other cars join again with it (the bot crew keeps 482917). The trip starts with 
 once when every car has joined, else 2 minutes after the crew was made (board 01 counts down;
 `JoinRules.JOIN_WINDOW_MILLIS`; both done by `TripCoordinator` on the host's device). Before that nobody drives off
 or sends drops: a car that joined waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and drops, the inbox and the
-rail's 드랍 / 게임 / 편지함 are greyed out. Cars not connected at the start are left out (`JoinRules.missingCars`;
+rail's 드랍 / 게임 / 편지함 are greyed out. Behind those buttons `CrewRepository.sendDrop` itself refuses until the start
+(`TripNotStartedException`, "출발하면 드랍을 보낼 수 있어요"; the DEMO panel's bot drops do nothing either), so a new send
+button can't leak a drop; a caller shows that line rather than crash. Cars not connected at the start are left out (`JoinRules.missingCars`;
 `out` in Firebase): they disappear from every screen and vote, and their code then says "이미 출발한 크루예요" (a
 car that was in can join again, e.g. after an app restart). The start belongs to the crew (`Crew.startedAtMillis`,
 `CrewRepository.startTrip`), for the bot crew too: it sets off by itself once its 3 bots have joined (about 7 s

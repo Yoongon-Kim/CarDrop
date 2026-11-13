@@ -111,6 +111,8 @@ class FakeCrewRepository(
     }
 
     override suspend fun sendDrop(draft: DropDraft): Drop {
+        val current = _crew.value ?: error("크루에 먼저 참여해 주세요")
+        if (!current.isStarted) throw TripNotStartedException() // no drops before 출발
         val drop = newDrop(fromCarId = myCarId, draft = draft)
         _drops.update { it + drop }
         if (drop.kind == DropKind.DECISION) botsVote(drop.id)
@@ -130,8 +132,12 @@ class FakeCrewRepository(
 
     // ---- Demo controls (used by DemoPanel, not part of the interface) ----
 
-    /** Pretends another car sent a drop, e.g. 민지 차's low-fuel warning (board 06). */
+    /**
+     * Pretends another car sent a drop, e.g. 민지 차's low-fuel warning (board 06). Like [sendDrop], nothing before the
+     * trip starts (the DEMO panel hides these buttons until then); a tap then does nothing instead of closing the app.
+     */
     fun injectDrop(from: Car, draft: DropDraft) {
+        if (_crew.value?.isStarted != true) return
         val drop = newDrop(fromCarId = from.id, draft = draft)
         _drops.update { it + drop }
         if (drop.kind == DropKind.DECISION) botsVote(drop.id, except = from.id)

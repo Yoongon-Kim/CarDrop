@@ -48,6 +48,11 @@ interface CrewRepository {
     /** Board 01's 바꾸기: the crew's new name (e.g. "강릉 여행" -> "가족 여행"), for every car in it. */
     suspend fun renameCrew(name: String)
 
+    /**
+     * Throws [TripNotStartedException] until the crew's trip has started (`Crew.isStarted`): before the host's 출발 (or
+     * the start by itself) no car sends drops, whatever screen asks. The screens grey out their send buttons until then
+     * too; this is the check behind them, so a new send button can't leak a drop.
+     */
     suspend fun sendDrop(draft: DropDraft): Drop
 
     suspend fun vote(dropId: String, candidateId: String)
@@ -57,6 +62,12 @@ interface CrewRepository {
 
 /** [CrewRepository.joinCrew]: the crew set off without this car, which didn't join within 2 minutes. */
 class CrewClosedException : Exception("이미 출발한 크루예요")
+
+/**
+ * [CrewRepository.sendDrop] before the trip has started. An IllegalStateException, so the screens that show such
+ * messages (e.g. board 05's) say this line as it is.
+ */
+class TripNotStartedException : IllegalStateException("출발하면 드랍을 보낼 수 있어요")
 
 /** What a car fills in before sending a drop. The repository adds ids and timestamps. */
 data class DropDraft(

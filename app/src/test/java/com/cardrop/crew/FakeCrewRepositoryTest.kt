@@ -1,6 +1,8 @@
 package com.cardrop.crew
 
 import com.cardrop.core.demo.DemoData
+import com.cardrop.core.model.DropKind
+import com.cardrop.core.model.DropTopic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,7 +13,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The bot crew's trip start: the 2 minutes for joining, and the bots left out at 출발. */
+/** The bot crew's trip start: the 2 minutes for joining, the bots left out at 출발, and no drops before it. */
 class FakeCrewRepositoryTest {
     private var clock = 1_000_000L
 
@@ -42,6 +44,24 @@ class FakeCrewRepositoryTest {
         clock += 60_000
         repo.startTrip()
         assertEquals(first, repo.crew.value!!.startedAtMillis)
+    }
+
+    @Test fun noDropGoesOutBeforeTheTripStarts() = withCrew { repo ->
+        val draft = DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "곧 출발해요")
+        assertTrue(runCatching { repo.sendDrop(draft) }.isFailure) // no crew yet
+        repo.createCrew("강릉 여행", DemoData.gyeongpo)
+        assertTrue(runCatching { repo.sendDrop(draft) }.exceptionOrNull() is TripNotStartedException)
+        assertTrue(repo.drops.value.isEmpty())
+
+        repo.startTrip()
+        repo.sendDrop(draft)
+        assertEquals(listOf("곧 출발해요"), repo.drops.value.map { it.title })
+    }
+
+    @Test fun theBotsSendNothingBeforeTheTripStarts() = withCrew { repo ->
+        repo.createCrew("강릉 여행", DemoData.gyeongpo)
+        repo.injectDrop(DemoData.uncle, DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "출발 전"))
+        assertTrue(repo.drops.value.isEmpty())
     }
 
     @Test fun aCrewJoinedWithItsCodeIsOnTheRoadAlready() = withCrew { repo ->

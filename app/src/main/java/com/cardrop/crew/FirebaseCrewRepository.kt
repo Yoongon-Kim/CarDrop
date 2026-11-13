@@ -155,6 +155,8 @@ class FirebaseCrewRepository(
 
     override suspend fun sendDrop(draft: DropDraft): Drop {
         val ref = crewRef ?: error("크루에 먼저 참여해 주세요")
+        // No drops before 출발: the start is the crew's `info/startedAt`, the same on every device.
+        if (_crew.value?.isStarted != true) throw TripNotStartedException()
         val created = now()
         val drop = Drop(
             id = UUID.randomUUID().toString(),

@@ -63,7 +63,7 @@ class AiViewModel(
         val heard: Place? = null,
         /** Grey line under the text box, e.g. "듣고 있어요…". */
         val status: String? = null,
-        /** Red line under the text box, e.g. for a place we can't find. */
+        /** Red line under the text box (just above the send button), e.g. for a place we can't find or a vote not sent. */
         val inputError: String? = null,
     )
 
@@ -81,6 +81,8 @@ class AiViewModel(
         val hearing: Boolean = false,
         /** The open phrase editor, or null when it's closed. */
         val editor: PhraseEditor? = null,
+        /** Red line above the send button: why the last message wasn't sent, e.g. before 출발. */
+        val sendError: String? = null,
     ) {
         /** What the send button sends, or null when there's nothing to send. */
         val chosenText: String? get() = if (selected == SPOKEN) spoken else phrases.getOrNull(selected)
@@ -262,18 +264,27 @@ class AiViewModel(
         if (chosen.isEmpty() || sending) return
         sending = true // a second tap must not send a second vote
         val added = chosen.count { pick.isAdded(it.id) }
+        _picker.update { it.copy(inputError = null) }
         viewModelScope.launch {
             try {
-                val drop = crew.sendDrop(
-                    DropDraft(
-                        kind = DropKind.DECISION,
-                        topic = topic,
-                        title = topicTitle(topic),
-                        message = voteReason(cars = involvedCarIds(toCarIds).size, aiPicks = chosen.size - added, added = added),
-                        candidates = chosen,
-                        toCarIds = toCarIds,
-                    ),
-                )
+                val drop = try {
+                    crew.sendDrop(
+                        DropDraft(
+                            kind = DropKind.DECISION,
+                            topic = topic,
+                            title = topicTitle(topic),
+                            message = voteReason(cars = involvedCarIds(toCarIds).size, aiPicks = chosen.size - added, added = added),
+                            candidates = chosen,
+                            toCarIds = toCarIds,
+                        ),
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Not sent, e.g. before 출발: the red line above the send button says why (and the app stays open).
+                    _picker.update { it.copy(inputError = notSentText(e)) }
+                    return@launch
+                }
                 voice.speak("${topicTitle(topic)} 투표를 보냈어요")
                 onSent(drop)
             } finally {
@@ -311,7 +322,10 @@ class AiViewModel(
     /** Board 09 opens. [initialText] is what the driver said on 04, if anything; the AI polishes it. */
     fun openShout(initialText: String) {
         _shout.update {
-            it.copy(editor = null, spoken = null, selected = it.selected.coerceIn(0, maxOf(0, it.phrases.size - 1)))
+            it.copy(
+                editor = null, spoken = null, sendError = null,
+                selected = it.selected.coerceIn(0, maxOf(0, it.phrases.size - 1)),
+            )
         }
         if (initialText.isNotBlank()) {
             _shout.update { it.copy(hearing = true) }
@@ -409,20 +423,39 @@ class AiViewModel(
         return (others.firstOrNull { it.color == CarColor.PURPLE } ?: others.firstOrNull())?.name ?: "일행 차"
     }
 
-    /** Sends [raw] (polished by the AI first if [polish]) to [toCarIds] as a silent SOCIAL drop. */
+    /**
+     * Sends [raw] (polished by the AI first if [polish]) to [toCarIds] as a silent SOCIAL drop. When it can't be sent
+     * (e.g. before 출발), [ShoutState.sendError] says why and [onSent] doesn't run.
+     */
     fun sendShout(raw: String, polish: Boolean, toCarIds: List<String>, onSent: () -> Unit) {
         if (sending) return
         sending = true // a second tap must not send the message twice
+        _shout.update { it.copy(sendError = null) }
         viewModelScope.launch {
             try {
-                val text = if (polish) ai.polishMessage(raw) else raw
-                crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text, toCarIds = toCarIds))
+                try {
+                    val text = if (polish) ai.polishMessage(raw) else raw
+                    crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = text, toCarIds = toCarIds))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _shout.update { it.copy(sendError = notSentText(e)) }
+                    return@launch
+                }
                 onSent()
             } finally {
                 sending = false
             }
         }
     }
+
+    /**
+     * Why a drop wasn't sent, for boards 09 and 10: the crew's own reason when it gave one in Korean
+     * ([com.cardrop.crew.TripNotStartedException]'s "출발하면 드랍을 보낼 수 있어요", "크루에 먼저 참여해 주세요"), else a
+     * plain retry line.
+     */
+    private fun notSentText(e: Exception): String =
+        (e as? IllegalStateException)?.message ?: "보내지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요"
 
     /**
      * Board 15: the current question of the round. 초성 퀴즈 comes from the built-in list; 지역 퀴즈 asks the AI

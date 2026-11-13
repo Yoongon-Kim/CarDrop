@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -15,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -67,7 +69,6 @@ fun QuizScreen(
             }
             return@ScreenColumn
         }
-        val me = crew?.cars?.firstOrNull { it.id == vm.myCarId }
         val others = crew?.cars.orEmpty().filter { it.id != vm.myCarId }
         val opponent = others.firstOrNull { it.id == round.opponentId }
         val opponentName = opponent?.name ?: CREW_CAR.name
@@ -88,7 +89,7 @@ fun QuizScreen(
                     .padding(horizontal = 22.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                VsRow(me, opponent ?: CREW_CAR, round)
+                VsRow(opponent ?: CREW_CAR, round)
                 OpponentPicker(others, round.opponentId, vm::chooseOpponent)
                 QuizBody(quiz, round, onAnswer = vm::answerQuiz, onNext = vm::nextQuestion, onRestart = vm::restartQuiz, onRetry = vm::loadQuiz)
             }
@@ -160,9 +161,12 @@ private fun ChallengeButton(opponentName: String, sent: Boolean, enabled: Boolea
 
 /** "나 VS 상대" and the question counter. */
 @Composable
-private fun VsRow(me: Car?, opponent: Car, round: QuizRound) {
+private fun VsRow(opponent: Car, round: QuizRound) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        me?.let { CarBadge(it, size = 30) }
+        // "나" as the design draws it (516): a 44 px teal circle with "A" in dark teal, 17/800.
+        Box(Modifier.size(44.dp).clip(CircleShape).background(CdColors.Teal), contentAlignment = Alignment.Center) {
+            Text("A", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = TEAL_INK)
+        }
         Text("나", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
         Text("VS", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray400)
         CarBadge(opponent, size = 30)
@@ -313,3 +317,6 @@ private fun AnswerButton(text: String, picked: String?, correct: String, modifie
 
 /** "크루 전체" as an opponent, drawn as a blue car like the design. */
 private val CREW_CAR = Car(id = "crew", name = "크루 전체", color = CarColor.BLUE)
+
+/** The dark teal text on the design's teal (#06302C), e.g. the "A" of "나". */
+private val TEAL_INK = Color(0xFF06302C)

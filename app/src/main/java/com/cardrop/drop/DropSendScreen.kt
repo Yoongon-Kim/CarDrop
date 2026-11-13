@@ -26,12 +26,14 @@ import com.cardrop.crew.CrewViewModel
  * Board 08 드랍 보내기 · Owner: Member A.
  * Choose the receiving cars (크루 전체, or one or more cars), then what to send: a decision topic
  * opens board 10 (AI candidates), 한마디 opens board 09. Both get the chosen cars (empty = whole crew).
+ * 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play.
  */
 @Composable
 fun DropSendScreen(
     vm: CrewViewModel,
     onPickTopic: (topic: DropTopic, toCarIds: List<String>) -> Unit,
     onShout: (toCarIds: List<String>) -> Unit,
+    onGames: () -> Unit,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
@@ -79,7 +81,7 @@ fun DropSendScreen(
         Text("소셜 드랍 · 화면에만 조용히", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             TopicCard("일행에게 한마디", "자주 쓰는 말", Modifier.weight(1f)) { onShout(toCarIds) }
-            TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f)) {}
+            TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f), onClick = onGames)
             TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
         }
     }

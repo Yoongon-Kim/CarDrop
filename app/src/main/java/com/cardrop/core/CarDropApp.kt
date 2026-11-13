@@ -157,6 +157,7 @@ fun CarDropApp(container: AppContainer) {
                 vm = crewVm,
                 onPickTopic = { topic, toCarIds -> navigator.go(Screen.AiRecommend(topic, toCarIds)) },
                 onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
+                onGames = { navigator.go(Screen.Games) },
             )
             is Screen.Shout -> ShoutScreen(
                 vm = aiVm,

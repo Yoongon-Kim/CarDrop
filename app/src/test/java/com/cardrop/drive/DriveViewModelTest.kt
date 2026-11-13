@@ -201,4 +201,16 @@ class DriveViewModelTest {
         assertEquals(destination, nav.route.value.destination)
         assertNull(nav.route.value.waypoint)
     }
+    @Test fun theCarPickedWhenJoiningCountsEvenAfterTheViewModelStarted() = runScenario { vm, crew, _, _, _ ->
+        val forAunt = decision("aunt-only", decided = false).copy(toCarIds = listOf(DemoData.aunt.id))
+        crew.drops.value = listOf(forAunt)
+        yield()
+        assertTrue(vm.drops.value.isEmpty())
+        // Joining with the real crew: this device becomes 이모 차 and the crew arrives.
+        crew.carId = DemoData.aunt.id
+        crew.crew.value = crew.crew.value!!.copy(code = "654321", cars = listOf(DemoData.uncle, DemoData.aunt))
+        yield()
+        assertEquals(DemoData.aunt.id, vm.myCarId)
+        assertEquals(listOf(forAunt), vm.drops.value)
+    }
 }

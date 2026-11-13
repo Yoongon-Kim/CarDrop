@@ -5,10 +5,16 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.cardrop.R
 import com.cardrop.core.model.CarColor
 
 /** Colours taken from the CarDrop design boards (design/FinalApp.dc.html). */
@@ -88,6 +94,26 @@ fun CarColor.tint(): Color = when (this) {
  */
 val TightLetterSpacing = (-0.02).em
 
+/**
+ * Noto Sans KR, the design's font (`font-family: 'Noto Sans KR'`). The app carries it (the Pleos image has
+ * no Google Play services, so fonts can't be downloaded): `res/font/noto_sans_kr.ttf` is Google Fonts'
+ * `NotoSansKR[wght].ttf`, a variable font, so one file holds every weight from 100 to 900. Each [Font]
+ * below asks that file for one weight (`variationSettings`), so `FontWeight.ExtraBold` is the design's 800.
+ * Licence: SIL Open Font License 1.1, copied to `assets/licenses/NotoSansKR-OFL.txt`.
+ *
+ * [CarDropTheme] gives it to every text style, so a `Text` picks it up by itself. Only a `TextStyle(...)`
+ * written by hand (e.g. for a `BasicTextField`) needs `fontFamily = NotoSansKr`.
+ */
+@OptIn(ExperimentalTextApi::class) // Font(..., variationSettings) is marked experimental in Compose 1.7.
+val NotoSansKr = FontFamily(
+    listOf(
+        FontWeight.W100, FontWeight.W200, FontWeight.W300, FontWeight.W400, FontWeight.W500,
+        FontWeight.W600, FontWeight.W700, FontWeight.W800, FontWeight.W900,
+    ).map { weight ->
+        Font(R.font.noto_sans_kr, weight, variationSettings = FontVariation.Settings(weight, FontStyle.Normal))
+    },
+)
+
 private val CdTypography = Typography(
     headlineLarge = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink),
     titleLarge = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink),
@@ -95,6 +121,28 @@ private val CdTypography = Typography(
     bodyLarge = TextStyle(fontSize = 16.sp, color = CdColors.Ink),
     bodyMedium = TextStyle(fontSize = 14.sp, color = CdColors.Gray600),
     labelMedium = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CdColors.Gray600),
+).withFontFamily(NotoSansKr)
+
+/**
+ * Every one of Material's 15 text styles with [family], also the ones we don't set above: a button's
+ * text, for example, uses `labelLarge`.
+ */
+private fun Typography.withFontFamily(family: FontFamily) = copy(
+    displayLarge = displayLarge.copy(fontFamily = family),
+    displayMedium = displayMedium.copy(fontFamily = family),
+    displaySmall = displaySmall.copy(fontFamily = family),
+    headlineLarge = headlineLarge.copy(fontFamily = family),
+    headlineMedium = headlineMedium.copy(fontFamily = family),
+    headlineSmall = headlineSmall.copy(fontFamily = family),
+    titleLarge = titleLarge.copy(fontFamily = family),
+    titleMedium = titleMedium.copy(fontFamily = family),
+    titleSmall = titleSmall.copy(fontFamily = family),
+    bodyLarge = bodyLarge.copy(fontFamily = family),
+    bodyMedium = bodyMedium.copy(fontFamily = family),
+    bodySmall = bodySmall.copy(fontFamily = family),
+    labelLarge = labelLarge.copy(fontFamily = family),
+    labelMedium = labelMedium.copy(fontFamily = family),
+    labelSmall = labelSmall.copy(fontFamily = family),
 )
 
 @Composable

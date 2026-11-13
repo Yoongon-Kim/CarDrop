@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.NotoSansKr
 import com.cardrop.core.ui.theme.TightLetterSpacing
 
 /*
@@ -360,7 +361,7 @@ fun CdTextField(
         onValueChange = { onValueChange(it.take(maxLength)) },
         modifier = modifier.height(54.dp),
         singleLine = true,
-        textStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink),
+        textStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink, fontFamily = NotoSansKr),
         cursorBrush = SolidColor(focusColor),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = {

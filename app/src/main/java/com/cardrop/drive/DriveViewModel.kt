@@ -27,6 +27,7 @@ class DriveViewModel(
     private val crewRepo: CrewRepository,
     private val ai: AiService,
     workScope: CoroutineScope? = null,
+    tripStart: TripStart = TripStart.AlwaysStarted,
 ) : ViewModel() {
     private val scope = workScope ?: viewModelScope
     val snapshot = vehicle.snapshot
@@ -41,6 +42,14 @@ class DriveViewModel(
     val myCarId: String get() = crewRepo.myCarId
     val drops: StateFlow<List<Drop>> = combine(crewRepo.drops, crewRepo.crew) { list, _ -> list.filter { it.isFor(myCarId) } }
         .stateIn(scope, SharingStarted.Eagerly, crewRepo.drops.value.filter { it.isFor(myCarId) })
+    /**
+     * The host's car name while this car waits for the host's 출발 (it joined before the trip started),
+     * else null. Board 04 says "…가 출발하면 같이 출발해요".
+     */
+    val waitingForHost: StateFlow<String?> = combine(crewRepo.crew, tripStart.started) { current, started ->
+        current?.takeIf { !started && it.hostCarId != myCarId }
+            ?.let { c -> c.cars.firstOrNull { it.id == c.hostCarId }?.name ?: "방장 차" }
+    }.stateIn(scope, SharingStarted.Eagerly, null)
     private val liveNavigation = navigation as? InAppNavigation
     private val warnings = FuelWarningTracker()
     private val _fuelWarningPending = MutableStateFlow(false)

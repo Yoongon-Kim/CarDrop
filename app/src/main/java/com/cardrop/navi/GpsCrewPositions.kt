@@ -10,20 +10,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 
 /**
  * Owner: Member B. Crew positions with `cardrop.navApp=inapp`.
  *
- * This car = its GPS and live route ([InAppNavigation]). The bot cars (until Member A's real crew
- * sync) follow this car's GPS trail [BOT_GAPS_KM] behind, so they stay with the convoy whatever
- * route is driven.
+ * This car = its GPS and live route ([InAppNavigation]).
+ * - Real crew ([shared] set): the other cars are where their own devices say they are
+ *   (drive/FirebaseTrip.kt). A car with no device (or a closed app) is not drawn.
+ * - Bot crew: the bots follow this car's GPS trail [BOT_GAPS_KM] behind, so they stay with the
+ *   convoy whatever route is driven.
  */
 class GpsCrewPositions(
     scope: CoroutineScope,
     navigation: InAppNavigation,
     /** Asked on every GPS fix: with the real crew the car is picked when joining (board 03), after this starts. */
     private val myCarId: () -> String,
+    /** The other cars' shared positions (real crew); null = the bot crew. */
+    private val shared: StateFlow<Map<String, CarPosition>>? = null,
 ) : RouteSimulator {
 
     private val carIds = MutableStateFlow<List<String>>(emptyList())
@@ -32,7 +37,7 @@ class GpsCrewPositions(
     private val trail = ArrayList<GeoPoint>()
 
     override val positions: StateFlow<Map<String, CarPosition>> =
-        combine(navigation.state, carIds) { state, ids -> build(state, ids) }
+        combine(navigation.state, carIds, shared ?: flowOf(emptyMap())) { state, ids, others -> build(state, ids, others) }
             .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     override fun start(carIds: List<String>, destination: Place) {
@@ -44,18 +49,21 @@ class GpsCrewPositions(
         trail.clear()
     }
 
-    private fun build(state: NavigatorState, ids: List<String>): Map<String, CarPosition> {
-        val fix = state.fix ?: return emptyMap()
+    private fun build(state: NavigatorState, ids: List<String>, others: Map<String, CarPosition>): Map<String, CarPosition> {
         val me = myCarId()
         if (me !in ids) return emptyMap()
-        val here = state.snapped?.let { GeoPoint(it.lat, it.lng) } ?: GeoPoint(fix.lat, fix.lng)
-        if (trail.isEmpty() || haversineKm(trail.last(), here) > 0.02) trail += here
-        if (trail.size > MAX_TRAIL) trail.subList(0, trail.size - MAX_TRAIL).clear()
-
+        val fix = state.fix
+        val here = fix?.let { f -> state.snapped?.let { GeoPoint(it.lat, it.lng) } ?: GeoPoint(f.lat, f.lng) }
         val route = state.route
         val myKmLeft = route?.let { (it.totalKm - state.progressKm).coerceAtLeast(0.0) } ?: 0.0
         val myMinutes = route?.let { it.secondsBetween(state.progressKm, it.totalKm) / 60 } ?: 0.0
-        val result = mutableMapOf(me to CarPosition(me, here.lat, here.lng, myKmLeft.toFloat(), myMinutes.toInt()))
+        val mine = here?.let { CarPosition(me, it.lat, it.lng, myKmLeft.toFloat(), myMinutes.toInt()) }
+        if (shared != null) return withSharedCars(me, mine, ids, others)
+
+        if (here == null || mine == null) return emptyMap()
+        if (trail.isEmpty() || haversineKm(trail.last(), here) > 0.02) trail += here
+        if (trail.size > MAX_TRAIL) trail.subList(0, trail.size - MAX_TRAIL).clear()
+        val result = mutableMapOf(me to mine)
         ids.filter { it != me }.forEachIndexed { i, id ->
             val (point, behindKm) = behind(BOT_GAPS_KM.getOrElse(i) { 1.0 + i })
             val minutes = myMinutes + behindKm / 85.0 * 60
@@ -86,3 +94,15 @@ class GpsCrewPositions(
         const val MAX_TRAIL = 3_000
     }
 }
+
+/**
+ * Real crew: this car [me] from its own GPS ([mine], null before the first fix) and the other crew cars
+ * ([ids]) where their devices said they are ([shared]).
+ */
+internal fun withSharedCars(
+    me: String,
+    mine: CarPosition?,
+    ids: List<String>,
+    shared: Map<String, CarPosition>,
+): Map<String, CarPosition> =
+    shared.filterKeys { it in ids && it != me } + listOfNotNull(mine).associateBy { it.carId }

@@ -64,7 +64,7 @@ fun CarDropApp(container: AppContainer) {
     val navigator = container.navigator
     val crewVm: CrewViewModel = viewModel { CrewViewModel(container.crew, container.placeSearch, container::myPosition, container.voice) }
     val driveVm: DriveViewModel = viewModel {
-        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai)
+        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai, tripStart = container.tripStart)
     }
     val aiVm: AiViewModel = viewModel {
         AiViewModel(
@@ -128,12 +128,14 @@ fun CarDropApp(container: AppContainer) {
                 onJoinWithCode = { navigator.go(Screen.JoinCrew) },
                 onDepart = {
                     driveVm.startGuidance()
+                    container.tripStart.start() // the cars that joined start with this one (real crew)
                     navigator.switchTab(Screen.Drive)
                 },
             )
             Screen.DestinationSearch -> DestinationSearchScreen(crewVm, onBack = navigator::back, onPicked = navigator::back)
             Screen.JoinCrew -> JoinCrewScreen(crewVm) {
-                driveVm.startGuidance()
+                // Before the host's 출발 this car waits on board 04; TripCoordinator starts it with the host.
+                if (container.tripStart.started.value) driveVm.startGuidance()
                 navigator.switchTab(Screen.Drive)
             }
             Screen.Drive -> driveScreen(null)

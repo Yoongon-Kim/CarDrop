@@ -98,7 +98,9 @@ The **DEMO** button (bottom right of the app) changes fake fuel and gear, and ma
 Use it to rehearse the 시연 on one emulator. With the real crew (`cardrop.useRealCrew=true`) its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).
 With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 to join,
-because creating the crew replaces the one every device shares.
+because creating the crew replaces the one every device shares. Nobody drives off before the host: a car that
+joins first waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and the host's 출발 starts its guidance
+(`drive/TripStart.kt`, `drive/FirebaseTrip.kt`). The bot crew never waits.
 
 ## Several Claude sessions at once
 
@@ -187,6 +189,12 @@ GPS position, live routes, rerouting, turn guidance. Only the GPS input is simul
 own route player can't make Korean routes (Google has no driving directions in Korea). Grant location
 when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permission.ACCESS_FINE_LOCATION`).
 
+**Several cars (real crew):** each device runs its own GPS script with its car, e.g.
+`python3 tools/drive_gps.py --car uncle` (two emulators on one Mac: add `--serial emulator-5556`). `--car` starts
+the car at its place in the convoy (아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37) and holds it still until the host
+presses 출발 (it reads `trips/<code>/startedAt` from Firebase); `--no-wait` drives right away. Every device
+shares its position through Firebase about once a second, so each one draws the others where they really are.
+
 - Layout: with `inapp`, our window holds the whole 1600 x 900 design. The navigator is the left 533 px
   (`core/ui/Shell.kt`), CarDrop is the right 2/3. Everything is scaled down a little to fit.
 - `navi/GpsLocation.kt` - Android GPS (1 fix/s). The emulator reports bearing 0, so direction comes from movement.
@@ -207,8 +215,9 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
 - Routing: `navi/KakaoDirections.kt` (Kakao Mobility, Korean data + traffic + Korean turn texts; key
   `cardrop.kakaoRestKey`, free for non-commercial use up to 10,000 requests/day), then
   `navi/OsrmDirections.kt` (public OSRM server, no key, no traffic, no uptime promise) as backup.
-- `navi/GpsCrewPositions.kt` - crew positions: this car from GPS; the bot cars follow its GPS trail
-  0.8 / 1.8 / 3 km behind (until Member A's real crew sync).
+- `navi/GpsCrewPositions.kt` - crew positions: this car from GPS. Real crew: the other cars where their own
+  devices say (`drive/FirebaseTrip.kt`, `trips/<code>/positions` in Firebase); a car without a connected device
+  is not drawn. Bot crew: the bots follow this car's GPS trail 0.8 / 1.8 / 3 km behind.
 - `navi/InAppNavigatorPanel.kt` + `navi/NavPanelState.kt` - the design's overlays (turn banner, CarDrop
   toast, speed from GPS, ETA card), "전체 경로" and, after dragging the map, "현재 위치".
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles

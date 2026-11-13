@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.text.particle
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.ScreenColumn
@@ -53,6 +54,7 @@ fun DriveMainScreen(
     val navRoute by vm.navRoute.collectAsStateWithLifecycle()
     val input by vm.inputMode.collectAsStateWithLifecycle()
     val warning by vm.fuelWarningPending.collectAsStateWithLifecycle()
+    val waitingFor by vm.waitingForHost.collectAsStateWithLifecycle()
     LaunchedEffect(warning, crew?.code) {
         if (warning && crew != null) {
             vm.acknowledgeFuelWarning()
@@ -69,6 +71,7 @@ fun DriveMainScreen(
         ScreenHeader(
             eyebrow = "${crew?.name ?: "크루 없음"} · ${cars.size}대 함께 · 음성 우선",
             title = when {
+                waitingFor != null -> "${waitingFor.orEmpty().particle("이", "가")} 출발하면 같이 출발해요"
                 inviteFrom != null -> "$inviteFrom 소식이 왔어요"
                 hasCrew && positions.isNotEmpty() -> "모두 잘 오고 있어요"
                 else -> "출발 준비 중"

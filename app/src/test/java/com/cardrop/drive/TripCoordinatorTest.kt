@@ -150,4 +150,44 @@ class TripCoordinatorTest {
         assertEquals(shared.decidedCandidate!!.place, crew.crew.value!!.destination)
         assertEquals(shared.decidedCandidate!!.place, nav.route.value.destination)
     }
+
+    // The host's 출발 (TripStart): a car that joined before starts its guidance with the host.
+
+    private fun runWithHost(
+        myCar: String,
+        autoStartsGuidance: Boolean = true,
+        block: suspend (TestCrew, TestNavigation, TestTripStart) -> Unit,
+    ) = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val crew = TestCrew().apply { carId = myCar } // the crew's host is 아빠 차
+        val nav = TestNavigation()
+        val tripStart = TestTripStart()
+        TripCoordinator(scope, crew, TestRoute(), nav, TestVoice(), tripStart = tripStart, autoStartsGuidance = autoStartsGuidance)
+            .start()
+        try { block(crew, nav, tripStart) } finally { scope.cancel() }
+    }
+
+    @Test fun aCarThatJoinedWaitsAndThenStartsWithTheHostOnce() = runWithHost(DemoData.uncle.id) { crew, nav, trip ->
+        yield()
+        assertEquals(0, nav.launches)
+        assertEquals(DemoData.gyeongpo, nav.route.value.destination) // the route is ready while it waits
+        trip.start()
+        yield()
+        assertEquals(1, nav.launches)
+        crew.drops.value = listOf(decision("later", decided = false)) // more crew news doesn't start it again
+        yield()
+        assertEquals(1, nav.launches)
+    }
+
+    @Test fun theHostStartsItselfWithItsOwnButton() = runWithHost(DemoData.me.id) { _, nav, trip ->
+        trip.start()
+        yield()
+        assertEquals(0, nav.launches)
+    }
+
+    @Test fun anotherMapAppIsNeverOpenedWithoutATap() = runWithHost(DemoData.uncle.id, autoStartsGuidance = false) { _, nav, trip ->
+        trip.start()
+        yield()
+        assertEquals(0, nav.launches)
+    }
 }

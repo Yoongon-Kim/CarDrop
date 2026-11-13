@@ -16,11 +16,13 @@ import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
 import com.cardrop.drive.DemoRoute
+import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.ScriptedRouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
+import com.cardrop.drive.TripStart
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.FallbackRouteProvider
 import com.cardrop.navi.GpsCrewPositions
@@ -63,6 +65,12 @@ class AppContainer(context: Context) {
         if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
 
+    // Lead
+    /** Real crew: the host's 출발 and every car's position, shared through Firebase (drive/FirebaseTrip.kt). */
+    private val firebaseTrip: FirebaseTrip? = if (BuildConfig.USE_REAL_CREW) FirebaseTrip(appScope, crew) else null
+    /** With the real crew the cars wait for the host's 출발; the bot crew never waits. */
+    val tripStart: TripStart = firebaseTrip ?: TripStart.AlwaysStarted
+
     // Member B
     val vehicle: VehicleRepository =
         if (BuildConfig.USE_REAL_VEHICLE) PleosVehicleRepository(context) else FakeVehicleRepository()
@@ -86,7 +94,7 @@ class AppContainer(context: Context) {
                 kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
             )
         }
-    val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, myCarId = { crew.myCarId }) }
+    val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions) }
         ?: ScriptedRouteSimulator(
             scope = appScope,
             // This car stands still in P; the bot cars always drive.
@@ -137,12 +145,17 @@ class AppContainer(context: Context) {
     val navigator = AppNavigator(start = DemoCar.startScreen(BuildConfig.USE_REAL_CREW, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
-    private val trip = TripCoordinator(appScope, crew, route, navigation, voice)
+    private val trip = TripCoordinator(
+        appScope, crew, route, navigation, voice,
+        tripStart = tripStart,
+        autoStartsGuidance = inAppNavigation != null,
+    )
 
     /** This car got to the crew's stop, stopped there or drove past it: the card on the CarDrop side. */
     val stopNotice: StateFlow<StopNotice?> get() = trip.notice
 
     init {
         trip.start()
+        firebaseTrip?.shareMyPosition(route.positions)
     }
 }

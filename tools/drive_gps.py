@@ -11,12 +11,20 @@ Usage (emulator running):
     python3 tools/drive_gps.py --start-km 60 --speed 10
     python3 tools/drive_gps.py --gpx /tmp/trip.gpx   # write a GPX for Extended controls > Location > Routes
     python3 tools/drive_gps.py --stop 여주휴게소     # pull into that stop, stand still 20 s, drive on
+    python3 tools/drive_gps.py --car uncle        # 삼촌 차 with the real crew: waits for the host's 출발
+    python3 tools/drive_gps.py --serial emulator-5556 --car minji   # the second emulator on this Mac
 Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
+
+--car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
+holds the car still at its start until the crew's host presses 출발 (board 01), read from the real crew's
+Firebase (trips/<code>/startedAt, see drive/FirebaseTrip.kt), so every car sets off together. --no-wait
+drives right away (the bot crew has no host to wait for).
 
 --stop shows the navigator's "도착" (arrived): it needs about 10 s standing still within 300 m of the
 voted stop. Without --stop the car drives past every stop, which the navigator reports as "지나침".
 """
 import argparse
+import json
 import math
 import os
 import re
@@ -24,11 +32,16 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ROUTE_FILE = ROOT / "app/src/main/java/com/cardrop/drive/DemoRouteData.kt"
 PLACES_FILE = ROOT / "app/src/main/java/com/cardrop/core/demo/DemoData.kt"
+CREW_FILE = ROOT / "app/src/main/java/com/cardrop/crew/FirebaseCrewRepository.kt"
+
+# Where each car starts (km on the route): the same gaps as the bot cars (BOT_GAPS_KM in GpsCrewPositions.kt).
+CAR_START_KM = {"dad": 40.0, "uncle": 39.2, "minji": 38.2, "aunt": 37.0}
 
 
 def find_adb() -> str:
@@ -40,6 +53,40 @@ def find_adb() -> str:
         if sdk and (Path(sdk) / "platform-tools/adb").exists():
             return str(Path(sdk) / "platform-tools/adb")
     sys.exit("adb not found: add Android SDK platform-tools to PATH or set ANDROID_HOME")
+
+
+def kotlin_string(path: Path, name: str) -> str:
+    """The value of `const val <name> = \"...\"` in a Kotlin file."""
+    found = re.search(rf'const val {name}\s*=\s*"([^"]+)"', path.read_text(encoding="utf-8"))
+    if not found:
+        sys.exit(f"{name} not found in {path}")
+    return found.group(1)
+
+
+def trip_started(url: str):
+    """True / False from the trip's startedAt in Firebase (REST, no login); None when it can't be read."""
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            return json.load(response) is not None
+    except (OSError, ValueError):  # no network, refused (HTTPError is an OSError), or not JSON
+        return None
+
+
+def wait_for_host(stand_still, url: str, poll_s: float = 1.0):
+    """Calls stand_still() every poll_s seconds until the host has started the trip."""
+    print("Waiting for the host's 출발 (the car stands at its start). Ctrl+C to stop.")
+    misses = 0
+    while True:
+        stand_still()
+        started = trip_started(url)
+        if started:
+            print("The host started the trip. Driving.")
+            return
+        if started is None:
+            misses += 1
+            if misses % 10 == 1:
+                print(f"  Can't read the trip start ({url}); still waiting.")
+        time.sleep(poll_s)
 
 
 def load_places() -> dict:
@@ -119,7 +166,13 @@ def write_gpx(path, points, cumulative, start_km, kmh):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--start-km", type=float, default=40.0, help="where to start on the route (default 40 = after 신갈JC)")
+    parser.add_argument("--car", choices=sorted(CAR_START_KM), default=None,
+                        help="this emulator's car: its start km, and wait for the host's 출발 (real crew)")
+    parser.add_argument("--start-km", type=float, default=None,
+                        help="where to start on the route (default: the --car's start, else 40 = after 신갈JC)")
+    parser.add_argument("--wait", action=argparse.BooleanOptionalAction, default=None,
+                        help="stand still until the host's 출발 (default: on with --car)")
+    parser.add_argument("--code", default=None, help="crew code (default: DEMO_CREW_CODE in DemoData.kt)")
     parser.add_argument("--speed", type=float, default=6.0, help="time speed-up (default 6: 10 km per minute)")
     parser.add_argument("--kmh", type=float, default=100.0, help="driving speed the GPS reports (default 100)")
     parser.add_argument("--serial", default=None, help="adb device, e.g. emulator-5554")
@@ -127,6 +180,8 @@ def main():
     parser.add_argument("--stop", default=None, help="pull into this place on the way, e.g. 여주휴게소 (a name from DemoData.kt)")
     parser.add_argument("--stop-seconds", type=float, default=20.0, help="how long to stand still there (default 20)")
     args = parser.parse_args()
+    start_km = args.start_km if args.start_km is not None else CAR_START_KM.get(args.car, 40.0)
+    wait = args.wait if args.wait is not None else args.car is not None
 
     points = decode(load_polyline())
     cumulative = [0.0]
@@ -135,7 +190,7 @@ def main():
     total = cumulative[-1]
 
     if args.gpx:
-        write_gpx(args.gpx, points, cumulative, args.start_km, args.kmh)
+        write_gpx(args.gpx, points, cumulative, start_km, args.kmh)
         return
 
     stop = None
@@ -144,7 +199,7 @@ def main():
         if args.stop not in places:
             sys.exit(f"Unknown place {args.stop!r}. Known: {', '.join(sorted(places))}")
         stop_km, off_km = nearest_km(points, cumulative, places[args.stop])
-        if off_km > 1.5 or stop_km < args.start_km:
+        if off_km > 1.5 or stop_km < start_km:
             sys.exit(f"{args.stop} is not ahead on the route (closest at km {stop_km:.1f}, {off_km * 1000:.0f} m away)")
         stop = (args.stop, places[args.stop], stop_km)
         print(f"Will stop at {args.stop} (km {stop_km:.1f}) for {args.stop_seconds:g} s.")
@@ -159,7 +214,17 @@ def main():
         if result.returncode != 0:
             sys.exit(f"adb failed: {result.stderr.strip() or result.stdout.strip()} (is the emulator running?)")
 
-    km = args.start_km
+    if wait:
+        code = args.code or kotlin_string(PLACES_FILE, "DEMO_CREW_CODE")
+        url = f"{kotlin_string(CREW_FILE, 'DATABASE_URL')}/trips/{code}/startedAt.json"
+        start_lat, start_lng = point_at(points, cumulative, start_km)
+        try:
+            wait_for_host(lambda: send(start_lat, start_lng, 0.0), url)
+        except KeyboardInterrupt:
+            print("\nStopped before the start.")
+            return
+
+    km = start_km
     step = args.kmh / 3600.0 * args.speed
     print(f"Driving {total - km:.0f} km at {args.kmh:.0f} km/h x{args.speed:g}. Ctrl+C to stop.")
     tick = 0

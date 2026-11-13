@@ -22,6 +22,7 @@ import com.cardrop.drive.PlaceTimes
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
+import com.cardrop.drive.TripCodeFile
 import com.cardrop.drive.TripStart
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
@@ -46,7 +47,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * Owner: lead. The one place that decides fake vs real for every interface.
@@ -167,5 +170,10 @@ class AppContainer(context: Context) {
     init {
         trip.start()
         firebaseTrip?.shareMyPosition(route.positions)
+        // tools/drive_gps.py reads this car's crew code from the device (drive/TripCodeFile.kt). The bot crew
+        // saves none, and an old code from an earlier start is removed.
+        appScope.launch(Dispatchers.IO) {
+            (firebaseTrip?.crewCode ?: flowOf(null)).collect { TripCodeFile.save(context, it) }
+        }
     }
 }

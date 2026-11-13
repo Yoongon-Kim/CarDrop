@@ -55,6 +55,10 @@ class FirebaseTrip(
         combine(shared, crew.crew) { all, current -> sharedCarsToShow(all, current, crew.myCarId) }
             .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
+    /** The code of the crew whose trip we follow (every crew has its own random code); null outside a crew. */
+    private val _crewCode = MutableStateFlow<String?>(null)
+    val crewCode: StateFlow<String?> = _crewCode
+
     /** The trip branch we follow, e.g. trips/482917. Null outside a crew. */
     private var tripRef: DatabaseReference? = null
     private var listener: ValueEventListener? = null
@@ -100,6 +104,7 @@ class FirebaseTrip(
         tripRef = null
         _started.value = false
         shared.value = emptyMap()
+        _crewCode.value = current?.code
         if (current == null) return
 
         val ref = db.getReference("trips").child(current.code)

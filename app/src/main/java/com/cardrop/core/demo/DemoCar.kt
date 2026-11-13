@@ -27,8 +27,8 @@ object DemoCar {
     fun resolve(picked: String?, buildDefault: String): String = picked?.takeIf { it in KEYS } ?: buildDefault
 
     /**
-     * The first screen. Board 01 creates the crew, and with the real crew that replaces the crew every
-     * device shares, so only [HOST] starts there; the other cars start on board 03 to join it.
+     * The first screen. Board 01 creates a crew, so with the real crew only [HOST] starts there; the other
+     * cars start on board 03 to join the host's crew with its code.
      */
     fun startScreen(useRealCrew: Boolean, car: String): Screen =
         if (useRealCrew && car != HOST) Screen.JoinCrew else Screen.CreateCrew

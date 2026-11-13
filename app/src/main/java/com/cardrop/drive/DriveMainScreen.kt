@@ -59,14 +59,14 @@ fun DriveMainScreen(
     val crew by vm.crew.collectAsStateWithLifecycle()
     val drops by vm.drops.collectAsStateWithLifecycle()
     val positions by vm.positions.collectAsStateWithLifecycle()
-    val snapshot by vm.snapshot.collectAsStateWithLifecycle()
+    val fuel by vm.fuelByCar.collectAsStateWithLifecycle()
     val navRoute by vm.navRoute.collectAsStateWithLifecycle()
     val input by vm.inputMode.collectAsStateWithLifecycle()
     val warning by vm.fuelWarningPending.collectAsStateWithLifecycle()
     val waitingFor by vm.waitingForHost.collectAsStateWithLifecycle()
     val hasCrew = crew != null
     // Drops, the inbox and the fuel warning wait for the trip to start: the host's 출발 (board 01), or the end of
-    // the 3 minutes for joining.
+    // the 2 minutes for joining.
     val started = crew?.isStarted == true
     val canDrop = hasCrew && started
     LaunchedEffect(warning, crew?.code, started) {
@@ -116,10 +116,7 @@ fun DriveMainScreen(
 
         CrewRoad(cars, positions, vm.myCarId, navRoute.destination?.name ?: crew?.destination?.name)
         if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
-        CrewCards(
-            cars, positions, vm.myCarId, snapshot.fuelPercent, snapshot.rangeKm,
-            onMyLowFuel = if (canDrop) onFuelWarning else null,
-        )
+        CrewCards(cars, positions, vm.myCarId, fuel, onMyLowFuel = if (canDrop) onFuelWarning else null)
 
         // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -320,8 +317,8 @@ private fun DropButton(
 }
 
 /**
- * 드랍하기's second line before the trip starts: "출발하면 드랍을 보낼 수 있어요 · 2:41 뒤 자동 출발 · 안 온 차는 빼고
- * 가요" (the 3 minutes for joining, counted down every second), or "… · 모두 모였어요 · 곧 출발해요" with every car in.
+ * 드랍하기's second line before the trip starts: "출발하면 드랍을 보낼 수 있어요 · 1:41 뒤 자동 출발 · 안 온 차는 빼고
+ * 가요" (the 2 minutes for joining, counted down every second), or "… · 모두 모였어요 · 곧 출발해요" with every car in.
  * Without a deadline, the first part only.
  */
 @Composable

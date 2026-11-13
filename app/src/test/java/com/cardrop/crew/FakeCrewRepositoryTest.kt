@@ -11,7 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The bot crew's trip start: the 3 minutes for joining, and the bots left out at 출발. */
+/** The bot crew's trip start: the 2 minutes for joining, and the bots left out at 출발. */
 class FakeCrewRepositoryTest {
     private var clock = 1_000_000L
 
@@ -20,7 +20,7 @@ class FakeCrewRepositoryTest {
         try { block(FakeCrewRepository(scope, now = { clock })) } finally { scope.cancel() }
     }
 
-    @Test fun aNewCrewGivesTheOtherCarsThreeMinutesToJoin() = withCrew { repo ->
+    @Test fun aNewCrewGivesTheOtherCarsTwoMinutesToJoin() = withCrew { repo ->
         val crew = repo.createCrew("강릉 여행", DemoData.gyeongpo)
         assertEquals(clock + JoinRules.JOIN_WINDOW_MILLIS, crew.joinDeadlineMillis)
         assertFalse(crew.isStarted)

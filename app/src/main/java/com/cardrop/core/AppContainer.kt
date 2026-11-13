@@ -16,6 +16,8 @@ import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
+import com.cardrop.drive.BotFuel
+import com.cardrop.drive.CrewFuel
 import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.PlaceTimes
@@ -77,10 +79,12 @@ class AppContainer(context: Context) {
 
     // Lead
     /**
-     * Real crew: every car's position, shared through Firebase (drive/FirebaseTrip.kt). When the trip started is the
-     * crew's own (`Crew.startedAtMillis`), for both crews.
+     * Real crew: every car's position and fuel, shared through Firebase (drive/FirebaseTrip.kt). When the trip
+     * started is the crew's own (`Crew.startedAtMillis`), for both crews.
      */
     private val firebaseTrip: FirebaseTrip? = if (useRealCrew) FirebaseTrip(appScope, crew) else null
+    /** Board 04's crew cards: the other cars' fuel, from their own devices (real crew) or the bots' ([BotFuel]). */
+    val crewFuel: CrewFuel = firebaseTrip ?: BotFuel(appScope, crew.drops)
 
     // Member B
     val vehicle: VehicleRepository =
@@ -169,6 +173,7 @@ class AppContainer(context: Context) {
 
     init {
         trip.start()
+        firebaseTrip?.shareMyFuel(vehicle.snapshot)
         firebaseTrip?.shareMyPosition(route.positions)
         // tools/drive_gps.py reads this car's crew code from the device (drive/TripCodeFile.kt). The bot crew
         // saves none, and an old code from an earlier start is removed.

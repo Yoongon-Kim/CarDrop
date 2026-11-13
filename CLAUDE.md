@@ -88,11 +88,21 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   찬성). "AI 추천 받기" on the search still opens board 10 with three picks, as does saying "목적지 바꾸자". The DEMO
   panel's "삼촌 차 목적지 제안 받기" stages the receiving side with the bot crew.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
-  lines 302-344): four slots, all empty (dashed "추가") until the driver fills them. 편집 or an empty slot opens
-  퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in the order ticked; 노래, 같이 켜기
-  and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`, SharedPreferences). A tile
-  opens what it names (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09,
-  게임 초대 15, 편지함 07. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+  lines 302-344): four slots. Until the driver saves their own list they hold 휴게소 and 주유 and two dashed "추가"
+  (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays
+  empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in
+  the order ticked; 노래, 같이 켜기 and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`,
+  SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names: 휴게소 / 식사 / 주유
+  board 10 as a pop-up over 04 for the whole crew (`QuickDrop.popupTopic()`, `QuickDropPicker`; lead, 2026-11-14). After
+  보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
+  vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
+  page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+- Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
+  another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
+  `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks
+  it (a crew just made or joined). Bot crew: 삼촌 48%, 이모 55%, 민지 23%; a bot that sent a fuel warning (the DEMO
+  panel's 민지 차) shows 12% · 85km, as on board 05. Under 20% a card turns orange ("연료 경고" + range); only this
+  car's opens board 05, once the trip has started.
 
 ## Design boards
 
@@ -102,8 +112,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   standalone export `CarDrop_최종UI.html` (chosen by the lead on 2026-11-13).
 - The live canvas (link above) has moved on since: empty quick-drop slots with 편집, a quick-drop pop-up with a
   result notice, a feedback pill after sending, car nicknames, voice messages and shared `.cd-*` styles. We build
-  only the quick-drop slots with 편집 (see board 04's quick drops above), not the others. Read the canvas only for
-  reference; never copy it over `design/FinalApp.dc.html`.
+  only the quick-drop slots with 편집 and the quick-drop pop-up without its result notice (see board 04's quick drops
+  above), not the others. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
 - Week 1 cuts: song drop (12, 13), omok/chess (15), safety race (16, 17), ads and points (18, 19).
 
@@ -131,7 +141,7 @@ With the real crew, 아빠 차 starts on board 01 and creates the crew; the othe
 with its code. Every new crew gets its own random 6-digit code (`crew/CrewCode.kt`), so two hosts (e.g. two
 emulators both on 아빠 차) never share a crew. Restarting the host's app makes a new crew with a new code, and the
 other cars join again with it (the bot crew keeps 482917). The trip starts with the host's 출발, or by itself: at
-once when every car has joined, else 3 minutes after the crew was made (board 01 counts down;
+once when every car has joined, else 2 minutes after the crew was made (board 01 counts down;
 `JoinRules.JOIN_WINDOW_MILLIS`; both done by `TripCoordinator` on the host's device). Before that nobody drives off
 or sends drops: a car that joined waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and drops, the inbox and the
 rail's 드랍 / 게임 / 편지함 are greyed out. Cars not connected at the start are left out (`JoinRules.missingCars`;

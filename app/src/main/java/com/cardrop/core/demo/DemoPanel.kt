@@ -96,7 +96,7 @@ fun DemoPanel(container: AppContainer) {
                         DropDraft(
                             kind = DropKind.DECISION,
                             topic = DropTopic.REST,
-                            title = "어느 휴게소에서 쉴까요?",
+                            title = "어디서 쉬어갈까요?",
                             message = "삼촌 차 · 2시간 연속 운전",
                             candidates = demoCandidates(container),
                         ),

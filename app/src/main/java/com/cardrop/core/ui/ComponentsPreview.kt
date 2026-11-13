@@ -189,7 +189,7 @@ private fun HeadersAndLayoutPreview() {
                 ScreenHeader(eyebrow = null, title = "코드로 참여", subtitle = "주행 중엔 “코드 482917”처럼 말해서 넣어요", gap = 0.dp)
                 // Board 11: a tag pill above, title 32 with -0.02em, a 15px subtitle, gap 6, lined up at the top.
                 ScreenHeader(
-                    eyebrow = null, title = "어디서 밥 먹을까요?", titleSize = 32.sp, titleLetterSpacing = TightLetterSpacing,
+                    eyebrow = null, title = "뭐 먹고 갈까요?", titleSize = 32.sp, titleLetterSpacing = TightLetterSpacing,
                     subtitle = "AI가 4대 모두 가기 좋은 곳으로 골랐어요", subtitleSize = 15.sp, gap = 6.dp,
                     verticalAlignment = Alignment.Top,
                     tag = {

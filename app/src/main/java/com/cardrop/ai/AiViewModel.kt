@@ -479,9 +479,10 @@ class AiViewModel(
         return REST_STOP_TOWNS[nearest?.id] ?: "이천"
     }
 
+    /** The vote's title, the big line on board 11 (target lines 711-713). */
     fun topicTitle(topic: DropTopic): String = when (topic) {
-        DropTopic.REST -> "어느 휴게소에서 쉴까요?"
-        DropTopic.FOOD -> "어디서 밥 먹을까요?"
+        DropTopic.REST -> "어디서 쉬어갈까요?"
+        DropTopic.FOOD -> "뭐 먹고 갈까요?"
         DropTopic.FUEL -> "어디서 주유할까요?"
         DropTopic.DESTINATION -> "목적지를 바꿀까요?"
         DropTopic.MESSAGE -> "한마디"

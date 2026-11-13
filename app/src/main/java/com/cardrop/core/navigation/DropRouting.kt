@@ -19,43 +19,60 @@ import com.cardrop.voice.VoiceService
  * - any other DECISION drop -> board 11 (vote), announced by voice
  * - a vote that just ended -> board 14 (decision), only if it changed this car's route ([DecidedScreenPicker])
  *
- * [isSkipped] tells which stops this car turned down (`NavigationHandoff.decisions`).
+ * [memory] says what was already opened. It comes from AppContainer, so when an activity restart starts
+ * this effect again, old drops are not opened a second time or said aloud again.
  */
 @Composable
 fun DropRoutingEffect(
     crew: CrewRepository,
     voice: VoiceService,
     navigator: AppNavigator,
-    isSkipped: (dropId: String) -> Boolean = { false },
+    memory: DropRoutingMemory,
     onSocialMessage: (String) -> Unit,
 ) {
-    LaunchedEffect(crew) {
-        val seen = mutableSetOf<String>()
-        val decided = DecidedScreenPicker({ crew.myCarId }, isSkipped)
+    LaunchedEffect(crew, memory) {
         crew.drops.collect { drops ->
-            for (drop in drops) {
-                // A drop sent only to other cars (board 08 "받는 차") never shows up on this car.
-                if (!drop.isFor(crew.myCarId)) continue
-                val fromOther = drop.fromCarId != crew.myCarId
+            for (drop in memory.newFromOthers(drops)) {
                 val sender = crew.crew.value?.cars?.firstOrNull { it.id == drop.fromCarId }?.name ?: "일행"
-
-                if (seen.add(drop.id) && fromOther) {
-                    when {
-                        drop.kind == DropKind.SOCIAL -> onSocialMessage("$sender · ${drop.title}")
-                        drop.topic == DropTopic.FUEL -> {
-                            voice.speak(drop.title)
-                            navigator.go(Screen.FuelThem(drop.id))
-                        }
-                        else -> {
-                            voice.speak("${sender}가 투표를 보냈어요. ${drop.title}")
-                            navigator.go(Screen.Vote(drop.id))
-                        }
+                when {
+                    drop.kind == DropKind.SOCIAL -> onSocialMessage("$sender · ${drop.title}")
+                    drop.topic == DropTopic.FUEL -> {
+                        voice.speak(drop.title)
+                        navigator.go(Screen.FuelThem(drop.id))
+                    }
+                    else -> {
+                        voice.speak("${sender}가 투표를 보냈어요. ${drop.title}")
+                        navigator.go(Screen.Vote(drop.id))
                     }
                 }
             }
-            decided.pick(crew.crew.value, drops)?.let { navigator.go(Screen.Decided(it.id)) }
+            memory.decidedToOpen(crew.crew.value, drops)?.let { navigator.go(Screen.Decided(it.id)) }
         }
     }
+}
+
+/**
+ * What [DropRoutingEffect] already opened. AppContainer keeps one for the app's whole life, like the crew
+ * and trip data. Pure Kotlin, so it is unit tested (DropRoutingMemoryTest).
+ * [myCarId] is asked on every call, like [DecidedScreenPicker]: with the real crew the car is picked when
+ * joining (board 03), after the app has started.
+ * [isSkipped] tells which stops this car turned down (`NavigationHandoff.decisions`).
+ */
+class DropRoutingMemory(private val myCarId: () -> String, isSkipped: (dropId: String) -> Boolean = { false }) {
+    private val seen = mutableSetOf<String>()
+    private val decided = DecidedScreenPicker(myCarId, isSkipped)
+
+    /**
+     * The drops another car sent to this car that were not opened yet, oldest first. Each drop comes back
+     * only once. A drop sent only to other cars (board 08 "받는 차") never shows up on this car.
+     */
+    fun newFromOthers(drops: List<Drop>): List<Drop> {
+        val me = myCarId()
+        return drops.filter { it.isFor(me) && seen.add(it.id) && it.fromCarId != me }
+    }
+
+    /** The finished vote whose board 14 should open now, or null ([DecidedScreenPicker]). */
+    fun decidedToOpen(crew: Crew?, drops: List<Drop>): Drop? = decided.pick(crew, drops)
 }
 
 /**

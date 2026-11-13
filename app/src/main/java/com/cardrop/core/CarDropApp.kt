@@ -31,7 +31,6 @@ import com.cardrop.core.demo.DemoPanel
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.DropKind
-import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingEffect
 import com.cardrop.core.navigation.Screen
 import com.cardrop.core.ui.CarDropShell
@@ -58,7 +57,8 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun CarDropApp(container: AppContainer) {
-    val navigator = remember { AppNavigator() }
+    // From AppContainer, not `remember`: a new activity (day/night theme, a second MainActivity) keeps the screen.
+    val navigator = container.navigator
     val crewVm: CrewViewModel = viewModel { CrewViewModel(container.crew) }
     val driveVm: DriveViewModel = viewModel {
         DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai)
@@ -79,7 +79,7 @@ fun CarDropApp(container: AppContainer) {
         crew = container.crew,
         voice = container.voice,
         navigator = navigator,
-        isSkipped = container.navigation.decisions::isSkipped,
+        memory = container.dropRouting,
     ) { socialMessage = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 

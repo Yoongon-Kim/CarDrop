@@ -57,23 +57,16 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
 
     ScreenColumn {
         ScreenHeader(eyebrow = "${vm.carName(drop.fromCarId)}가 보낸 결정 드랍", title = drop.title) {
-            Pill("%d:%02d".format(secondsLeft / 60, secondsLeft % 60))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AiTag()
-            Text(
-                "${drop.votes.size}/$carCount 응답 · 무응답은 1순위로 처리돼요",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            // Not in the header: the voice caption ("음성 · …") shows at the top right and would cover it.
-            if (canSpin && !wheelOpen) {
-                CdChip(text = "고민되면 돌려보기", onClick = { wheelOpen = true }, style = ChipStyle.White)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (canSpin && !wheelOpen) {
+                    CdChip(text = "고민되면 돌려보기", onClick = { wheelOpen = true }, style = ChipStyle.White)
+                }
+                Pill("%d:%02d".format(secondsLeft / 60, secondsLeft % 60))
             }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            AiTag()
+            Text("${drop.votes.size}/$carCount 응답 · 무응답은 1순위로 처리돼요", style = MaterialTheme.typography.bodyLarge)
         }
         drop.candidates.forEachIndexed { index, candidate ->
             val votes = drop.votes.values.count { it == candidate.id }

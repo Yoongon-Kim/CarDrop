@@ -47,10 +47,10 @@ import com.cardrop.crew.CrewViewModel
 
 /**
  * Board 08 드랍 보내기 · Owner: Member A.
- * Choose the receiving cars (크루 전체, or one or more cars), then what to send: a decision topic
- * opens board 10 (AI candidates), 한마디 opens board 09. Both get the chosen cars (empty = whole crew).
- * 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play. The ✕ at the top
- * right ([onClose]) goes back to 홈 (board 04).
+ * Choose who gets it (크루 전체, one car alone, or a 조합 of cars), then what to send: a decision topic
+ * (휴게소, 식사, 주유 · 충전, 목적지 변경) opens board 10 (AI candidates), 한마디 and 음성 메시지 open board 09.
+ * Both get the chosen cars (empty = whole crew). 게임 초대 opens board 15 ([onGames]), where the driver picks
+ * the game and who to play. The ✕ at the top right ([onClose]) goes back to 홈 (board 04).
  */
 @Composable
 fun DropSendScreen(

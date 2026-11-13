@@ -43,7 +43,8 @@ import kotlin.math.roundToInt
 /**
  * Owner: lead. A small "DEMO" button (bottom right) that stages the 시연 moments on one emulator:
  * low fuel, P/D, and drops arriving from bot cars. Those only act on the fake implementations.
- * With the real crew it picks which car this device drives instead ("내 차", [DemoCar]).
+ * It also switches this device between the bot crew and the real crew ("크루", [DemoCrew]), and with the
+ * real crew it picks which car this device drives ("내 차", [DemoCar]).
  */
 @Composable
 fun DemoPanel(container: AppContainer) {
@@ -67,11 +68,8 @@ fun DemoPanel(container: AppContainer) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("시연 컨트롤", color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-            if (BuildConfig.USE_REAL_CREW) {
-                MyCarPicker(current = container.myCar)
-            } else {
-                Text("봇 크루 · 내 차는 아빠 차 (차 고르기: cardrop.useRealCrew=true)", color = CdColors.Gray400, fontSize = 13.sp)
-            }
+            CrewSwitch(realCrew = container.useRealCrew, myCar = container.myCar)
+            if (container.useRealCrew) MyCarPicker(current = container.myCar)
             if (vehicle != null) {
                 Text("연료 ${snapshot.fuelPercent ?: 0}%", color = CdColors.White, fontSize = 14.sp)
                 Slider(
@@ -159,6 +157,40 @@ private fun demoCandidates(container: AppContainer): List<Candidate> =
                 detourMinutes = 2 + i * 3,
             )
         }
+
+/**
+ * Bot crew or real crew on this device ([DemoCrew]). The other one asks once, then restarts the app with it.
+ * A build without app/google-services.json has only the bot crew.
+ */
+@Composable
+private fun CrewSwitch(realCrew: Boolean, myCar: String) {
+    val context = LocalContext.current
+    var pending by remember { mutableStateOf<Boolean?>(null) } // true = to the real crew
+    Text("크루", color = CdColors.White, fontSize = 14.sp)
+    if (!BuildConfig.HAS_FIREBASE) {
+        Text("봇 크루 · 내 차는 아빠 차 (실제 크루는 app/google-services.json이 있어야 해요)", color = CdColors.Gray400, fontSize = 13.sp)
+        return
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Tapping the crew in use cancels a pending switch, as in MyCarPicker.
+        DemoButton(if (realCrew) "봇 크루" else "봇 크루 ✓") { pending = if (realCrew) false else null }
+        DemoButton(if (realCrew) "실제 크루 ✓" else "실제 크루") { pending = if (realCrew) null else true }
+    }
+    if (!realCrew) Text("봇 크루에서는 내 차가 아빠 차예요", color = CdColors.Gray400, fontSize = 13.sp)
+    pending?.let { toReal ->
+        val text = if (toReal) {
+            val then = if (myCar == DemoCar.HOST) "크루를 새로 만들면 다른 차는 다시 참여해야 해요." else "크루 코드로 참여해 주세요."
+            "실제 크루로 바꾸면 앱이 다시 시작돼요. 내 차: ${carName(myCar)} · $then"
+        } else {
+            "봇 크루로 바꾸면 앱이 다시 시작돼요. 내 차: 아빠 차"
+        }
+        Text(text, color = CdColors.White, fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DemoButton("바꾸기") { DemoCrew.pickAndRestart(context, toReal) }
+            DemoButton("취소") { pending = null }
+        }
+    }
+}
 
 /** Real crew only: which car this device drives. Another car asks once, then restarts the app as it. */
 @Composable

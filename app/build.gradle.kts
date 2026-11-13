@@ -51,6 +51,8 @@ android {
 
         // Switch each area from its fake to its real implementation.
         buildConfigField("boolean", "USE_REAL_CREW", useRealCrew.toString())
+        // The DEMO panel's 크루 switch offers the real crew only when the Firebase settings are in the build.
+        buildConfigField("boolean", "HAS_FIREBASE", hasFirebaseConfig.toString())
         buildConfigField("String", "MY_CAR", "\"$myCar\"")
         buildConfigField("boolean", "USE_REAL_VEHICLE", localFlag("cardrop.useRealVehicle").toString())
         buildConfigField("boolean", "USE_REAL_VOICE", localFlag("cardrop.useRealVoice").toString())

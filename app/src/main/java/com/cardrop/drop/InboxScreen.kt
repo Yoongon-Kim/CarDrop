@@ -1,7 +1,7 @@
 package com.cardrop.drop
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,8 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +55,7 @@ import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.ChipStyle
+import com.cardrop.core.ui.softShadow
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.CrewViewModel
 import kotlinx.coroutines.delay
@@ -85,24 +86,24 @@ fun InboxScreen(
         }
     }
 
-    // Slide in from the right (design: cdSlide 0.35 s ease-out). 1 = off screen, 0 = in place.
+    // The design's entrance (cdSlide, target 22): the sheet moves 60 px in from the right while it fades in,
+    // in 0.35 s, slowing down at the end. 1 = the start, 0 = in place.
     val slide = remember { Animatable(1f) }
-    LaunchedEffect(Unit) { slide.animateTo(0f, tween(350, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { slide.animateTo(0f, tween(350, easing = EaseOut)) }
 
     // Only drops this car takes part in (board 08 can send to some cars only), newest first.
     val mine = drops.filter { it.isFor(vm.myCarId) }.asReversed()
     val shown = mine.filter { tab.matches(it, vm.myCarId, isSkipped) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Dim layer over the drive screen. A tap here closes the sheet.
+        // Dim layer over the drive screen, there at once (as in the design). A tap here closes the sheet.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = 1f - slide.value }
                 .background(CdColors.Ink.copy(alpha = 0.32f))
                 .noRippleClick(onClose),
         )
-        Sheet(slide.value) {
+        Sheet(slide = { slide.value }) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("드랍 편지함", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, modifier = Modifier.weight(1f))
                 Box(
@@ -157,17 +158,27 @@ fun InboxScreen(
     }
 }
 
-/** The white-grey panel on the right, 520 wide, rounded on the left (design board 07, target 283). */
+/**
+ * The white-grey panel on the right, 520 wide, rounded on the left (design board 07, target 283).
+ * [slide] is read while drawing only, so the entrance doesn't rebuild the sheet's contents on every frame.
+ */
 @Composable
-private fun BoxScope.Sheet(slide: Float, content: @Composable () -> Unit) {
+private fun BoxScope.Sheet(slide: () -> Float, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp)
     Column(
         modifier = Modifier
             .align(Alignment.CenterEnd)
             .width(520.dp)
             .fillMaxHeight()
-            .graphicsLayer { translationX = slide * size.width }
-            .shadow(30.dp, RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
-            .background(CdColors.Gray100, RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
+            .graphicsLayer {
+                translationX = slide() * 60.dp.toPx()
+                alpha = 1f - slide()
+                // Fade each drawing on its own: the default would fade a copy cut to the sheet, without its shadow.
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            }
+            // The design's box-shadow: -12px 0 30px rgba(0,0,0,0.15).
+            .softShadow(shape, Color.Black.copy(alpha = 0.15f), blur = 30.dp, x = (-12).dp)
+            .background(CdColors.Gray100, shape)
             // Taps inside the sheet must not fall through to the dim layer (which closes it).
             .noRippleClick {}
             .verticalScroll(rememberScrollState())

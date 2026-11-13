@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
@@ -56,10 +57,12 @@ fun JoinCrewScreen(vm: CrewViewModel, onJoined: () -> Unit) {
                     "${vm.carName(state.crew.hostCarId)} 크루 · ${state.crew.cars.size}대 참여 중 · ${state.crew.destination.name}",
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Text("${state.crew.destination.name}으로 안내할까요?", style = MaterialTheme.typography.titleLarge)
+                // withRo() picks 로 or 으로 for the name: "강릉 경포해변으로", "속초 해수욕장으로", "서울로".
+                val toDestination = state.crew.destination.name.withRo()
+                Text("$toDestination 안내할까요?", style = MaterialTheme.typography.titleLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SecondaryButton("신촌역 들렀다 가기", onClick = onJoined)
-                    PrimaryButton("바로 ${state.crew.destination.name}으로", onClick = onJoined)
+                    PrimaryButton("바로 $toDestination", onClick = onJoined)
                 }
                 TodoNote("신촌역 경유 버튼은 지금 경로를 경유지로 넣어야 해요 (board 03)")
                 Text(

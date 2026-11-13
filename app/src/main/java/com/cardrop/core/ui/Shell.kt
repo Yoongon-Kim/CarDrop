@@ -127,12 +127,17 @@ fun CarDropShell(
     overlay: @Composable () -> Unit,
     /** This car, drawn at the bottom of the rail with "내 차" (as in the design). */
     myCar: Car? = null,
+    /**
+     * Something app-only drawn low in the rail, just above [myCar]: the DEMO button. The rail is never under a
+     * screen's own content, unlike a corner of the screen, where boards pin their buttons. Null = nothing.
+     */
+    railExtra: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     DesignScale(designWidth = DESIGN_WIDTH + NAV_PANEL_WIDTH) {
         Row(modifier = Modifier.fillMaxSize().background(CdColors.Gray100)) {
             Box(modifier = Modifier.width(NAV_PANEL_WIDTH.dp).fillMaxHeight()) { navPanel() }
-            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar)
+            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar, extra = railExtra)
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 content()
                 overlay()
@@ -163,7 +168,7 @@ private const val DESIGN_HEIGHT = 900f
 private const val NAV_PANEL_WIDTH = 533f
 
 @Composable
-private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
+private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?, extra: (@Composable () -> Unit)?) {
     Column(
         modifier = Modifier
             .width(88.dp)
@@ -203,8 +208,10 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
                 Text(item.label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
+        // The rest goes to the bottom of the rail, [extra] 12 above the car (6 more than the rail's usual gap).
+        if (myCar != null || extra != null) Spacer(Modifier.weight(1f))
+        if (extra != null) Box(Modifier.padding(bottom = 6.dp)) { extra() }
         if (myCar != null) {
-            Spacer(Modifier.weight(1f))
             // The car and "내 차" sit 2 apart (the design's `gap: 2px`), closer than the rail's 6.
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 CarBadge(myCar)

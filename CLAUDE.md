@@ -57,7 +57,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - After a place or car name, pick the particle with `core/text/Korean.kt`: `name.particle("을", "를")`,
   `particle("이", "가")`, `name.withRo()` (로/으로). Never hard-code 를/는/가/로 after a name ("경포해변로").
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
-  never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).
+  never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
+  난 패스 is a vote with the value `VoteRules.PASS`: it counts for no place and the vote doesn't wait for that car,
+  so `carId in drop.votes` means "answered", not "chose a place".
 - Place search (boards 02 and 10), like Kakao Map's: typing shows the places that fit (Kakao Local keyword
   search, `navi/KakaoPlaceSearch.kt`, key `cardrop.kakaoRestKey`, nearby places first, distance from the car's
   GPS via `AppContainer.myPosition()`). The shared parts: `navi/PlaceSuggester.kt` (2+ letters, 300 ms pause,
@@ -71,8 +73,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   - Board 10 "다른 곳을 직접 입력": the suggestions replace the list until the box is empty; tapping one (or 추가 =
     the top one) puts it in the list, ticked. 말해서 추가 takes the top result for what was heard. Known places
     here: rest stops, cafés, destinations. A searched place that is an AI pick under a longer name
-    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). 직접 추가 (`DropTopic.CUSTOM`) opens board 10
-    with no AI picks.
+    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). Board 08 has no 카페 or 직접 추가 tile (D11):
+    any place is added here, and 카페 comes up by voice ("커피"). `DropTopic.CUSTOM` (board 10 with no AI picks)
+    is no longer offered on screen.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 
@@ -97,7 +100,7 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 ~/Library/Android/sdk/emulator/emulator -avd Pleos_Connect_v2.1.0   # Pleos emulator
 ```
 
-The **DEMO** button (bottom right of the app) changes fake fuel and gear, and makes bot cars send drops.
+The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
 Use it to rehearse the 시연 on one emulator. With the real crew (`cardrop.useRealCrew=true`) its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).
 With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 to join,
@@ -170,7 +173,7 @@ landed on `main`.
   start, Extended controls > Microphone > "Virtual microphone uses host audio input" (or
   `adb emu avd hostmicon`), and macOS must allow Android Studio to use the microphone. Without them it
   hears nothing and stops after 15 s. It hears everything near the computer, including other people.
-- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, just above the DEMO button, until it
+- While listening, a "마이크 · 듣고 있어요…" caption shows at the bottom right, a little up from the corner, until it
   stops (`Captions` in `core/CarDropApp.kt`).
 - Pleos sends the final sentence a few ms after "recognition ended", so `PleosVoiceService` waits up to 1 s
   for it; otherwise it would keep only the partial text.
@@ -226,6 +229,9 @@ shares its position through Firebase about once a second, so each one draws the 
 - Board 01's destination card adds the road distance and drive time ("약 62km · 1시간 5분") from the live
   route (`navi/DestinationTrip.kt`, `AppContainer.destinationTrip`). Nothing shows until the route is there,
   or while the route still ends at the old destination after a change.
+- Boards 10 and 11's times and distances ("12분 · 4대 평균", "6분", "9km") come from `drive/PlaceTimes.kt`
+  (`AppContainer.placeTimes`, unit tested): along the live route, only for places within 1.5 km of it that the
+  car hasn't passed; the other cars are timed from this one.
 - `navi/InAppNavigatorPanel.kt` + `navi/NavPanelState.kt` - the design's overlays (turn banner, CarDrop
   toast, speed from GPS, ETA card), "전체 경로" and, after dragging the map, "현재 위치".
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles

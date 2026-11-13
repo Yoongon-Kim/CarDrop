@@ -17,6 +17,7 @@ import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
 import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
+import com.cardrop.drive.PlaceTimes
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
@@ -100,6 +101,14 @@ class AppContainer(context: Context) {
     val destinationTrip: StateFlow<DestinationTrip?> =
         combine(inAppNavigation.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
             .stateIn(appScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Boards 10 and 11: how far a place is from this car by road and how long it takes ("9km", "6분"), and the
+     * crew's average ("12분 · 4대 평균"), on the navigator's live route. A new snapshot on every GPS fix.
+     */
+    val placeTimes: StateFlow<PlaceTimes> =
+        combine(inAppNavigation.state, route.positions) { state, positions -> PlaceTimes(state, positions, crew.myCarId) }
+            .stateIn(appScope, SharingStarted.Eagerly, PlaceTimes())
 
     /**
      * Where this car is: the navigator's GPS fix (there before departure too). Null before the first fix.

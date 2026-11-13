@@ -17,7 +17,8 @@ object DemoData {
         name = "강릉 경포해변",
         lat = 37.8055,
         lng = 128.9081,
-        detail = "강원 강릉시 · 약 230km · 2시간 40분",
+        // No distance or drive time here: boards 02 and 10 show the real distance from the car next to it.
+        detail = "강원 강릉시 · 해수욕장",
     )
 
     val destinations = listOf(

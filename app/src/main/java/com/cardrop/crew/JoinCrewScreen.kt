@@ -1,26 +1,34 @@
 package com.cardrop.crew
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.BackButton
@@ -36,8 +44,16 @@ import com.cardrop.core.ui.theme.CdColors
 /** Board 03 코드로 참여 · Owner: Member A. With the fake, code 482917 always works. */
 @Composable
 fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) {
-    var code by remember { mutableStateOf("") }
+    // rememberSaveable: the digits stay when Android rebuilds the screen (e.g. day / night theme).
+    var code by rememberSaveable { mutableStateOf("") }
     val join by vm.join.collectAsStateWithLifecycle()
+    // Opened with empty boxes: forget a crew found earlier, so the right half matches the boxes.
+    LaunchedEffect(Unit) { if (code.isEmpty()) vm.clearJoin() }
+    // Every change of the code goes through here: the crew is looked up at the 6th digit.
+    val changeCode: (String) -> Unit = { digits ->
+        code = digits
+        if (digits.length == JoinRules.CODE_LENGTH) vm.joinCrew(digits) else vm.clearJoin()
+    }
 
     ScreenColumn {
         // Design lines 177-179: the back button, then the title with the grey line under it.
@@ -59,22 +75,104 @@ fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) 
                 contentPadding = PaddingValues(22.dp),
                 gap = 16.dp,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    OutlinedTextField(
-                        value = code,
-                        onValueChange = { code = it.filter(Char::isDigit).take(6) },
-                        label = { Text("6자리 코드") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(280.dp),
-                    )
-                    PrimaryButton("찾기", onClick = { vm.joinCrew(code) }, enabled = code.length == 6)
-                }
+                DigitBoxes(code)
+                Keypad(
+                    onDigit = { if (code.length < JoinRules.CODE_LENGTH) changeCode(code + it) },
+                    onErase = { if (code.isNotEmpty()) changeCode(code.dropLast(1)) },
+                    listening = false,
+                    onListen = null,
+                    modifier = Modifier.weight(1f), // the keypad takes the rest of the card
+                )
             }
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 CrewFound(vm, join, onJoined)
             }
         }
+    }
+}
+
+/**
+ * The six boxes of the code (design line 183): 60 x 76, 8 apart, centred, digits 34/800. A box with a
+ * digit is blue on light blue, as drawn; the next one to fill has the blue edge too, the rest a grey one.
+ */
+@Composable
+private fun DigitBoxes(code: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    ) {
+        repeat(JoinRules.CODE_LENGTH) { i ->
+            val digit = code.getOrNull(i)
+            val shape = RoundedCornerShape(16.dp)
+            Box(
+                modifier = Modifier
+                    .size(width = 60.dp, height = 76.dp)
+                    .clip(shape)
+                    .background(if (digit != null) CdColors.BlueTint else CdColors.White)
+                    .border(2.dp, if (i <= code.length) CdColors.Blue else CdColors.Gray200, shape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(digit?.toString().orEmpty(), color = CdColors.Ink, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        }
+    }
+}
+
+/** The keys in their rows (design line 772). */
+private val keypadRows = listOf(
+    listOf("1", "2", "3"),
+    listOf("4", "5", "6"),
+    listOf("7", "8", "9"),
+    listOf(VOICE_KEY, "0", ERASE_KEY),
+)
+private const val VOICE_KEY = "말로"
+private const val ERASE_KEY = "지우기"
+
+/**
+ * The 3 x 4 keypad under the boxes (design line 184): 1-9, 말로, 0, 지우기; light grey keys 8 apart,
+ * radius 16, 24/800. It fills the height it gets. 말로 is greyed out while listening, or when there is
+ * no voice service ([onListen] = null).
+ */
+@Composable
+private fun Keypad(
+    onDigit: (Char) -> Unit,
+    onErase: () -> Unit,
+    listening: Boolean,
+    onListen: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        keypadRows.forEach { keys ->
+            Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                keys.forEach { key ->
+                    val keyModifier = Modifier.weight(1f).fillMaxHeight()
+                    when (key) {
+                        VOICE_KEY -> Key(
+                            if (listening) "듣는 중…" else VOICE_KEY,
+                            onClick = { onListen?.invoke() },
+                            enabled = onListen != null && !listening,
+                            modifier = keyModifier,
+                        )
+                        ERASE_KEY -> Key(ERASE_KEY, onClick = onErase, modifier = keyModifier)
+                        else -> Key(key, onClick = { onDigit(key.single()) }, modifier = keyModifier)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Key(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Box(
+        modifier = modifier
+            .alpha(if (enabled) 1f else 0.4f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(CdColors.Gray100)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = CdColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 

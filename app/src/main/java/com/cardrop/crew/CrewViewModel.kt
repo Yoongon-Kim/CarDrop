@@ -140,11 +140,25 @@ class CrewViewModel(
         }
     }
 
+    /** The code board 03 is looking up now; null = none (the driver changed the code). */
+    private var joiningCode: String? = null
+
+    /** Board 03: the driver typed the last digit of [code]. Looks the crew up and joins it. */
     fun joinCrew(code: String) {
+        joiningCode = code
         _join.value = JoinState.Searching
         viewModelScope.launch {
-            _join.value = repo.joinCrew(code)?.let { JoinState.Found(it) } ?: JoinState.NotFound
+            val found = repo.joinCrew(code)
+            // The driver erased a digit while we were looking: this answer is for a code no longer on screen.
+            if (joiningCode != code) return@launch
+            _join.value = found?.let { JoinState.Found(it) } ?: JoinState.NotFound
         }
+    }
+
+    /** Board 03: the code changed (a digit erased, or the screen opened again): no crew shown. */
+    fun clearJoin() {
+        joiningCode = null
+        _join.value = JoinState.Idle
     }
 
     fun sendDrop(draft: DropDraft, onSent: (Drop) -> Unit = {}) {

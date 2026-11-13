@@ -218,6 +218,9 @@ shares its position through Firebase about once a second, so each one draws the 
 - `navi/GpsCrewPositions.kt` - crew positions: this car from GPS. Real crew: the other cars where their own
   devices say (`drive/FirebaseTrip.kt`, `trips/<code>/positions` in Firebase); a car without a connected device
   is not drawn. Bot crew: the bots follow this car's GPS trail 0.8 / 1.8 / 3 km behind.
+- Board 01's destination card adds the road distance and drive time ("약 62km · 1시간 5분") from the live
+  route (`navi/DestinationTrip.kt`, `AppContainer.destinationTrip`). Nothing shows until the route is there,
+  or while the route still ends at the old destination after a change. None with `cardrop.navApp=naver`.
 - `navi/InAppNavigatorPanel.kt` + `navi/NavPanelState.kt` - the design's overlays (turn banner, CarDrop
   toast, speed from GPS, ETA card), "전체 경로" and, after dragging the map, "현재 위치".
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles

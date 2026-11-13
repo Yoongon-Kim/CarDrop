@@ -24,7 +24,9 @@ import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
 import com.cardrop.drive.TripStart
 import com.cardrop.navi.AndroidLocationSource
+import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.FallbackRouteProvider
+import com.cardrop.navi.tripToDestination
 import com.cardrop.navi.GpsCrewPositions
 import com.cardrop.navi.InAppNavigation
 import com.cardrop.navi.KakaoDirections
@@ -42,7 +44,11 @@ import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * Owner: lead. The one place that decides fake vs real for every interface.
@@ -102,6 +108,16 @@ class AppContainer(context: Context) {
         )
     // TODO(Member B): "kakao" -> KakaoNaviHandoff (Kakao Navi SDK, see CLAUDE.md)
     val navigation: NavigationHandoff = inAppNavigation ?: NaverMapHandoff(context.applicationContext)
+
+    /**
+     * Board 01's "약 62km · 1시간 5분": road distance and drive time from this car to the crew destination, on
+     * the navigator's live route. Null until that route is there, and always with `cardrop.navApp=naver`.
+     */
+    val destinationTrip: StateFlow<DestinationTrip?> =
+        inAppNavigation?.let { nav ->
+            combine(nav.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
+                .stateIn(appScope, SharingStarted.Eagerly, null)
+        } ?: MutableStateFlow(null)
 
     /**
      * Where this car is: the navigator's GPS fix (there before departure too), else its place in the crew

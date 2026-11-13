@@ -22,6 +22,10 @@ dependencyResolutionManagement {
         mavenCentral()
         // Pleos Playground SDKs (Vehicle SDK)
         maven("https://nexus-playground.pleos.ai/repository/maven-releases/")
+        // Kakao Maps SDK (navi/KakaoNavMap.kt)
+        maven("https://devrepo.kakao.com/nexus/repository/kakaomap-releases/") {
+            content { includeGroup("com.kakao.maps.open") }
+        }
     }
 }
 

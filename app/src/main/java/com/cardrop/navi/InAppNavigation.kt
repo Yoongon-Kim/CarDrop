@@ -52,6 +52,8 @@ class InAppNavigation(
     private val scope: CoroutineScope,
     private val location: LocationSource,
     private val router: RouteProvider,
+    /** Kakao Maps native app key: draw Kakao's map ([KakaoNavMap]). Null = MapLibre + OpenFreeMap. */
+    val kakaoMapKey: String? = null,
     private val now: () -> Long = System::currentTimeMillis,
 ) : NavigationHandoff {
     override val decisions = TripDecisions()

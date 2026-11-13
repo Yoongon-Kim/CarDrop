@@ -92,6 +92,7 @@ Use it to rehearse the 시연 on one emulator.
 | `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |
 | `cardrop.claudeApiKey` | key | Set = the real AI (`ai/ClaudeAiService.kt`, Anthropic Java SDK); empty = the fake. If a Claude call fails, the fake answers (`adb logcat -s CarDropAi`). The key is built into the APK, so don't share the APK |
 | `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes (empty = OSRM only) |
+| `cardrop.kakaoNativeKey` | key | Kakao Developers native app key: the in-app navigator draws Kakao's map (`navi/KakaoNavMap.kt`); empty = MapLibre + OpenFreeMap. If Kakao refuses the key, the app falls back to MapLibre (`adb logcat -s CarDropKakaoMap`) |
 
 ## Vehicle SDK notes (2.3.2, checked against the SDK classes)
 
@@ -161,6 +162,16 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles
   (OpenStreetMap data, no key; keep the attribution text). Needs internet; without the style it falls back
   to a plain background. MapLibre 13.1+ needs Kotlin 2.2, so stay on 13.0.x unless Kotlin is upgraded.
+- `navi/KakaoNavMap.kt` - the same map drawn by Kakao Maps (`com.kakao.maps.open:android:2.15.2`, Kakao's
+  Maven repo), used when `cardrop.kakaoNativeKey` is set. Checked on the emulator 2026-11-13. Markers
+  for both maps are in `navi/MapMarkers.kt`. Kakao setup (developers.kakao.com, app CarDrop):
+  - 앱 → 플랫폼 키 → 네이티브 앱 키: Android package `com.cardrop` + the key hash of the keystore that
+    signs the APK. Each Mac's debug keystore has its own hash (`adb logcat -s K3fAApi` prints it as
+    `origin/...`), so each developer adds theirs.
+  - The 카카오맵 service must be switched on, or Kakao answers 403 `disabled OPEN_MAP_AND_LOCAL service`.
+  - Engine only for ARM (arm64-v8a, armeabi-v7a), which the Pleos emulator and cars are.
+  - Kakao's angles: the camera turns counter-clockwise in radians (0..2π; a negative angle counts as 0),
+    labels turn clockwise. Kakao's logo must stay visible; it is placed inside the camera padding.
 - AI and DEMO-panel candidates come from `AppContainer.stopsAhead`: stops near the live route at least
   25 km ahead, so a 2-minute vote ends before the car passes the stop. Cafés (`DemoData.cafes`, real places
   from OpenStreetMap near 경포해변) and destinations are near the end of the trip and skip this filter.

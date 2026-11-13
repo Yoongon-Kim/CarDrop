@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.model.Candidate
+import com.cardrop.core.text.particle
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.SecondaryButton
@@ -109,7 +110,7 @@ fun VoteRoulette(
         Text(
             text = when {
                 spinning -> "돌리는 중…"
-                result != null -> "돌림판이 ${result!!.place.name}을(를) 골랐어요"
+                result != null -> "돌림판이 ${result!!.place.name.particle("을", "를")} 골랐어요"
                 else -> "못 고르겠으면 돌려봐요"
             },
             fontSize = 17.sp,

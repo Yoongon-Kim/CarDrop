@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -120,6 +121,7 @@ fun CreateCrewScreen(
                         "이 기기에는 문자 앱이 없어요 · 코드를 말로 알려 주세요"
                     }
                 }, shareStatus = shareStatus)
+                SavedGroupsCard()
             }
             // Right (flex 0.95): the crew members, with the 출발 button at the bottom of the same card.
             MembersCard(
@@ -203,19 +205,10 @@ private fun CrewNameRow(name: String, onRename: (String) -> Unit) {
         Text("일행 이름", color = CdColors.Gray600, fontSize = 15.sp)
         if (!editing) {
             Text(name, color = CdColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-            // The board's small grey button: 34 high, padding 12, radius 10, 13 bold.
-            CdChip(
-                "바꾸기",
-                onClick = {
-                    draft = name
-                    editing = true
-                },
-                height = 34.dp,
-                radius = 10.dp,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                contentPadding = PaddingValues(horizontal = 12.dp),
-            )
+            SmallGreyButton("바꾸기", onClick = {
+                draft = name
+                editing = true
+            })
         } else {
             val save = {
                 onRename(draft)
@@ -275,6 +268,79 @@ private fun InviteCodeCard(vm: CrewViewModel, crew: Crew?, onShare: () -> Unit, 
         }
         shareStatus?.let { StatusText(it, Modifier.align(Alignment.CenterHorizontally)) }
     }
+}
+
+/**
+ * Tier C, fixed demo data: the app keeps no saved groups yet, so these are the board's two (line 123-124).
+ * Picking one only marks it on screen; no invites are sent.
+ */
+private val savedGroups = listOf("가족 · 4대", "주말 드라이브 동호회 · 3대")
+
+/** What the buttons that aren't built yet say (tier C: + 그룹 등록, 초대). */
+private const val NOT_READY = "아직 준비 중이에요"
+
+/**
+ * 저장된 그룹 · 한 번에 초대 (design lines 120-126): the header with "+ 그룹 등록", then the groups as chips; the
+ * picked one has a blue edge on light blue.
+ */
+@Composable
+private fun SavedGroupsCard() {
+    var picked by rememberSaveable { mutableIntStateOf(0) }
+    var status by remember { mutableStateOf<String?>(null) }
+    CdCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 18.dp), gap = 10.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("저장된 그룹 · 한 번에 초대", color = CdColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+            SmallGreyButton("+ 그룹 등록", onClick = { status = NOT_READY })
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            savedGroups.forEachIndexed { i, group ->
+                GroupChip(group, picked = i == picked, onClick = { picked = i })
+            }
+        }
+        status?.let { StatusText(it) }
+    }
+}
+
+/** A saved group (design lines 123-124): 46 high, radius 14, 14px; picked = 2 px blue edge on light blue. */
+@Composable
+private fun GroupChip(text: String, picked: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = Modifier
+            .height(46.dp)
+            .clip(shape)
+            .background(if (picked) CdColors.BlueTint else CdColors.Gray100)
+            .border(2.dp, if (picked) CdColors.Blue else CdColors.Gray100, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            color = if (picked) CdColors.BlueDark else CdColors.Ink2,
+            fontSize = 14.sp,
+            fontWeight = if (picked) FontWeight.ExtraBold else FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The board's small grey button (34 high, padding 12, radius 10, 13 bold): 바꾸기, + 그룹 등록. */
+@Composable
+private fun SmallGreyButton(text: String, onClick: () -> Unit) {
+    CdChip(
+        text,
+        onClick = onClick,
+        height = 34.dp,
+        radius = 10.dp,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+        contentPadding = PaddingValues(horizontal = 12.dp),
+    )
 }
 
 /** The cars of the crew, then the 출발 button and its hint at the bottom of the card (design line 143). */

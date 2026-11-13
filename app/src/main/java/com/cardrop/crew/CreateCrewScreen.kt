@@ -198,8 +198,9 @@ private fun DestinationCard(
 }
 
 /**
- * The crew's name (design line 111, decision D6): "일행 이름  강릉 여행  [바꾸기]". 바꾸기 turns the name into a
- * text box with 저장 and 취소; 저장 (or the keyboard's enter) gives the crew the new name ([onRename]).
+ * The crew's name (design line 111, decision D6): "일행 이름  강릉 여행  [바꾸기]". 바꾸기 turns the name into an
+ * empty text box (the old name in grey) with 저장 and 취소; 저장 (or the keyboard's enter) gives the crew the
+ * typed name ([onRename]).
  */
 @Composable
 private fun CrewNameRow(name: String, onRename: (String) -> Unit) {
@@ -210,7 +211,9 @@ private fun CrewNameRow(name: String, onRename: (String) -> Unit) {
         if (!editing) {
             Text(name, color = CdColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
             SmallGreyButton("바꾸기", onClick = {
-                draft = name
+                // An empty box with the old name in grey: the text box's cursor would start in front of the
+                // old name, so typing straight away gives the new one instead.
+                draft = ""
                 editing = true
             })
         } else {
@@ -223,10 +226,11 @@ private fun CrewNameRow(name: String, onRename: (String) -> Unit) {
             CdTextField(
                 value = draft,
                 onValueChange = { draft = it },
-                placeholder = "일행 이름",
+                placeholder = name,
                 maxLength = CREW_NAME_MAX_LENGTH,
                 modifier = Modifier.weight(1f).focusRequester(focus),
                 onDone = save,
+                onClear = { draft = "" },
             )
             CdChip("저장", onClick = save, style = ChipStyle.Primary, enabled = draft.isNotBlank(), height = 54.dp)
             CdChip("취소", onClick = { editing = false }, height = 54.dp)

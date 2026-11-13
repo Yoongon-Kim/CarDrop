@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +32,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
@@ -37,17 +40,60 @@ import com.cardrop.core.model.Car
 import com.cardrop.core.navigation.Screen
 import com.cardrop.core.ui.theme.CdColors
 
-/** Every screen's outer layout: padding from the design (24 x 28) and vertical scrolling. */
+/**
+ * Every screen's outer layout: padding from the design (24 x 28), [gap] between the items (the design's
+ * `gap: 14px`) and vertical scrolling.
+ *
+ * [bottom] is for what a board pins to the bottom with `margin-top: auto` (01's 출발, 04's 드랍하기,
+ * 11's 응답하기, ...). It sits at the bottom of the screen while the content is short, and follows the
+ * content (still [gap] below it) when the content is longer than the screen, so it scrolls along.
+ *
+ * The column is at least as tall as the screen (`fillMaxSize()` comes before `verticalScroll()`), so an
+ * item with `Modifier.weight(1f)` takes the height that is left over, like the design's `flex: 1`.
+ */
 @Composable
-fun ScreenColumn(content: @Composable ColumnScope.() -> Unit) {
+fun ScreenColumn(
+    gap: Dp = 14.dp,
+    bottom: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val arrangement = remember(gap, bottom != null) {
+        if (bottom != null) LastItemAtBottom(gap) else Arrangement.spacedBy(gap)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        content = content,
-    )
+        verticalArrangement = arrangement,
+    ) {
+        content()
+        if (bottom != null) {
+            // One item, so the arrangement can move it down as a whole.
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(gap), content = bottom)
+        }
+    }
+}
+
+/**
+ * Places the items from the top with [gap] between them (like `Arrangement.spacedBy(gap)`), then moves
+ * the last item down to the bottom of the column if there is room: the design's `margin-top: auto`.
+ * Internal (not private) only so LastItemAtBottomTest can check it.
+ */
+internal class LastItemAtBottom(private val gap: Dp) : Arrangement.Vertical {
+    override val spacing: Dp get() = gap
+
+    override fun Density.arrange(totalSize: Int, sizes: IntArray, outPositions: IntArray) {
+        var y = 0
+        sizes.forEachIndexed { i, size ->
+            outPositions[i] = y
+            y += size + gap.roundToPx()
+        }
+        if (sizes.isNotEmpty()) {
+            val last = sizes.lastIndex
+            outPositions[last] = maxOf(outPositions[last], totalSize - sizes[last])
+        }
+    }
 }
 
 /** The left menu ("rail") from the design. 기록 (safety race) is cut for week 1, so 편지함 takes its place. */
@@ -130,12 +176,16 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
-            modifier = Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(CdColors.Blue),
+            modifier = Modifier
+                // The design's `margin-bottom: 14px`: with the rail's 6 between items, 20 from the logo to 홈.
+                .padding(bottom = 14.dp)
+                .size(46.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(CdColors.Blue),
             contentAlignment = Alignment.Center,
         ) {
             Text("CD", color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
         }
-        Spacer(Modifier.height(14.dp))
         railItems.forEach { item ->
             val on = item.screen == current
             Column(
@@ -145,7 +195,8 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
                     .background(if (on) CdColors.BlueLight else CdColors.White)
                     .clickable { onTab(item.screen) },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                // Icon and label centred, 4 apart (the design's `gap: 4px`).
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             ) {
                 val tint = if (on) CdColors.BlueDark else CdColors.Gray500
                 Icon(item.icon, contentDescription = null, tint = tint)
@@ -154,8 +205,11 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
         }
         if (myCar != null) {
             Spacer(Modifier.weight(1f))
-            CarBadge(myCar)
-            Text("내 차", color = CdColors.Gray600, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            // The car and "내 차" sit 2 apart (the design's `gap: 2px`), closer than the rail's 6.
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                CarBadge(myCar)
+                Text("내 차", color = CdColors.Gray600, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

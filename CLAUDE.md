@@ -155,6 +155,9 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
   the crew destination via the voted waypoint; asks again when the destination / waypoint changes, when
   the car leaves the route (60 m, 3 fixes) and once the car is done with the waypoint. Rules in
   `navi/GuidanceTracker.kt` (unit tested).
+- At the waypoint (first GPS fix within 300 m): the map toast "…에 왔어요" and a card at the top right of
+  the CarDrop side (`drive/StopNoticeCard.kt`, kept by `TripCoordinator.notice`); 도착 / 지나침 then
+  replace the card for 10 s ("…에 도착했어요 · 크루에게 알렸어요").
 - Waypoint done: **도착** = within 300 m and under 20 km/h for 10 s; **지나침** = came within 600 m, then
   more than 800 m away without stopping (the motorway passes rest stops 70-100 m from their map point, so
   distance alone can't tell them apart). Either one takes the stop off the route, shows the CarDrop toast,

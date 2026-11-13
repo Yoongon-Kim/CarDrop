@@ -44,6 +44,9 @@ interface NavigationHandoff {
      * in-app navigator knows; an external map app reports nothing.
      */
     val waypointEvents: Flow<WaypointEvent> get() = emptyFlow()
+
+    /** This car just got to the waypoint (within 300 m), before [waypointEvents] says whether it stopped. */
+    val reachedWaypoint: Flow<Place> get() = emptyFlow()
 }
 
 /** What this car did at [place], the crew's stop. */

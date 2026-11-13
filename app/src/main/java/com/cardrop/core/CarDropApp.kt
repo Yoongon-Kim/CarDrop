@@ -44,6 +44,7 @@ import com.cardrop.drive.DriveMainScreen
 import com.cardrop.drive.DriveViewModel
 import com.cardrop.drive.FuelMeScreen
 import com.cardrop.drive.FuelInvite
+import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
 import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteScreen
@@ -170,15 +171,18 @@ fun CarDropApp(container: AppContainer) {
 }
 
 /**
- * Shows when the microphone is listening, what the voice just said (the fake voice has no sound),
- * and quiet social messages.
+ * Shows this car getting to the crew's stop (stopped / drove past), when the microphone is listening,
+ * what the voice just said (the fake voice has no sound), and quiet social messages.
  */
 @Composable
 private fun Captions(container: AppContainer, socialMessage: String?) {
     val listening by container.voice.listening.collectAsStateWithLifecycle()
     val spoken by container.voice.lastSpoken.collectAsStateWithLifecycle()
+    val stopNotice by container.stopNotice.collectAsStateWithLifecycle()
+    val navRoute by container.navigation.route.collectAsStateWithLifecycle()
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopEnd) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+            StopNoticeCard(stopNotice, navRoute.waypoint)
             if (listening) Caption("마이크 · 듣고 있어요… 말씀하세요")
             spoken?.let { Caption("음성 · $it") }
             socialMessage?.let { Caption("소셜 · $it") }

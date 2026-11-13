@@ -30,6 +30,21 @@ class TripCoordinatorTest {
         assertTrue(sent.toCarIds.isEmpty()) // the whole crew
     }
 
+    @Test fun theStopCardFollowsGettingThereThenStopping() = runScenario { _, crew, nav, _, _, coordinator ->
+        val stop = DemoData.restStops[1]
+        nav.reachedWaypoint.emit(stop)
+        yield()
+        assertEquals(StopNotice.Kind.AT_STOP, coordinator.notice.value?.kind)
+        assertEquals(stop, coordinator.notice.value?.place)
+        nav.waypointEvents.emit(WaypointEvent(stop, WaypointResult.ARRIVED))
+        yield()
+        assertEquals(StopNotice.Kind.ARRIVED, coordinator.notice.value?.kind)
+        assertTrue(coordinator.notice.value!!.crewTold) // shown after the crew message went out
+        crew.leaveCrew()
+        yield()
+        assertNull(coordinator.notice.value) // a new crew starts without it
+    }
+
     @Test fun drivingPastTheStopIsSpokenAndToldToTheCrew() = runScenario { _, crew, nav, _, voice, _ ->
         nav.waypointEvents.emit(WaypointEvent(DemoData.restStops[1], WaypointResult.PASSED))
         yield()

@@ -8,8 +8,6 @@ import com.cardrop.drop.VoteRules
 import com.cardrop.navi.WaypointResult
 import com.cardrop.navi.clock
 import java.time.ZoneId
-import java.util.Locale
-import kotlin.math.roundToInt
 
 /** One row of board 14's "도착 예정": a car, what it is doing, and when it gets to the stop. */
 data class Arrival(val car: Car, val status: String, val time: String, val stops: Boolean, val minutes: Double?)
@@ -63,16 +61,13 @@ fun crewArrivals(
                 when {
                     km < -PASSED_KM -> drovePast
                     km <= NEAR_KM -> Arrival(car, "곧 도착해요", "—", stops = true, minutes = 0.0)
-                    else -> Arrival(car, distanceText(km), clock(nowMillis, minutes * 60, zone), stops = true, minutes = minutes)
+                    else -> Arrival(car, placeKmText(km), clock(nowMillis, minutes * 60, zone), stops = true, minutes = minutes)
                 }
             }
         }
     }
     return rows.sortedWith(compareBy<Arrival>({ !it.stops }, { it.minutes ?: Double.MAX_VALUE }))
 }
-
-/** "9.0km" under 10 km, then whole km ("15km"), like the design. */
-private fun distanceText(km: Double): String = if (km < 10) String.format(Locale.US, "%.1fkm", km) else "${km.roundToInt()}km"
 
 /** Closer than this to the stop, with no message yet: "곧 도착해요". */
 private const val NEAR_KM = 0.3

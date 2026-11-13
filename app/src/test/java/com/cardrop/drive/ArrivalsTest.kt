@@ -51,9 +51,9 @@ class ArrivalsTest {
     @Test fun everyCarIsTimedFromThisCarsWayToTheStop() {
         val rows = rows(decided())
         assertEquals(listOf(me, uncle, minji, aunt), rows.map { it.car.id })
-        assertEquals("9.0km", rows[0].status)
+        assertEquals("9km", rows[0].status)
         assertEquals(clockIn(6), rows[0].time)
-        assertEquals("9.8km", rows[1].status)
+        assertEquals("10km", rows[1].status) // 9.8 km
         assertEquals(clockIn(7), rows[1].time)
         assertEquals("12km", rows[3].status)
     }
@@ -103,6 +103,6 @@ class ArrivalsTest {
         assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", rows[me])
         assertEquals("지나쳤어요 · 강릉 경포해변에서 합류", rows[uncle]) // 1.2 km past
         assertEquals("곧 도착해요", rows[minji]) // 0.2 km past
-        assertEquals("1.0km", rows[aunt])
+        assertEquals("1km", rows[aunt])
     }
 }

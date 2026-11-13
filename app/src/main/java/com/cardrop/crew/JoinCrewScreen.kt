@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -265,16 +266,26 @@ private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found
         )
         // withRo() picks 로 or 으로 for the name: "강릉 경포해변으로", "속초 해수욕장으로", "서울로".
         val toDestination = crew.destination.name.withRo()
-        Text("$toDestination 안내할까요?", style = MaterialTheme.typography.titleLarge)
         // Where this car was driving before it joined, e.g. 신촌역. Null without a route, or when that was the
         // crew's destination already: then neither the line nor the button shows.
         val stop = JoinRules.stopOnTheWay(join.routeBefore, crew.destination)
-        if (stop != null) {
-            Text("지금 내 내비는 ${stop.name.withRo()} 안내 중이에요", style = MaterialTheme.typography.bodyMedium)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (stop != null) SecondaryButton("${stop.name} 들렀다 가기", onClick = { onJoined(stop) })
-            PrimaryButton("바로 $toDestination", onClick = { onJoined(null) })
+        // The decision (design lines 190-194): a light grey box, radius 18, padding 16, 10 between its lines,
+        // 6 px further down than the card's other lines.
+        Column(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(CdColors.Gray50)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("$toDestination 안내할까요?", color = CdColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            if (stop != null) {
+                Text("지금 내 내비는 ${stop.name.withRo()} 안내 중이에요", color = CdColors.Gray600, fontSize = 14.sp)
+                SecondaryButton("${stop.name} 들렀다 가기", onClick = { onJoined(stop) }, modifier = Modifier.fillMaxWidth())
+            }
+            PrimaryButton("바로 $toDestination", onClick = { onJoined(null) }, modifier = Modifier.fillMaxWidth())
         }
         Text(
             "참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요",

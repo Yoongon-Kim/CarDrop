@@ -59,7 +59,7 @@ fun DriveMainScreen(
     val crew by vm.crew.collectAsStateWithLifecycle()
     val drops by vm.drops.collectAsStateWithLifecycle()
     val positions by vm.positions.collectAsStateWithLifecycle()
-    val snapshot by vm.snapshot.collectAsStateWithLifecycle()
+    val fuel by vm.fuelByCar.collectAsStateWithLifecycle()
     val navRoute by vm.navRoute.collectAsStateWithLifecycle()
     val input by vm.inputMode.collectAsStateWithLifecycle()
     val warning by vm.fuelWarningPending.collectAsStateWithLifecycle()
@@ -116,10 +116,7 @@ fun DriveMainScreen(
 
         CrewRoad(cars, positions, vm.myCarId, navRoute.destination?.name ?: crew?.destination?.name)
         if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
-        CrewCards(
-            cars, positions, vm.myCarId, snapshot.fuelPercent, snapshot.rangeKm,
-            onMyLowFuel = if (canDrop) onFuelWarning else null,
-        )
+        CrewCards(cars, positions, vm.myCarId, fuel, onMyLowFuel = if (canDrop) onFuelWarning else null)
 
         // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

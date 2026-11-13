@@ -11,6 +11,9 @@ import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
 import com.cardrop.navi.PlaceSuggestion
 import com.cardrop.navi.PlaceSuggestions
+import com.cardrop.voice.VoiceService
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -22,6 +25,8 @@ class CrewViewModel(
     placeSearch: PlaceSearch? = null,
     /** This car's position (GPS), so nearby places come first and show their distance. */
     here: () -> GeoPoint? = { null },
+    /** Board 02 "말로 검색"; null hides the button. */
+    private val voice: VoiceService? = null,
 ) : ViewModel() {
 
     /**
@@ -56,8 +61,55 @@ class CrewViewModel(
     private val destinationSearch = PlaceSuggester(viewModelScope, placeSearch, DemoData.destinations, here)
     val destinationSuggestions: StateFlow<PlaceSuggestions> = destinationSearch.state
 
-    /** Board 02 opens with no old suggestions. */
-    fun openDestinationSearch() = destinationSearch.clear()
+    /** Board 02 "말로 검색": the grey line under the box, and whether the mic is listening. */
+    data class DestinationVoice(val listening: Boolean = false, val status: String? = null)
+
+    private val _destinationVoice = MutableStateFlow(DestinationVoice())
+    val destinationVoice: StateFlow<DestinationVoice> = _destinationVoice
+    private var listenJob: Job? = null
+
+    /** False without a voice service: board 02 then has no "말로 검색" button. */
+    val canListen: Boolean get() = voice != null
+
+    /** Board 02 opens with no old suggestions, and not listening. */
+    fun openDestinationSearch() {
+        stopListening()
+        destinationSearch.clear()
+    }
+
+    /** Board 02 closes: stop the microphone if it is still listening. */
+    fun stopListening() {
+        listenJob?.cancel()
+        _destinationVoice.value = DestinationVoice()
+    }
+
+    /**
+     * Board 02 "말로 검색": listen for a place name, put what was heard into the box ([onHeard]) and
+     * search for it. The driver then taps the right place: a misheard name never becomes the
+     * destination on its own.
+     */
+    fun listenForDestination(onHeard: (String) -> Unit) {
+        val voice = voice ?: return
+        if (_destinationVoice.value.listening) return
+        _destinationVoice.value = DestinationVoice(listening = true, status = "듣고 있어요… 가고 싶은 곳을 말해 주세요")
+        listenJob = viewModelScope.launch {
+            val heard = try {
+                voice.listen(placeName = true)?.trim()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _destinationVoice.value = DestinationVoice(status = "마이크를 열 수 없어요. 키보드로 입력할 수 있어요.")
+                return@launch
+            }
+            if (heard.isNullOrEmpty()) {
+                _destinationVoice.value = DestinationVoice(status = "음성을 듣지 못했어요. 다시 말하거나 키보드로 입력하세요.")
+                return@launch
+            }
+            _destinationVoice.value = DestinationVoice()
+            onHeard(heard)
+            destinationSearch.onTyped(heard)
+        }
+    }
 
     /** Board 02: the driver typed [text]; after a short pause the places that fit show. */
     fun onDestinationTyped(text: String) = destinationSearch.onTyped(text)
@@ -67,6 +119,7 @@ class CrewViewModel(
 
     /** Board 02: the driver tapped a place. It becomes the crew's destination. */
     fun pickDestination(place: Place) {
+        stopListening()
         destinationSearch.clear()
         setDestination(place)
     }

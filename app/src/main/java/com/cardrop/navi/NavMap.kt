@@ -84,6 +84,7 @@ fun NavMap(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     // Our UI is scaled to the design (DesignScale); scale the map's labels and icons the same way.
     val pixelRatio = LocalDensity.current.density * MAP_SCALE
+    val fonts = rememberMarkerFonts()
 
     val mapView = remember {
         MapLibre.getInstance(context.applicationContext)
@@ -109,7 +110,7 @@ fun NavMap(
             m.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) userMoved()
             }
-            loadStyle(m, mapView, pixelRatio) { layers = it }
+            loadStyle(m, mapView, pixelRatio, fonts) { layers = it }
             map = m
         }
         var started = false
@@ -202,23 +203,24 @@ private fun moveCamera(
     )
 }
 
-private fun loadStyle(map: MapLibreMap, view: MapView, pixelRatio: Float, onReady: (NavMapLayers) -> Unit) {
+private fun loadStyle(map: MapLibreMap, view: MapView, pixelRatio: Float, fonts: MarkerFonts, onReady: (NavMapLayers) -> Unit) {
     var usedFallback = false
     view.addOnDidFailLoadingMapListener { message ->
         Log.w(TAG, "Map style failed ($message); using the plain offline style")
         if (!usedFallback) {
             usedFallback = true
-            map.setStyle(Style.Builder().fromJson(OFFLINE_STYLE)) { onReady(NavMapLayers(it, pixelRatio)) }
+            map.setStyle(Style.Builder().fromJson(OFFLINE_STYLE)) { onReady(NavMapLayers(it, pixelRatio, fonts)) }
         }
     }
-    map.setStyle(Style.Builder().fromUri(STYLE_URL)) { onReady(NavMapLayers(it, pixelRatio)) }
+    map.setStyle(Style.Builder().fromUri(STYLE_URL)) { onReady(NavMapLayers(it, pixelRatio, fonts)) }
 }
 
 /** Our sources and layers on top of the base map, plus the marker images. */
-private class NavMapLayers(private val style: Style, ratio: Float) {
+private class NavMapLayers(private val style: Style, ratio: Float, fonts: MarkerFonts) {
 
-    private val markers = MapMarkers(ratio)
+    private val markers = MapMarkers(ratio, fonts)
     private val labelImages = mutableSetOf<String>()
+    private var roadRoute: LiveRoute? = null
     private var waypointLabel: String? = null
     private var destinationLabel: String? = null
 
@@ -228,7 +230,7 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
         style.addImage(IMG_WAYPOINT, markers.waypointPin())
         style.addImage(IMG_DESTINATION, markers.destinationPin())
 
-        listOf(SRC_DONE, SRC_AHEAD, SRC_CARS, SRC_ME, SRC_PLACES).forEach {
+        listOf(SRC_ROUTE, SRC_AHEAD, SRC_CARS, SRC_ME, SRC_PLACES).forEach {
             style.addSource(GeoJsonSource(it, FeatureCollection.fromFeatures(emptyList())))
         }
         // Route lines go under the base map's labels, markers on top of everything.
@@ -236,9 +238,10 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
         fun addBelowLabels(layer: Layer) {
             if (firstLabel != null) style.addLayerBelow(layer, firstLabel) else style.addLayer(layer)
         }
-        addBelowLabels(routeLine(LYR_DONE_CASING, SRC_DONE, "#FFFFFF", 5f, 13f))
-        addBelowLabels(routeLine(LYR_DONE, SRC_DONE, "#B0B8C1", 3f, 8f))
-        addBelowLabels(routeLine(LYR_AHEAD_CASING, SRC_AHEAD, "#FFFFFF", 5f, 14f))
+        // The design's route (target lines 50-52): a white road 18 wide with a grey edge (26 across) along the
+        // whole route, and the blue line (9) on it from this car on. Thinner when zoomed out.
+        addBelowLabels(routeLine(LYR_ROAD_EDGE, SRC_ROUTE, "#CBD3DD", 7f, 26f))
+        addBelowLabels(routeLine(LYR_ROAD, SRC_ROUTE, "#FFFFFF", 5f, 18f))
         addBelowLabels(routeLine(LYR_AHEAD, SRC_AHEAD, "#2F6FE0", 3f, 9f))
 
         style.addLayer(
@@ -258,7 +261,7 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
                 PropertyFactory.iconIgnorePlacement(true),
             ),
         )
-        style.addLayer(labelLayer(LYR_PLACE_LABELS, SRC_PLACES, offsetY = 22f))
+        style.addLayer(labelLayer(LYR_PLACE_LABELS, SRC_PLACES, offsetY = PIN_TAG_GAP))
         style.addLayer(
             SymbolLayer(LYR_ME, SRC_ME).withProperties(
                 PropertyFactory.iconImage(IMG_ME),
@@ -273,7 +276,11 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
 
     fun update(route: LiveRoute?, progressKm: Double, me: RoutePoint?, cars: List<MapCar>, waypoint: Place?, destination: Place?) {
         val geometry = route?.geometry
-        source(SRC_DONE).setGeoJson(line(geometry?.slice(0.0, progressKm).orEmpty()))
+        // The road is the whole route, so it changes only with a new route (not on every GPS reading).
+        if (route !== roadRoute) {
+            source(SRC_ROUTE).setGeoJson(line(geometry?.points.orEmpty()))
+            roadRoute = route
+        }
         source(SRC_AHEAD).setGeoJson(line(geometry?.slice(progressKm, geometry.totalKm).orEmpty()))
 
         source(SRC_ME).setGeoJson(
@@ -383,15 +390,14 @@ private const val OFFLINE_STYLE =
 private const val FOLLOW_ZOOM = 13.0
 private const val FOLLOW_TILT = 50.0
 
-private const val SRC_DONE = "cd-route-done"
+private const val SRC_ROUTE = "cd-route"
 private const val SRC_AHEAD = "cd-route-ahead"
 private const val SRC_CARS = "cd-cars"
 private const val SRC_ME = "cd-me"
 private const val SRC_PLACES = "cd-places"
-private const val LYR_DONE = "cd-route-done"
-private const val LYR_DONE_CASING = "cd-route-done-casing"
+private const val LYR_ROAD_EDGE = "cd-route-road-edge"
+private const val LYR_ROAD = "cd-route-road"
 private const val LYR_AHEAD = "cd-route-ahead"
-private const val LYR_AHEAD_CASING = "cd-route-ahead-casing"
 private const val LYR_CARS = "cd-cars"
 private const val LYR_CAR_LABELS = "cd-car-labels"
 private const val LYR_PLACES = "cd-places"

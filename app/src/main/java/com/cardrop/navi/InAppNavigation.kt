@@ -13,9 +13,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -37,10 +42,21 @@ data class NavigatorState(
     val offRoute: Boolean = false,
     val arrived: Boolean = false,
     val error: String? = null,
+    /**
+     * The crew's stop this car stopped at (the waypoint it ARRIVED at), until it drives off again: the panel
+     * then shows "덕평자연휴게소 · 정차 중" with "P" where the waypoint was. Null while not parked at a stop.
+     */
+    val parkedAt: Place? = null,
 )
 
 /**
- * Owner: Member B. `cardrop.navApp=inapp` (the default).
+ * The toast under the navigator's banner: the message of the latest route change ([NavRoute.lastAction]).
+ * [id] is new for every change, so the same text twice in a row still shows twice.
+ */
+data class NavToast(val text: String, val id: Int)
+
+/**
+ * Owner: Member B.
  *
  * A real navigator inside CarDrop, drawn by [InAppNavigatorPanel]:
  * - position: this car's GPS ([LocationSource]); on the emulator, `tools/drive_gps.py` feeds it;
@@ -64,6 +80,12 @@ class InAppNavigation(
     private val _route = MutableStateFlow(NavRoute())
     override val route: StateFlow<NavRoute> = _route
 
+    private val _toast = MutableStateFlow<NavToast?>(null)
+
+    /** The latest route change's message, for [InAppNavigatorPanel]'s toast; null when it has none (e.g. after [clear]). */
+    val toast: StateFlow<NavToast?> = _toast
+    private var toasts = 0
+
     override val isAvailable: Boolean = true
 
     private val _guiding = MutableStateFlow(false)
@@ -73,6 +95,10 @@ class InAppNavigation(
 
     private val _state = MutableStateFlow(NavigatorState())
     val state: StateFlow<NavigatorState> = _state
+
+    /** [NavigatorState.parkedAt] alone, so a screen that names the stop (board 15) isn't redrawn on every GPS reading. */
+    val parkedAt: StateFlow<Place?> = _state.map { it.parkedAt }.distinctUntilChanged()
+        .stateIn(scope, SharingStarted.Eagerly, null)
 
     // Room for a few events, so a slow listener never holds up the GPS.
     private val _waypointEvents = MutableSharedFlow<WaypointEvent>(extraBufferCapacity = 8)
@@ -98,18 +124,18 @@ class InAppNavigation(
         val old = _route.value
         if (waypoint != null && isBehind(waypoint)) {
             // The vote ended after this car drove past the stop: don't send it back.
-            _route.value = NavRoute(destination, waypoint = null, lastAction = "${waypoint.name.particle("은", "는")} 이미 지났어요 · 목적지로 안내해요")
+            changeRoute { NavRoute(destination, waypoint = null, lastAction = "${waypoint.name.particle("은", "는")} 이미 지났어요 · 목적지로 안내해요") }
             if (old.destination != destination || old.waypoint != null) requestRoute()
             return
         }
-        _route.value = NavRoute(destination, waypoint, lastAction = reason)
+        changeRoute { NavRoute(destination, waypoint, lastAction = reason) }
         if (old.destination != destination || old.waypoint != waypoint || _state.value.route == null) requestRoute()
     }
 
     override fun launch(): Boolean {
         if (_route.value.destination == null) return false
         // Already guiding (e.g. "지금 안내 시작" after a vote): keep the message about what changed.
-        if (!_guiding.value) _route.update { it.copy(lastAction = "안내를 시작했어요") }
+        if (!_guiding.value) changeRoute { it.copy(lastAction = "안내를 시작했어요") }
         _guiding.value = true
         return true
     }
@@ -117,7 +143,7 @@ class InAppNavigation(
     override fun clear() {
         routing?.cancel()
         routing = null
-        _route.value = NavRoute()
+        changeRoute { NavRoute() }
         _guiding.value = false
         tracker.reset()
         _state.value = NavigatorState(fix = _state.value.fix)
@@ -142,6 +168,16 @@ class InAppNavigation(
         }.sortedBy { it.second }.map { it.first }
     }
 
+    /**
+     * Every change to [route] goes through here, so each one also gets its own [toast]. [route] alone can't tell
+     * two equal changes apart: a StateFlow keeps its old value when the new one is equal (e.g. a second reroute
+     * in a row: same destination, same waypoint, same message).
+     */
+    private fun changeRoute(change: (NavRoute) -> NavRoute) {
+        val next = _route.updateAndGet(change)
+        _toast.value = next.lastAction?.let { NavToast(it, ++toasts) }
+    }
+
     private fun isBehind(place: Place): Boolean {
         val current = _state.value
         val route = current.route ?: return false
@@ -164,8 +200,17 @@ class InAppNavigation(
         val waypoint = _route.value.waypoint
         val update = tracker.update(route, fix, waypoint)
         val justArrived = update.arrived && !_state.value.arrived
+        // Stopped at the crew's stop: remember it until the car is on its way again (GuidanceTracker.isStillAt).
+        val parkedAt = if (update.waypoint == WaypointResult.ARRIVED && waypoint != null) {
+            waypoint
+        } else {
+            _state.value.parkedAt?.takeIf { tracker.isStillAt(it, fix) }
+        }
         _state.update {
-            it.copy(fix = fix, progressKm = update.km, snapped = update.snapped, offRoute = update.offRoute, arrived = update.arrived)
+            it.copy(
+                fix = fix, progressKm = update.km, snapped = update.snapped, offRoute = update.offRoute, arrived = update.arrived,
+                parkedAt = parkedAt,
+            )
         }
         when {
             update.waypoint != null && waypoint != null -> {
@@ -174,16 +219,16 @@ class InAppNavigation(
                     WaypointResult.ARRIVED -> "${waypoint.name}에 도착했어요"
                     WaypointResult.PASSED -> "${waypoint.name.particle("을", "를")} 지나쳤어요 · 목적지로 안내해요"
                 }
-                _route.update { it.copy(waypoint = null, lastAction = text) }
+                changeRoute { it.copy(waypoint = null, lastAction = text) }
                 _waypointEvents.tryEmit(WaypointEvent(waypoint, update.waypoint))
                 requestRoute()
             }
             update.atWaypoint && waypoint != null -> {
                 // Feedback the moment the car gets there; whether it stopped is decided a little later.
-                _route.update { it.copy(lastAction = "${waypoint.name}에 왔어요") }
+                changeRoute { it.copy(lastAction = "${waypoint.name}에 왔어요") }
                 _reachedWaypoint.tryEmit(waypoint)
             }
-            justArrived -> _route.update { it.copy(lastAction = "목적지에 도착했어요") }
+            justArrived -> changeRoute { it.copy(lastAction = "목적지에 도착했어요") }
             routing?.isActive != true &&
                 ((update.needsReroute && now() - lastRequestMillis > REROUTE_GAP_MILLIS) ||
                     (_state.value.status == NavStatus.ERROR && now() - lastRequestMillis > RETRY_MILLIS)) -> requestRoute(isReroute = true)
@@ -208,7 +253,7 @@ class InAppNavigation(
                 _state.update {
                     it.copy(status = NavStatus.GUIDING, route = route, progressKm = 0.0, offRoute = false, arrived = false, error = null)
                 }
-                if (isReroute) _route.update { it.copy(lastAction = "경로를 벗어나서 새 경로를 찾았어요") }
+                if (isReroute) changeRoute { it.copy(lastAction = "경로를 벗어나서 새 경로를 찾았어요") }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -1,6 +1,5 @@
 package com.cardrop.drive
 
-import com.cardrop.core.model.CarPosition
 import com.cardrop.core.model.Place
 import kotlin.math.asin
 import kotlin.math.atan2
@@ -31,8 +30,8 @@ data class RoutePoint(val lat: Double, val lng: Double, val bearing: Double)
  * The shape and the turns come from OpenStreetMap (OSRM router) and are baked into [DemoRouteData] by
  * `tools/bake_route.py`, so the demo needs no routing server.
  *
- * Used by [ScriptedRouteSimulator] (`cardrop.navApp=naver`) and by `tools/drive_gps.py`, which feeds this
- * route into the emulator's GPS so the in-app navigator has a car to guide.
+ * Used by `tools/drive_gps.py`, which feeds this route into the emulator's GPS so the in-app navigator has
+ * a car to guide.
  */
 object DemoRoute {
 
@@ -50,9 +49,6 @@ object DemoRoute {
 
     fun kmOf(place: Place): Double = kmOf(place.lat, place.lng)
 
-    /** How far along the route a car is. */
-    fun kmOf(position: CarPosition): Double = (totalKm - position.kmToDestination).coerceIn(0.0, totalKm)
-
     /** The next turn after [km], or null when nothing but the arrival is left. */
     fun nextStep(km: Double): NavStep? = steps.firstOrNull { it.km > km + 0.01 }
 
@@ -61,18 +57,6 @@ object DemoRoute {
 
     /** The part of the route between two distances. */
     fun slice(fromKm: Double, toKm: Double): List<GeoPoint> = geometry.slice(fromKm, toKm)
-
-    /**
-     * Places from [pool] that every car still has ahead of it, at least [marginKm] past the car in front,
-     * nearest first. A vote takes up to 2 minutes, so a stop picked now must still be ahead when it ends.
-     */
-    fun placesAhead(pool: List<Place>, positions: Collection<CarPosition>, marginKm: Double = 25.0): List<Place> {
-        val frontKm = positions.maxOfOrNull { kmOf(it) } ?: 0.0
-        return pool.map { it to kmOf(it) }
-            .filter { (_, km) -> km > frontKm + marginKm }
-            .sortedBy { (_, km) -> km }
-            .map { (place, _) -> place }
-    }
 }
 
 /** Great-circle distance in km. */

@@ -41,24 +41,21 @@ import com.cardrop.vehicle.FakeVehicleRepository
 import kotlin.math.roundToInt
 
 /**
- * Owner: lead. A small "DEMO" button (bottom right) that stages the 시연 moments on one emulator:
+ * Owner: lead. A small "DEMO" button (in the rail: [DemoRailButton]) that stages the 시연 moments on one emulator:
  * low fuel, P/D, and drops arriving from bot cars. Those only act on the fake implementations.
  * It also switches this device between the bot crew and the real crew ("크루", [DemoCrew]), and with the
  * real crew it picks which car this device drives ("내 차", [DemoCar]).
  */
 @Composable
-fun DemoPanel(container: AppContainer) {
-    var open by remember { mutableStateOf(false) }
+fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
     val vehicle = container.vehicle as? FakeVehicleRepository
     val crewRepo = container.crew as? FakeCrewRepository
     val snapshot by container.vehicle.snapshot.collectAsStateWithLifecycle()
     val crew by container.crew.crew.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomEnd) {
-        if (!open) {
-            DemoButton("DEMO") { open = true }
-            return@Box
-        }
+    // Opens at the bottom left of the screen, next to its button in the rail.
+    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomStart) {
+        if (!open) return@Box
         Column(
             modifier = Modifier
                 .width(320.dp)
@@ -94,7 +91,7 @@ fun DemoPanel(container: AppContainer) {
                         DropDraft(
                             kind = DropKind.DECISION,
                             topic = DropTopic.REST,
-                            title = "어느 휴게소에서 쉴까요?",
+                            title = "어디서 쉬어갈까요?",
                             message = "삼촌 차 · 2시간 연속 운전",
                             candidates = demoCandidates(container),
                         ),
@@ -110,9 +107,19 @@ fun DemoPanel(container: AppContainer) {
             } else if (crewRepo != null) {
                 Text("크루를 먼저 만들어 주세요", color = CdColors.Gray400, fontSize = 13.sp)
             }
-            DemoButton("닫기") { open = false }
+            DemoButton("닫기", onClick = onClose)
         }
     }
+}
+
+/**
+ * The "DEMO" button that opens and closes [DemoPanel]. CarDropApp puts it in the rail, above 내 차: in the
+ * screen's bottom-right corner, where it used to be, it covered the end of the buttons boards pin to the bottom
+ * (10's 투표 보내기, 11's 응답하기, 01's 출발, …).
+ */
+@Composable
+fun DemoRailButton(onClick: () -> Unit) {
+    DemoButton("DEMO", onClick)
 }
 
 /** The next 3 rest stops every car still has ahead (falls back to the last ones near the end). */
@@ -134,9 +141,9 @@ private fun minjiFuelInvite(container: AppContainer): DropDraft {
     )
 }
 
-/** 민지 차's distance to [place] along the live route (km); null without the in-app navigator's route. */
+/** 민지 차's distance to [place] along the live route (km); null before the navigator has a route. */
 private fun minjiKmTo(container: AppContainer, place: Place): Int? {
-    val state = container.inAppNavigation?.state?.value ?: return null
+    val state = container.inAppNavigation.state.value
     val route = state.route ?: return null
     val positions = container.route.positions.value
     val minjiBehind = (positions[DemoData.minji.id]?.kmToDestination ?: 0f) -

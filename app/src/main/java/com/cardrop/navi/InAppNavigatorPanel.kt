@@ -1,6 +1,8 @@
 package com.cardrop.navi
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -35,11 +37,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.ui.softShadow
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drive.DriveViewModel
 import com.cardrop.drive.NavArrow
@@ -49,7 +54,7 @@ import kotlinx.coroutines.delay
 /**
  * Owner: Member B.
  *
- * The navigator drawn inside CarDrop (`cardrop.navApp=inapp`): the design's left third
+ * The navigator drawn inside CarDrop: the design's left third
  * (533 x 900 design px). A real map with the live route (GPS + Kakao/OSRM) and every crew car,
  * plus the design's overlays: turn banner, CarDrop toast, speed, and the waypoint / destination card.
  * The map is Kakao's ([KakaoNavMap]) when local.properties has `cardrop.kakaoNativeKey`, else
@@ -95,11 +100,13 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
     // Height of the bottom cards: Kakao's logo goes just above them.
     var bottomPx by remember { mutableIntStateOf(0) }
 
-    // The CarDrop toast under the banner shows each new route change for 5 seconds.
+    // The CarDrop toast under the banner shows each new route change for 5 seconds. It follows nav.toast, not the
+    // text of route.lastAction: every change has its own id there, so the same message twice in a row shows twice.
+    // A newer change cancels the wait and starts again; none (after clear()) hides the toast at once.
+    val latestToast by nav.toast.collectAsStateWithLifecycle()
     var toast by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(route.lastAction) {
-        val text = route.lastAction ?: return@LaunchedEffect
-        toast = text
+    LaunchedEffect(latestToast) {
+        toast = latestToast?.text
         delay(5_000)
         toast = null
     }
@@ -139,7 +146,13 @@ fun InAppNavigatorPanel(nav: InAppNavigation, vm: DriveViewModel) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Banner(state.banner)
-            AnimatedVisibility(visible = toast != null, enter = fadeIn() + slideInVertically(), exit = fadeOut()) {
+            // The design's toast entrance (cdPop): it rises 18 px while it fades in, in 0.5 s, slowing down at the end.
+            val rise = with(LocalDensity.current) { 18.dp.roundToPx() }
+            AnimatedVisibility(
+                visible = toast != null,
+                enter = fadeIn(tween(500, easing = EaseOut)) + slideInVertically(tween(500, easing = EaseOut)) { rise },
+                exit = fadeOut(),
+            ) {
                 Toast(toast.orEmpty())
             }
         }
@@ -177,7 +190,7 @@ private fun Banner(banner: NavBanner) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(20.dp))
+            .softShadow(RoundedCornerShape(20.dp), Color.Black.copy(alpha = 0.15f), blur = 18.dp, y = 6.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(CdColors.NavBanner)
             .padding(horizontal = 18.dp, vertical = 16.dp),
@@ -205,14 +218,14 @@ private fun Toast(text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(14.dp))
+            .softShadow(RoundedCornerShape(14.dp), Color.Black.copy(alpha = 0.10f), blur = 18.dp, y = 6.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(CdColors.White)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Tag("CarDrop", CdColors.Blue)
+        Tag("CarDrop", CdColors.Blue, vertical = 2.dp, horizontal = 7.dp) // a little wider than the ETA tags (target 65)
         Text(text, color = CdColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 2)
     }
 }
@@ -220,7 +233,11 @@ private fun Toast(text: String) {
 @Composable
 private fun Speed(kmh: Int) {
     Column(
-        modifier = Modifier.size(92.dp).shadow(10.dp, CircleShape).clip(CircleShape).background(CdColors.White),
+        modifier = Modifier
+            .size(92.dp)
+            .softShadow(CircleShape, Color.Black.copy(alpha = 0.12f), blur = 18.dp, y = 6.dp)
+            .clip(CircleShape)
+            .background(CdColors.White),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -233,7 +250,7 @@ private fun Speed(kmh: Int) {
 private fun EtaCard(state: NavPanelState, modifier: Modifier) {
     Column(
         modifier = modifier
-            .shadow(10.dp, RoundedCornerShape(20.dp))
+            .softShadow(RoundedCornerShape(20.dp), Color.Black.copy(alpha = 0.08f), blur = 18.dp, y = 6.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(CdColors.White.copy(alpha = 0.97f))
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -261,8 +278,9 @@ private fun EtaLine(tag: String, color: Color, row: EtaRow) {
     }
 }
 
+/** A small white-on-colour tag: "경유", "목적지" (padding 3 / 6) and the toast's "CarDrop" (2 / 7). */
 @Composable
-private fun Tag(text: String, color: Color) {
+private fun Tag(text: String, color: Color, vertical: Dp = 3.dp, horizontal: Dp = 6.dp) {
     Text(
         text,
         color = CdColors.White,
@@ -271,7 +289,7 @@ private fun Tag(text: String, color: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(color)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .padding(horizontal = horizontal, vertical = vertical),
     )
 }
 

@@ -13,10 +13,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.DropTopic
+import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drop.VoteRules
@@ -24,7 +31,7 @@ import com.cardrop.voice.VoiceService
 import kotlin.math.ceil
 
 /**
- * Board 14, as in the design: a blue result card ("{place} 결정되었어요"), guidance that starts by itself after
+ * Board 14, as in the design: a blue result card ("{place}로 결정되었어요"), guidance that starts by itself after
  * 3 seconds unless the driver picks "우리 차는 안 들르기", and when each car reaches the stop ("도착 예정").
  *
  * The countdown runs only with the in-app navigator ([DriveViewModel.autoStartsGuidance]). Once it has started
@@ -60,7 +67,12 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
         val start = { if (started || vm.startGuidance()) onDone() }
         val skip = { if (vm.skipStop(drop.id)) onDone() }
         val ids = drop.voterIds(crew?.cars?.map { it.id }.orEmpty())
-        val changed = route.lastAction ?: "왼쪽 내비의 경유지를 바꿨어요"
+        // What changed in the navigator, in the target's words (line 493); the navigator's toast keeps its own.
+        // When the place isn't in the route (e.g. "…는 이미 지났어요"), the navigator's last message says why.
+        val destinationVote = drop.topic == DropTopic.DESTINATION
+        val inRoute = if (destinationVote) route.destination?.id == winner.place.id else route.waypoint?.id == winner.place.id
+        val fixed = if (destinationVote) "왼쪽 내비의 목적지를 바꿨어요" else "왼쪽 내비의 경유지를 바꿨어요"
+        val changed = if (inRoute) fixed else route.lastAction ?: fixed
         val status = when {
             skipped -> "우리 차는 이 경유지에 들르지 않아요"
             countdown && !started -> {
@@ -82,12 +94,12 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                     Icon(CdIcons.Check, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(22.dp))
                 }
                 Text(
-                    "투표 결과 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의",
+                    "투표가 끝났어요 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의",
                     color = CdColors.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 )
             }
             Text(
-                "${winner.place.name}\n결정되었어요",
+                "${winner.place.name.withRo()}\n결정되었어요",
                 color = CdColors.White, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 45.sp,
             )
             Text(status, color = CdColors.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -96,14 +108,18 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                     Box(Modifier.fillMaxHeight().fillMaxWidth(if (started) 1f else progress.value).background(CdColors.White))
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            // 70% of the card wide, 2 : 1, 58 high with corners 16 (target line 495). The CSS buttons have almost
+            // no side padding, so "우리 차는 안 들르기" fits in the smaller one.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(0.7f)) {
                 PrimaryButton(
                     if (started) "주행 화면으로" else "지금 안내 시작", start, Modifier.weight(2f), ready,
                     containerColor = CdColors.White, contentColor = CdColors.BlueDark,
+                    height = 58.dp, radius = 16.dp, fontSize = 17.sp, horizontalPadding = 8.dp,
                 )
                 PrimaryButton(
                     "우리 차는 안 들르기", skip, Modifier.weight(1f), ready && !skipped,
                     containerColor = CdColors.White.copy(alpha = 0.2f),
+                    height = 58.dp, radius = 16.dp, fontSize = 15.sp, fontWeight = FontWeight.Bold, horizontalPadding = 8.dp,
                 )
             }
         }
@@ -111,8 +127,15 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
         // drops: the crew's "도착했어요" / "지나쳤어요" messages change the list too.
         val arrivals = remember(drop, drops, positions, route, crew, skipped) { vm.arrivals(drop) }
         if (arrivals.isNotEmpty()) {
-            CdCard(Modifier.fillMaxWidth()) {
-                Text("도착 예정", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+            // Padding 16 x 22 and no gap: the rows bring their own space and lines (target lines 497-499).
+            CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 16.dp), gap = 0.dp) {
+                Text(
+                    "도착 예정",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CdColors.Ink,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
                 arrivals.forEach { ArrivalRow(it) }
             }
         }
@@ -124,19 +147,37 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
     }
 }
 
-/** One car in "도착 예정": the car, its name and status, and when it gets there. */
+/**
+ * One car in "도착 예정": the car, its name with its status right after it in smaller grey text, and when it gets
+ * there; 6 above and below, with a thin line under every row (target line 499).
+ */
 @Composable
 private fun ArrivalRow(arrival: Arrival) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val line = 1.dp.toPx()
+                drawLine(CdColors.Gray100, Offset(0f, size.height - line / 2), Offset(size.width, size.height - line / 2), line)
+            }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         CarBadge(arrival.car)
-        Row(
+        Text(
+            buildAnnotatedString {
+                append(arrival.car.name)
+                append(" ")
+                withStyle(SpanStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = CdColors.Gray600)) {
+                    append(arrival.status)
+                }
+            },
+            fontSize = 16.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = CdColors.Ink,
             modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(arrival.car.name, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
-            Text(arrival.status, fontSize = 13.sp, color = CdColors.Gray600)
-        }
+        )
         Text(arrival.time, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
     }
 }

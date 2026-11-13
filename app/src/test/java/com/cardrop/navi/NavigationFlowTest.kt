@@ -70,6 +70,52 @@ class NavigationFlowTest {
             assertEquals(2, router.requests)
         } finally { scope.cancel() }
     }
+    @Test fun theSameMessageForAnotherDestinationIsANewToast() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val nav = InAppNavigation(scope, Location(), Router(road)) { 100_000 }
+            // The host picks a destination, then another one: the same text twice.
+            nav.setRoute(DemoData.gyeongpo, reason = "크루 목적지를 내비에 넣었어요")
+            val first = nav.toast.value
+            nav.setRoute(DemoData.destinations.last(), reason = "크루 목적지를 내비에 넣었어요")
+            val second = nav.toast.value
+            assertEquals("크루 목적지를 내비에 넣었어요", first?.text)
+            assertEquals(first?.text, second?.text)
+            assertNotEquals(first?.id, second?.id)
+            // The trip ends: no toast left over.
+            nav.clear()
+            assertNull(nav.toast.value)
+        } finally { scope.cancel() }
+    }
+    @Test fun aSecondRerouteInARowIsANewToast() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            var now = 100_000L
+            val location = Location()
+            val router = Router(road)
+            val nav = InAppNavigation(scope, location, router) { now }
+            location.fix.value = fix(0.0, now)
+            nav.setRoute(DemoData.gyeongpo)
+            yield()
+            val reroutes = (1..2).map {
+                // 3 fixes off the route, then one after the 8-second gap between route requests: a new route.
+                for (wait in listOf(1_000L, 1_000L, 1_000L, 7_000L)) {
+                    now += wait
+                    location.fix.value = fix(.1, now, .004)
+                    yield()
+                }
+                nav.route.value to nav.toast.value
+            }
+            assertEquals(3, router.requests)
+            val (routeAfterFirst, firstToast) = reroutes[0]
+            val (routeAfterSecond, secondToast) = reroutes[1]
+            // The route value is the same after both, so it can't tell the second reroute apart; the toast can.
+            assertEquals(routeAfterFirst, routeAfterSecond)
+            assertEquals("경로를 벗어나서 새 경로를 찾았어요", firstToast?.text)
+            assertEquals(firstToast?.text, secondToast?.text)
+            assertNotEquals(firstToast?.id, secondToast?.id)
+        } finally { scope.cancel() }
+    }
     @Test fun drivingPastTheStopTakesItOffTheRouteAndTellsListeners() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         try {
@@ -101,6 +147,31 @@ class NavigationFlowTest {
             assertNull(nav.route.value.waypoint)
             assertEquals("여주휴게소를 지나쳤어요 · 목적지로 안내해요", nav.route.value.lastAction)
             assertEquals(2, router.requests) // a new route straight to the destination
+        } finally { scope.cancel() }
+    }
+    @Test fun stoppingAtTheStopShowsItAsParkedUntilTheCarDrivesOff() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            var now = 100_000L
+            val location = Location()
+            val nav = InAppNavigation(scope, location, Router(road)) { now }
+            val stop = geometry.pointAt(5.0).let { Place("yeoju", "여주휴게소", it.lat + 100 / 111_320.0, it.lng) }
+            location.fix.value = fix(4.9, now)
+            nav.setRoute(DemoData.gyeongpo, waypoint = stop)
+            yield()
+            // Stand still at the stop: after 10 seconds it counts as arrived.
+            repeat(12) {
+                now += 1_000
+                location.fix.value = GpsFix(stop.lat, stop.lng, 0.0, 90.0, now)
+                yield()
+            }
+            assertNull(nav.route.value.waypoint) // the stop is done; the route goes to the destination
+            assertEquals(stop, nav.state.value.parkedAt) // but the panel still shows it as "정차 중"
+            // Back on the motorway at 80 km/h: on the way again.
+            now += 1_000
+            location.fix.value = fix(5.1, now)
+            yield()
+            assertNull(nav.state.value.parkedAt)
         } finally { scope.cancel() }
     }
     @Test fun aFailedPrimaryProviderFallsBackAndCancellationDoesNot() = runBlocking {

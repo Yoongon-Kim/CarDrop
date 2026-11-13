@@ -4,7 +4,6 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
-import com.cardrop.core.text.particle
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
 import com.cardrop.navi.NavigationHandoff
@@ -80,11 +79,10 @@ class TripCoordinator(
      * shown as e.g. "아빠 차 · 여주휴게소에 도착했어요".
      */
     private suspend fun onWaypoint(event: WaypointEvent) {
-        val name = event.place.name
+        // The crew text comes from StopNews, which board 14 also uses to read it back.
         val (spoken, forCrew) = when (event.result) {
-            WaypointResult.ARRIVED -> "${name}에 도착했어요" to "${name}에 도착했어요"
-            WaypointResult.PASSED ->
-                "${name.particle("을", "를")} 지나쳤어요. 목적지로 안내할게요" to "${name.particle("을", "를")} 지나쳤어요"
+            WaypointResult.ARRIVED -> StopNews.arrived(event.place).let { it to it }
+            WaypointResult.PASSED -> "${StopNews.passed(event.place)}. 목적지로 안내할게요" to StopNews.passed(event.place)
         }
         runCatching { voice.speak(spoken) }
         runCatching { crew.sendDrop(DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = forCrew)) }

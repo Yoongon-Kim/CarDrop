@@ -317,7 +317,11 @@ private val tileColors = listOf(
     CdColors.TealLight to CdColors.TealDark,
 )
 
-/** One place: tap anywhere on it to tick or untick it. */
+/**
+ * One place: tap anywhere on it to tick or untick it. As in the target (lines 413-415, 699) the rows are white with
+ * corners 24, and the AI's top pick has a blue edge. The round tick at the right shows what goes into the vote: the
+ * target has no ticks, the app keeps them (D11).
+ */
 @Composable
 private fun PlaceRow(
     candidate: Candidate,
@@ -327,22 +331,22 @@ private fun PlaceRow(
     popup: Boolean,
     onToggle: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(24.dp)
     val borderColor = when {
-        selected -> CdColors.Blue
-        popup -> CdColors.Gray100
+        aiPick && rank == 0 -> CdColors.Blue
+        popup -> CdColors.Gray100 // a white row on the white pop-up needs an edge
         else -> CdColors.White
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (selected) CdColors.BlueTint else CdColors.White)
+            .background(CdColors.White)
             .border(2.dp, borderColor, shape)
             .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
             .padding(horizontal = if (popup) 16.dp else 20.dp, vertical = if (popup) 12.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val (tileBackground, tileText) = if (aiPick) tileColors[rank % tileColors.size] else CdColors.Gray100 to CdColors.Ink2
         Box(
@@ -364,7 +368,7 @@ private fun PlaceRow(
                 Text(
                     candidate.place.name,
                     color = CdColors.Ink,
-                    fontSize = 19.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

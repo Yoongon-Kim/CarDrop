@@ -106,11 +106,12 @@ private fun FuelQuestion(vm: DriveViewModel, onDone: () -> Unit, voice: VoiceSer
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                 )
             }
+            // The design's answers (341-342): 78 high, corners 20, "응, 알려줘" 20 px and "아니, 혼자 갈게" 18 px.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PrimaryButton("응, 알려줘", share, Modifier.weight(1f).height(78.dp), ready)
+                PrimaryButton("응, 알려줘", share, Modifier.weight(1f), ready, height = 78.dp, fontSize = 20.sp)
                 PrimaryButton(
-                    "아니, 혼자 갈게", alone, Modifier.weight(1f).height(78.dp), ready,
-                    containerColor = CdColors.Gray100, contentColor = CdColors.Ink2,
+                    "아니, 혼자 갈게", alone, Modifier.weight(1f), ready,
+                    containerColor = CdColors.Gray100, contentColor = CdColors.Ink2, height = 78.dp, fontSize = 18.sp,
                 )
             }
             DriveActionFeedback(action)

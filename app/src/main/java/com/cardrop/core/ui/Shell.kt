@@ -175,12 +175,16 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
-            modifier = Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(CdColors.Blue),
+            modifier = Modifier
+                // The design's `margin-bottom: 14px`: with the rail's 6 between items, 20 from the logo to 홈.
+                .padding(bottom = 14.dp)
+                .size(46.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(CdColors.Blue),
             contentAlignment = Alignment.Center,
         ) {
             Text("CD", color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
         }
-        Spacer(Modifier.height(14.dp))
         railItems.forEach { item ->
             val on = item.screen == current
             Column(
@@ -190,7 +194,8 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
                     .background(if (on) CdColors.BlueLight else CdColors.White)
                     .clickable { onTab(item.screen) },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                // Icon and label centred, 4 apart (the design's `gap: 4px`).
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             ) {
                 val tint = if (on) CdColors.BlueDark else CdColors.Gray500
                 Icon(item.icon, contentDescription = null, tint = tint)
@@ -199,8 +204,11 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
         }
         if (myCar != null) {
             Spacer(Modifier.weight(1f))
-            CarBadge(myCar)
-            Text("내 차", color = CdColors.Gray600, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            // The car and "내 차" sit 2 apart (the design's `gap: 2px`), closer than the rail's 6.
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                CarBadge(myCar)
+                Text("내 차", color = CdColors.Gray600, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

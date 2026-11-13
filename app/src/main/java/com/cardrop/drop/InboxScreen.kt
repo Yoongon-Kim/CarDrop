@@ -48,6 +48,7 @@ import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
+import com.cardrop.core.model.DropTopic
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
@@ -73,12 +74,12 @@ fun InboxScreen(
     val crew by vm.crew.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(InboxTab.ALL) }
 
-    // Clock for "3분 전"; ticks every 15 s, enough for minute labels.
+    // Clock for "3분 전" and an open vote's "1:48 남음"; ticks every second.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
-            delay(15_000)
+            delay(1_000)
         }
     }
 
@@ -144,6 +145,7 @@ fun InboxScreen(
                         sender = sender,
                         status = drop.status(vm.myCarId, isSkipped),
                         timeText = agoText(now - drop.createdAtMillis),
+                        nowMillis = now,
                         onOpen = { onOpenDrop(drop) },
                     )
                 }
@@ -173,8 +175,9 @@ private fun BoxScope.Sheet(slide: Float, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: String, onOpen: () -> Unit) {
+private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: String, nowMillis: Long, onOpen: () -> Unit) {
     val decision = drop.kind == DropKind.DECISION
+    val text = inboxRowText(drop, sender.name, status, nowMillis)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,14 +197,9 @@ private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: Stri
                 )
                 Text("${sender.name} · $timeText", fontSize = 12.sp, color = CdColors.Gray600, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(drop.title, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val sub = when (status) {
-                DropStatus.DECIDED -> drop.decidedCandidate?.let { "결정: ${it.place.name}" } ?: "결정됐어요"
-                DropStatus.VOTING -> "투표 중 · ${drop.votes.size}명 응답"
-                else -> drop.message
-            }
-            if (sub.isNotBlank()) {
-                Text(sub, fontSize = 13.sp, color = CdColors.Gray600, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(text.title, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (text.sub.isNotBlank()) {
+                Text(text.sub, fontSize = 13.sp, color = CdColors.Gray600, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         when (status) {
@@ -257,6 +255,39 @@ internal fun Drop.status(myCarId: String, isSkipped: (dropId: String) -> Boolean
     fromCarId != myCarId && myCarId !in votes && !isSkipped(id) -> DropStatus.NEEDS_ANSWER
     else -> DropStatus.VOTING
 }
+
+/** What an inbox row says under its tag: a bold title and a grey line. Internal so InboxRowTest can check it. */
+internal data class InboxRowText(val title: String, val sub: String)
+
+/**
+ * The row texts from the design (target 290, 667-673):
+ * - a vote: "아빠 차: 어디서 쉬어갈까요?", and while it is open "덕평 · 여주 · 문막 · 1:48 남음";
+ * - a fuel invite: its own title, and "같이 갈지 아직 안 골랐어요" while this car hasn't answered;
+ * - a 한마디: "삼촌 차: “천천히 와요~”" over "일행에게 한마디";
+ * - a finished decision: what was decided.
+ * The sender's name goes in front of the title unless the title already starts with it (the DEMO panel's invite:
+ * "민지 차 연료가 부족해요 · 같이 갈래요?").
+ */
+internal fun inboxRowText(drop: Drop, senderName: String, status: DropStatus, nowMillis: Long): InboxRowText {
+    val title = if (drop.title.startsWith(senderName)) drop.title else "$senderName: ${drop.title}"
+    return when {
+        status == DropStatus.SOCIAL -> InboxRowText("$senderName: “${drop.title}”", "일행에게 한마디")
+        status == DropStatus.DECIDED -> InboxRowText(title, drop.decidedCandidate?.let { "결정: ${it.place.name}" } ?: "결정됐어요")
+        drop.topic == DropTopic.FUEL ->
+            InboxRowText(title, if (status == DropStatus.NEEDS_ANSWER) "같이 갈지 아직 안 골랐어요" else drop.message)
+        else -> InboxRowText(title, openVoteText(drop, nowMillis))
+    }
+}
+
+/** "덕평 · 여주 · 문막 · 1:48 남음": the places to vote for, and the time left while there is some. */
+private fun openVoteText(drop: Drop, nowMillis: Long): String {
+    val secondsLeft = (drop.deadlineMillis - nowMillis) / 1000
+    val timeLeft = if (secondsLeft > 0) "%d:%02d 남음".format(secondsLeft / 60, secondsLeft % 60) else null
+    return (drop.candidates.map { shortPlaceName(it.place.name) } + listOfNotNull(timeLeft)).joinToString(" · ")
+}
+
+/** "덕평자연휴게소" -> "덕평", "여주휴게소" -> "여주", as the design shortens rest stops; other places stay whole. */
+internal fun shortPlaceName(name: String): String = name.removeSuffix("자연휴게소").removeSuffix("휴게소").ifBlank { name }
 
 /** "방금", "3분 전", "1시간 전". */
 internal fun agoText(millis: Long): String {

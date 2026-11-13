@@ -12,11 +12,14 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.ui.AiTag
 import com.cardrop.core.ui.CdCard
+import com.cardrop.core.ui.CdChip
+import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.InfoRow
 import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
@@ -48,10 +51,18 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
     val secondsLeft = ((drop.deadlineMillis - now) / 1000).coerceAtLeast(0)
     var picked by remember(dropId) { mutableStateOf(drop.votes[vm.myCarId] ?: drop.candidates.firstOrNull()?.id) }
     val alreadyVoted = vm.myCarId in drop.votes
+    // 돌림판 is a small extra: only before answering, and only when there is something to choose between.
+    val canSpin = !alreadyVoted && drop.candidates.size >= 2
+    var wheelOpen by remember(dropId) { mutableStateOf(false) }
 
     ScreenColumn {
         ScreenHeader(eyebrow = "${vm.carName(drop.fromCarId)}가 보낸 결정 드랍", title = drop.title) {
-            Pill("%d:%02d".format(secondsLeft / 60, secondsLeft % 60))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (canSpin && !wheelOpen) {
+                    CdChip(text = "고민되면 돌려보기", onClick = { wheelOpen = true }, style = ChipStyle.White)
+                }
+                Pill("%d:%02d".format(secondsLeft / 60, secondsLeft % 60))
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             AiTag()
@@ -71,7 +82,18 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
                 )
             }
         }
-        TodoNote("일행 위치 지도, 돌림판 이스터에그 (board 11)")
+        if (canSpin && wheelOpen) {
+            VoteRoulette(
+                candidates = drop.candidates,
+                // Only selects it; the driver still presses 응답하기 to send the vote.
+                onPick = { candidateId ->
+                    picked = candidateId
+                    wheelOpen = false
+                },
+                onClose = { wheelOpen = false },
+            )
+        }
+        TodoNote("일행 위치 지도 (board 11)")
         PrimaryButton(
             text = if (alreadyVoted) "응답했어요" else "응답하기",
             enabled = !alreadyVoted && picked != null,

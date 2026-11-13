@@ -51,6 +51,7 @@ import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.TodoNote
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.NotoSansKr
+import com.cardrop.navi.tripKmText
 
 /** Board 03 코드로 참여 · Owner: Member A. With the fake, code 482917 always works. */
 @Composable
@@ -230,6 +231,10 @@ private val NoteStyle = TextStyle(color = CdColors.Gray600, fontSize = 15.sp, fo
  */
 @Composable
 private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found, onJoined: () -> Unit) {
+    val live by vm.crew.collectAsStateWithLifecycle()
+    val trip by vm.trip.collectAsStateWithLifecycle()
+    // The crew as it is now (more cars can connect while the card is open); until then, the one found.
+    val crew = live?.takeIf { it.code == join.crew.code } ?: join.crew
     val pop = remember(join.crew.code) { Animatable(0f) } // 0 = not shown yet, 1 = in place
     LaunchedEffect(join.crew.code) { pop.animateTo(1f, tween(durationMillis = 500, easing = EaseOut)) }
     CdCard(
@@ -241,13 +246,18 @@ private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found
         gap = 12.dp,
     ) {
         Pill("크루를 찾았어요", fontSize = 13.sp, padding = PaddingValues(horizontal = 12.dp, vertical = 6.dp))
-        Text(join.crew.name, style = MaterialTheme.typography.headlineLarge)
+        Text(crew.name, style = MaterialTheme.typography.headlineLarge)
+        // "아빠 차 크루 · 3대 참여 중 · 강릉 경포해변 230km": the host, the other cars already in (not this one,
+        // which is only joining), and the road distance once the navigator has the route (as on board 01).
+        val carsIn = crew.cars.count { it.connected && it.id != vm.myCarId }
+        val distance = trip?.let { " ${tripKmText(it.km)}" }.orEmpty()
         Text(
-            "${vm.carName(join.crew.hostCarId)} 크루 · ${join.crew.cars.size}대 참여 중 · ${join.crew.destination.name}",
-            style = MaterialTheme.typography.bodyLarge,
+            "${vm.carName(crew.hostCarId)} 크루 · ${carsIn}대 참여 중 · ${crew.destination.name}$distance",
+            color = CdColors.Gray600,
+            fontSize = 15.sp,
         )
         // withRo() picks 로 or 으로 for the name: "강릉 경포해변으로", "속초 해수욕장으로", "서울로".
-        val toDestination = join.crew.destination.name.withRo()
+        val toDestination = crew.destination.name.withRo()
         Text("$toDestination 안내할까요?", style = MaterialTheme.typography.titleLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton("신촌역 들렀다 가기", onClick = onJoined)

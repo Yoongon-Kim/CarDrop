@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -42,14 +44,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Car
 import com.cardrop.core.model.Crew
+import com.cardrop.core.model.VehicleSnapshot
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.CdTextField
 import com.cardrop.core.ui.ChipStyle
-import com.cardrop.core.ui.InfoRow
 import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
@@ -58,11 +61,15 @@ import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.TightLetterSpacing
 import com.cardrop.navi.DestinationTrip
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 
 /** Board 01 크루 만들기 (방장) · Owner: Member A. */
 @Composable
 fun CreateCrewScreen(
     vm: CrewViewModel,
+    /** This car's fuel, for the host's row ("방장 · 연료 64%"). */
+    vehicle: StateFlow<VehicleSnapshot>,
     onSearchDestination: () -> Unit,
     onJoinWithCode: () -> Unit,
     onDepart: () -> Unit,
@@ -70,6 +77,7 @@ fun CreateCrewScreen(
     LaunchedEffect(Unit) { vm.ensureCrew() }
     val crew by vm.crew.collectAsStateWithLifecycle()
     val trip by vm.trip.collectAsStateWithLifecycle()
+    val car by vehicle.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var shareStatus by remember { mutableStateOf<String?>(null) }
 
@@ -114,7 +122,13 @@ fun CreateCrewScreen(
                 }, shareStatus = shareStatus)
             }
             // Right (flex 0.95): the crew members, with the 출발 button at the bottom of the same card.
-            MembersCard(crew, onDepart, modifier = Modifier.weight(0.95f).fillMaxHeight())
+            MembersCard(
+                crew,
+                myCarId = vm.myCarId,
+                myFuelPercent = car.fuelPercent,
+                onDepart = onDepart,
+                modifier = Modifier.weight(0.95f).fillMaxHeight(),
+            )
         }
     }
 }
@@ -265,7 +279,24 @@ private fun InviteCodeCard(vm: CrewViewModel, crew: Crew?, onShare: () -> Unit, 
 
 /** The cars of the crew, then the 출발 button and its hint at the bottom of the card (design line 143). */
 @Composable
-private fun MembersCard(crew: Crew?, onDepart: () -> Unit, modifier: Modifier = Modifier) {
+private fun MembersCard(
+    crew: Crew?,
+    myCarId: String,
+    myFuelPercent: Int?,
+    onDepart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // When this screen saw each car connect, for "코드로 참여 · 방금 전". It starts over when the screen opens:
+    // for the cars already in, it doesn't know when they came, so their rows show no time.
+    var joinTimes by remember { mutableStateOf(JoinTimes()) }
+    LaunchedEffect(crew) { crew?.let { joinTimes = joinTimes.next(it, System.currentTimeMillis()) } }
+    // The clock for "방금 전" -> "1분 전": the rows are drawn again every 15 s.
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            delay(15_000)
+            value = System.currentTimeMillis()
+        }
+    }
     // Design line 128: radius 26, padding 20 / 22, only 2 between the card's parts (the rows have their own room).
     CdCard(modifier = modifier, contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp), gap = 2.dp) {
         val cars = crew?.cars.orEmpty()
@@ -280,23 +311,17 @@ private fun MembersCard(crew: Crew?, onDepart: () -> Unit, modifier: Modifier = 
                 modifier = Modifier.alignByBaseline(),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            cars.forEach { car ->
-                InfoRow(
-                    title = car.name,
-                    // The host (방장) is the car that made the crew, which isn't always this one: a car that
-                    // joined with a code sees the host's row marked, not its own.
-                    subtitle = if (car.id == crew?.hostCarId) "방장" else if (car.connected) "코드로 참여" else "초대 보냄 · 응답 기다리는 중",
-                    leading = { CarBadge(car) },
-                    trailing = {
-                        if (car.connected) {
-                            Pill("연결됨")
-                        } else {
-                            Pill("기다리는 중", background = CdColors.OrangeLight, color = CdColors.OrangeDark)
-                        }
-                    },
-                )
-            }
+        cars.forEach { car ->
+            // The host (방장) is the car that made the crew, which isn't always this one: a car that joined with
+            // a code sees the host's row marked, not its own.
+            val meta = MemberRules.meta(
+                car,
+                hostCarId = crew?.hostCarId.orEmpty(),
+                myCarId = myCarId,
+                myFuelPercent = myFuelPercent,
+                joinedAgo = joinTimes.agoText(car.id, now),
+            )
+            MemberRow(car, meta)
         }
         // The board pins the button to the bottom of the card (margin-top: auto): the Spacer takes the room left.
         Spacer(Modifier.weight(1f))
@@ -308,5 +333,36 @@ private fun MembersCard(crew: Crew?, onDepart: () -> Unit, modifier: Modifier = 
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp), // the board's margin-top: 6px
         )
+    }
+}
+
+/**
+ * One car of the crew (design lines 131-134): the badge, the name (16/800) over the grey line (13), and
+ * its state at the right; 8 above and below, 12 apart, a thin grey line under it.
+ */
+@Composable
+private fun MemberRow(car: Car, meta: String) {
+    // One item with its line, so the card's 2 dp gap comes between the rows, not between a row and its line.
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CarBadge(car)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(car.name, color = CdColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(meta, color = CdColors.Gray600, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            // The board's status pill: 13 extra bold, padding 6 / 10 (line 639).
+            val pillPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            if (car.connected) {
+                Pill("연결됨", fontSize = 13.sp, padding = pillPadding)
+            } else {
+                Pill("기다리는 중", background = CdColors.OrangeLight, color = CdColors.OrangeDark, fontSize = 13.sp, padding = pillPadding)
+            }
+        }
+        // The board's border-bottom: 1px solid #F2F4F6.
+        Spacer(Modifier.fillMaxWidth().height(1.dp).background(CdColors.Gray100))
     }
 }

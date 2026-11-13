@@ -127,6 +127,7 @@ fun CarDropApp(container: AppContainer) {
         when (val screen = navigator.current) {
             Screen.CreateCrew -> CreateCrewScreen(
                 vm = crewVm,
+                vehicle = driveVm.snapshot, // this car's fuel for the host's row
                 onSearchDestination = { navigator.go(Screen.DestinationSearch) },
                 onJoinWithCode = { navigator.go(Screen.JoinCrew) },
                 onDepart = {

@@ -78,6 +78,13 @@ class NavPanelStateTest {
     }
 
     @Test
+    fun parkedAtTheStopItsRowSaysSo() {
+        val parked = guiding(10.0).copy(parkedAt = yeoju)
+        val state = navPanelState(NavRoute(DemoData.gyeongpo), parked, guiding = true, nowMillis = noon, zone = zone)
+        assertEquals(EtaRow("여주휴게소 · 정차 중", "P"), state.waypoint)
+    }
+
+    @Test
     fun offRouteSaysSo() {
         val state = navPanelState(toGyeongpo, guiding(4.0, offRoute = true), guiding = true, nowMillis = noon, zone = zone)
         assertEquals("경로를 벗어났어요 · 새 경로를 찾는 중", state.banner.text)

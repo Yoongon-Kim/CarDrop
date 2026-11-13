@@ -38,6 +38,11 @@ data class NavigatorState(
     val offRoute: Boolean = false,
     val arrived: Boolean = false,
     val error: String? = null,
+    /**
+     * The crew's stop this car stopped at (the waypoint it ARRIVED at), until it drives off again: the panel
+     * then shows "덕평자연휴게소 · 정차 중" with "P" where the waypoint was. Null while not parked at a stop.
+     */
+    val parkedAt: Place? = null,
 )
 
 /**
@@ -187,8 +192,17 @@ class InAppNavigation(
         val waypoint = _route.value.waypoint
         val update = tracker.update(route, fix, waypoint)
         val justArrived = update.arrived && !_state.value.arrived
+        // Stopped at the crew's stop: remember it until the car is on its way again (GuidanceTracker.isStillAt).
+        val parkedAt = if (update.waypoint == WaypointResult.ARRIVED && waypoint != null) {
+            waypoint
+        } else {
+            _state.value.parkedAt?.takeIf { tracker.isStillAt(it, fix) }
+        }
         _state.update {
-            it.copy(fix = fix, progressKm = update.km, snapped = update.snapped, offRoute = update.offRoute, arrived = update.arrived)
+            it.copy(
+                fix = fix, progressKm = update.km, snapped = update.snapped, offRoute = update.offRoute, arrived = update.arrived,
+                parkedAt = parkedAt,
+            )
         }
         when {
             update.waypoint != null && waypoint != null -> {

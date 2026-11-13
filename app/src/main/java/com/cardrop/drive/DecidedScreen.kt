@@ -83,7 +83,7 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                     Icon(CdIcons.Check, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(22.dp))
                 }
                 Text(
-                    "투표 결과 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의",
+                    "투표가 끝났어요 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의",
                     color = CdColors.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 )
             }

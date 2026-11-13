@@ -52,6 +52,7 @@ class DriveRulesTest {
     @Test fun ambiguousOrNegativeVoiceRepliesDoNotTriggerAnAction() {
         assertEquals(DriveVoiceCommand.SHARE_FUEL, driveVoiceCommand("응, 알려줘"))
         assertEquals(DriveVoiceCommand.JOIN, driveVoiceCommand("같이 갈래요!"))
+        assertEquals(DriveVoiceCommand.JOIN, driveVoiceCommand("같이 가자"))
         assertEquals(DriveVoiceCommand.SKIP, driveVoiceCommand("우리 차는 안 들르기"))
         listOf(null, "", "배고파", "알려주지 마", "같이 갈래요 말래요", "안내 시작하지 마").forEach { assertNull(driveVoiceCommand(it)) }
     }

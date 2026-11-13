@@ -53,7 +53,7 @@ fun driveVoiceCommand(text: String?): DriveVoiceCommand? {
     return when (value) {
         "응", "알려줘", "응알려줘", "같이주유하자" -> DriveVoiceCommand.SHARE_FUEL
         "혼자갈게", "혼자갈게요", "아니혼자갈게" -> DriveVoiceCommand.ALONE
-        "같이갈래요", "같이갈게", "같이갈게요" -> DriveVoiceCommand.JOIN
+        "같이갈래요", "같이갈게", "같이갈게요", "같이가자", "같이가요" -> DriveVoiceCommand.JOIN
         "가던길갈래요", "그냥갈게요" -> DriveVoiceCommand.PASS
         "안내시작", "지금안내시작", "출발" -> DriveVoiceCommand.START
         "안들르기", "우리차는안들르기", "안들를게요" -> DriveVoiceCommand.SKIP

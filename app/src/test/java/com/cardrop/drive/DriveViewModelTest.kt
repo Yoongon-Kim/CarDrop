@@ -168,7 +168,7 @@ class DriveViewModelTest {
         assertEquals(0, crew.sends)
     }
 
-    @Test fun joiningFuelOnlyVotesAndDoesNotLaunchOrReroute() = runScenario { vm, crew, nav, _, _ ->
+    @Test fun joiningFuelVotesAndPutsTheStationIntoTheRouteRightAway() = runScenario { vm, crew, nav, _, _ ->
         val drop = decision("invite", DropTopic.FUEL, decided = false)
         crew.drops.value = listOf(drop)
         var done = false
@@ -176,8 +176,8 @@ class DriveViewModelTest {
         yield()
         assertTrue(done)
         assertEquals(1, crew.votes)
+        assertEquals(drop.candidates.first().place, nav.route.value.waypoint)
         assertEquals(0, nav.launches)
-        assertTrue(nav.changes.isEmpty())
     }
     @Test fun guidanceWithoutDestinationDoesNotLaunch() = runScenario { vm, _, nav, _, _ ->
         assertFalse(vm.startGuidance())

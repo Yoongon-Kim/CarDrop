@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -208,11 +209,10 @@ private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: Stri
                 Text(text.sub, fontSize = 13.sp, color = CdColors.Gray600, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        when (status) {
-            DropStatus.NEEDS_ANSWER -> CdChip("응답하기", onClick = onOpen, style = ChipStyle.Primary)
-            DropStatus.VOTING -> CdChip("보기", onClick = onOpen, style = ChipStyle.Gray)
-            DropStatus.DECIDED -> CdChip("결과 보기", onClick = onOpen, style = ChipStyle.Blue)
-            DropStatus.SOCIAL -> Unit
+        // Only on a row that waits for this car (target 291): 40 high, corners 12, padding 0 14, 14 px.
+        // Other decision rows open the same way with a tap on the row.
+        text.action?.let {
+            CdChip(it, onClick = onOpen, style = ChipStyle.Primary, height = 40.dp, radius = 12.dp, contentPadding = PaddingValues(horizontal = 14.dp))
         }
     }
 }
@@ -273,7 +273,14 @@ internal enum class TagLook(val text: Color, val background: Color) {
  * What an inbox row says: the small tag ("결정 · 투표") in its colours, a bold title and a grey line.
  * Internal so InboxRowTest can check it.
  */
-internal data class InboxRowText(val tag: String, val look: TagLook, val title: String, val sub: String)
+internal data class InboxRowText(
+    val tag: String,
+    val look: TagLook,
+    val title: String,
+    val sub: String,
+    /** The blue button on a row that waits for this car's answer ("투표", "응답"); null = none. */
+    val action: String? = null,
+)
 
 /**
  * The row texts from the design (target 290, 667-673). Tags: "연료 알림" (a fuel invite), "결정 · 투표" (a vote),
@@ -293,8 +300,9 @@ internal fun inboxRowText(drop: Drop, senderName: String, status: DropStatus, no
         status == DropStatus.DECIDED ->
             InboxRowText("결정 · 완료", TagLook.DONE, title, drop.decidedCandidate?.let { "결정: ${it.place.name}" } ?: "결정됐어요")
         drop.topic == DropTopic.FUEL ->
-            InboxRowText("연료 알림", open, title, if (status == DropStatus.NEEDS_ANSWER) "같이 갈지 아직 안 골랐어요" else drop.message)
-        else -> InboxRowText("결정 · 투표", open, title, openVoteText(drop, nowMillis))
+            if (status == DropStatus.NEEDS_ANSWER) InboxRowText("연료 알림", open, title, "같이 갈지 아직 안 골랐어요", action = "응답")
+            else InboxRowText("연료 알림", open, title, drop.message)
+        else -> InboxRowText("결정 · 투표", open, title, openVoteText(drop, nowMillis), action = "투표".takeIf { status == DropStatus.NEEDS_ANSWER })
     }
 }
 

@@ -24,7 +24,11 @@ class CrewViewModel(
     here: () -> GeoPoint? = { null },
 ) : ViewModel() {
 
-    val myCarId: String = repo.myCarId
+    /**
+     * Read on every use, like DriveViewModel's: with the real crew this device picks its car when joining
+     * (board 03), after this ViewModel already exists. Screens redraw then because the crew changes.
+     */
+    val myCarId: String get() = repo.myCarId
     val crew: StateFlow<Crew?> = repo.crew
     val drops: StateFlow<List<Drop>> = repo.drops
 

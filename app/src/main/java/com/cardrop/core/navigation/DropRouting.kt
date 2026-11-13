@@ -53,6 +53,21 @@ fun DropRoutingEffect(
 }
 
 /**
+ * The screen a drop opens from the inbox (board 07): the same screens as when it arrives.
+ * - a finished vote -> board 14 (결과 보기)
+ * - a fuel invite -> board 06, whose 같이 갈래요 puts the station into the navigator right away
+ *   (board 11 would only record a vote, and the station would wait for the vote to end)
+ * - any other decision drop -> board 11 (vote)
+ * Social drops have no button in the inbox, so they stay on it. Pure Kotlin, unit tested (InboxScreenForTest).
+ */
+fun inboxScreenFor(drop: Drop): Screen = when {
+    drop.isDecided -> Screen.Decided(drop.id)
+    drop.kind == DropKind.DECISION && drop.topic == DropTopic.FUEL -> Screen.FuelThem(drop.id)
+    drop.kind == DropKind.DECISION -> Screen.Vote(drop.id)
+    else -> Screen.Inbox
+}
+
+/**
  * What [DropRoutingEffect] already opened. AppContainer keeps one for the app's whole life, like the crew
  * and trip data. Pure Kotlin, so it is unit tested (DropRoutingMemoryTest).
  * [myCarId] is asked on every call, like [DecidedScreenPicker]: with the real crew the car is picked when

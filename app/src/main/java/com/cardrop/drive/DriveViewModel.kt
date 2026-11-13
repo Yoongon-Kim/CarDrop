@@ -206,7 +206,8 @@ class DriveViewModel(
                 ))
             } else {
                 val destination = navigation.route.value.destination ?: requireCrew().destination
-                navigation.setRoute(destination, place, "우리 차만 ${place.name}에 들러요")
+                // The navigator's toast, worded as in the design (629); the waypoint row shows which station.
+                navigation.setRoute(destination, place, "주유소를 경유지로 넣었어요")
                 check(navigation.launch()) { navigation.route.value.lastAction ?: "길안내를 시작할 수 없어요" }
             }
             ensureCrew(key)

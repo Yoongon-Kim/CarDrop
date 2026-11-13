@@ -3,13 +3,22 @@ package com.cardrop.crew
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,9 +28,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +42,7 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdChip
+import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.InfoRow
 import com.cardrop.core.ui.Pill
@@ -100,14 +114,48 @@ fun CreateCrewScreen(
     }
 }
 
+/** The crew's destination (design lines 103-109): a label, then the place as a tile that opens board 02. */
 @Composable
 private fun DestinationCard(crew: Crew?, trip: DestinationTrip?, onSearchDestination: () -> Unit) {
-    CdCard(modifier = Modifier.fillMaxWidth(), onClick = onSearchDestination) {
-        Text("목적지", style = MaterialTheme.typography.labelMedium)
-        Text(crew?.destination?.name ?: "목적지를 골라 주세요", style = MaterialTheme.typography.titleLarge)
-        // "강원 강릉시 · 해수욕장 · 약 62km · 1시간 5분": the road distance and time come from the navigator.
-        val detail = listOfNotNull(crew?.destination?.detail?.takeIf { it.isNotBlank() }, trip?.text)
-        Text(detail.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
+    CdCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp), gap = 12.dp) {
+        Text("목적지", color = CdColors.Gray600, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+        // The tile: a blue edge on light blue, the blue pin square, the place, and "검색" at the right.
+        val shape = RoundedCornerShape(18.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 72.dp)
+                .clip(shape)
+                .background(CdColors.BlueTint)
+                .border(2.dp, CdColors.Blue, shape)
+                .clickable(role = Role.Button, onClick = onSearchDestination)
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(CdColors.Blue),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(CdIcons.Pin, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(22.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    crew?.destination?.name ?: "목적지를 골라 주세요",
+                    color = CdColors.Ink,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // "강원 강릉시 · 해수욕장 · 약 62km · 1시간 5분": the road distance and time come from the navigator.
+                val detail = listOfNotNull(crew?.destination?.detail?.takeIf { it.isNotBlank() }, trip?.text)
+                if (detail.isNotEmpty()) {
+                    Text(detail.joinToString(" · "), color = CdColors.Gray600, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Text("검색", color = CdColors.BlueDark, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+        }
         Text("입력하면 내비 목적지에 바로 반영돼요 · 일행 모두 같은 목적지로", style = MaterialTheme.typography.bodyMedium)
     }
 }

@@ -110,7 +110,7 @@ fun CreateCrewScreen(
         }
         // Design lines 101-146: two columns 16 apart, as tall as the rest of the screen (weight(1f) = flex: 1).
         Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Left, a little wider (flex 1.05): the destination and the invite code, 14 apart.
+            // Left, a little wider (flex 1.05): the destination, the invite code and the saved groups, 14 apart.
             Column(modifier = Modifier.weight(1.05f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 DestinationCard(crew, trip, onSearchDestination, onRename = vm::renameCrew)
                 InviteCodeCard(vm, crew, onShare = {

@@ -159,7 +159,7 @@ class CrewViewModel(
     private var joiningCode: String? = null
 
     /**
-     * Board 03: the driver typed the last digit of [code]. Looks the crew up and joins it. [routeBefore] is
+     * Board 03: the 6 digits of [code] are in (typed, or heard by 말로). Looks the crew up and joins it. [routeBefore] is
      * where this car's navigator is heading now. Read it before joining: joining puts the crew's destination
      * in its place at once (TripCoordinator), and board 03 offers it as a stop on the way ("…들렀다 가기").
      */

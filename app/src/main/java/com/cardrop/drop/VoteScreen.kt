@@ -66,11 +66,13 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Board 11 투표 (받는 차) · Owner: Member A.
- * When the vote ends, the app moves to board 14 on its own (see DropRouting).
+ * This car picks a place, 아무 데나 좋아 or 난 패스 ([VotePick]), and 응답하기 sends it. When the vote ends, the app
+ * moves to board 14 on its own (see DropRouting).
  * [placeTimes] (AppContainer.placeTimes) says how far each place is from this car and how long it takes.
+ * [onPass] makes this car skip the stop, as board 14's "우리 차는 안 들르기" does: a pass keeps its route.
  */
 @Composable
-fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTimes>) {
+fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTimes>, onPass: (dropId: String) -> Unit) {
     val drops by vm.drops.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
     val times by placeTimes.collectAsStateWithLifecycle()
@@ -87,11 +89,15 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
         }
     }
     val secondsLeft = ((drop.deadlineMillis - now) / 1000).coerceAtLeast(0)
-    var picked by remember(dropId) { mutableStateOf(drop.votes[vm.myCarId] ?: drop.candidates.firstOrNull()?.id) }
+    var pick by remember(dropId) { mutableStateOf(VotePick.from(drop.votes[vm.myCarId], drop.candidates)) }
+    // The place this car's vote counts for (place 1 for 아무 데나); null for a pass.
+    val counted = pick.countedId(drop.candidates)
     val alreadyVoted = vm.myCarId in drop.votes
     // 돌림판 is a small extra: only before answering, and only when there is something to choose between.
     val canSpin = !alreadyVoted && drop.candidates.size >= 2
     var wheelOpen by remember(dropId) { mutableStateOf(false) }
+    // A pass keeps this car's route. A new destination is for the whole crew, so that vote can't be passed.
+    val canPass = drop.topic != DropTopic.DESTINATION
 
     // The sender's car, as the tag names it: "아빠 차의 제안". This car's own vote says "우리 차".
     val sender = if (drop.fromCarId == vm.myCarId) "우리 차" else vm.carName(drop.fromCarId)
@@ -155,16 +161,16 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                     row.forEach { (index, candidate) ->
                         // The cars that voted for it, in crew order; this car too once it picked it (target line 718).
                         val voters = cars.filter { car ->
-                            drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !alreadyVoted && picked == candidate.id)
+                            drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !alreadyVoted && counted == candidate.id)
                         }
                         CandidateCard(
                             number = index + 1,
                             candidate = candidate,
                             trip = times.trip(candidate.place),
                             voters = voters,
-                            picked = picked == candidate.id,
-                            counted = picked == candidate.id,
-                            onClick = if (alreadyVoted) null else ({ picked = candidate.id }),
+                            picked = pick == VotePick.Place(candidate.id),
+                            counted = counted == candidate.id,
+                            onClick = if (alreadyVoted) null else ({ pick = VotePick.Place(candidate.id) }),
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
                     }
@@ -172,25 +178,91 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
                 }
             }
         }
+        // 아무 데나 좋아 and 난 패스 at the left; what the driver can say and how many cars answered at the right
+        // (target lines 460-465, 722). Voting by voice isn't built yet; the hint is the design's.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ChoiceButton(
+                "아무 데나 좋아",
+                on = pick == VotePick.Anywhere,
+                onBackground = CdColors.BlueLight,
+                onText = CdColors.BlueDark,
+                onEdge = CdColors.Blue,
+                enabled = !alreadyVoted,
+            ) { pick = VotePick.Anywhere }
+            if (canPass) {
+                ChoiceButton(
+                    "난 패스, 먼저 갈게",
+                    on = pick == VotePick.Pass,
+                    onBackground = CdColors.RedLight,
+                    onText = CdColors.Red,
+                    onEdge = CdColors.Alert,
+                    enabled = !alreadyVoted,
+                ) { pick = VotePick.Pass }
+            }
+            Spacer(Modifier.weight(1f))
+            Text(if (canPass) "“1번”, “아무 데나”, “패스”" else "“1번”, “아무 데나”", color = CdColors.Gray600, fontSize = 14.sp)
+            Pill(
+                "${drop.votes.size}/$carCount 응답",
+                background = CdColors.White,
+                color = CdColors.Ink,
+                padding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
         if (canSpin && wheelOpen) {
             VoteRoulette(
                 candidates = drop.candidates,
                 // Only selects it; the driver still presses 응답하기 to send the vote.
                 onPick = { candidateId ->
-                    picked = candidateId
+                    pick = VotePick.Place(candidateId)
                     wheelOpen = false
                 },
                 onClose = { wheelOpen = false },
             )
         }
         TodoNote("일행 위치 지도 (board 11)")
+        val vote = pick.vote(drop.candidates)
         PrimaryButton(
             text = if (alreadyVoted) "응답했어요" else "응답하기",
-            enabled = !alreadyVoted && picked != null,
-            onClick = { picked?.let { vm.vote(dropId, it) } },
+            enabled = !alreadyVoted && vote != null,
+            onClick = {
+                if (vote != null) {
+                    // A pass skips the stop first, so the stop never reaches this car's route, even if this
+                    // answer is the last one and ends the vote at once.
+                    if (pick == VotePick.Pass) onPass(dropId)
+                    vm.vote(dropId, vote)
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
         )
-        Text("말로도 돼요 · “1번”, “아무 데나”, “패스”", style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/**
+ * 아무 데나 좋아 or 난 패스, 먼저 갈게: 56 high, corners 18, 16 / 800 (target line 722). White when not picked; when
+ * picked, [onBackground] with [onText] and a 2 px [onEdge] (blue for 아무 데나, red for 패스).
+ */
+@Composable
+private fun ChoiceButton(
+    text: String,
+    on: Boolean,
+    onBackground: Color,
+    onText: Color,
+    onEdge: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier = Modifier
+            .height(56.dp)
+            .clip(shape)
+            .background(if (on) onBackground else CdColors.White)
+            .border(2.dp, if (on) onEdge else CdColors.White, shape)
+            .selectable(selected = on, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = if (on) onText else CdColors.Ink2, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 

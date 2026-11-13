@@ -58,9 +58,15 @@ import kotlinx.coroutines.delay
  * Board 07 드랍 편지함 · Owner: Member A.
  * A half sheet that slides in from the right over board 04 (the drive screen stays visible behind a
  * dim layer). Tapping the dim layer or ✕ closes it. Tabs: 전체 / 응답 필요 / 소셜 / 지난 결정.
+ * [isSkipped]: stops this car turned down (board 06's 가던 길 갈래요), so they don't wait for an answer.
  */
 @Composable
-fun InboxScreen(vm: CrewViewModel, onClose: () -> Unit, onOpenDrop: (Drop) -> Unit) {
+fun InboxScreen(
+    vm: CrewViewModel,
+    onClose: () -> Unit,
+    isSkipped: (dropId: String) -> Boolean = { false },
+    onOpenDrop: (Drop) -> Unit,
+) {
     val drops by vm.drops.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(InboxTab.ALL) }
@@ -80,7 +86,7 @@ fun InboxScreen(vm: CrewViewModel, onClose: () -> Unit, onOpenDrop: (Drop) -> Un
 
     // Only drops this car takes part in (board 08 can send to some cars only), newest first.
     val mine = drops.filter { it.isFor(vm.myCarId) }.asReversed()
-    val shown = mine.filter { tab.matches(it, vm.myCarId) }
+    val shown = mine.filter { tab.matches(it, vm.myCarId, isSkipped) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Dim layer over the drive screen. A tap here closes the sheet.
@@ -107,7 +113,7 @@ fun InboxScreen(vm: CrewViewModel, onClose: () -> Unit, onOpenDrop: (Drop) -> Un
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 InboxTab.entries.forEach { t ->
-                    val count = mine.count { t.matches(it, vm.myCarId) }
+                    val count = mine.count { t.matches(it, vm.myCarId, isSkipped) }
                     CdChip(
                         text = if (t == InboxTab.NEEDS_ANSWER && count > 0) "${t.label} $count" else t.label,
                         onClick = { tab = t },
@@ -137,7 +143,7 @@ fun InboxScreen(vm: CrewViewModel, onClose: () -> Unit, onOpenDrop: (Drop) -> Un
                     InboxRow(
                         drop = drop,
                         sender = sender,
-                        status = drop.status(vm.myCarId),
+                        status = drop.status(vm.myCarId, isSkipped),
                         timeText = agoText(now - drop.createdAtMillis),
                         onOpen = { onOpenDrop(drop) },
                     )
@@ -215,21 +221,25 @@ private enum class InboxTab(val label: String) {
     SOCIAL("소셜"),
     DECIDED("지난 결정");
 
-    fun matches(drop: Drop, myCarId: String): Boolean = when (this) {
+    fun matches(drop: Drop, myCarId: String, isSkipped: (dropId: String) -> Boolean): Boolean = when (this) {
         ALL -> true
-        NEEDS_ANSWER -> drop.status(myCarId) == DropStatus.NEEDS_ANSWER
+        NEEDS_ANSWER -> drop.status(myCarId, isSkipped) == DropStatus.NEEDS_ANSWER
         SOCIAL -> drop.kind == DropKind.SOCIAL
-        DECIDED -> drop.status(myCarId) == DropStatus.DECIDED
+        DECIDED -> drop.status(myCarId, isSkipped) == DropStatus.DECIDED
     }
 }
 
-/** What a drop means for this car right now. */
-private enum class DropStatus { SOCIAL, NEEDS_ANSWER, VOTING, DECIDED }
+/** What a drop means for this car right now. Internal so InboxStatusTest can check it. */
+internal enum class DropStatus { SOCIAL, NEEDS_ANSWER, VOTING, DECIDED }
 
-private fun Drop.status(myCarId: String): DropStatus = when {
+/**
+ * [isSkipped]: stops this car turned down. Board 06's 가던 길 갈래요 records no vote, only a skip, so a declined
+ * fuel invite must not wait for an answer here (홈's badge already leaves it out: `needsMyAnswer`).
+ */
+internal fun Drop.status(myCarId: String, isSkipped: (dropId: String) -> Boolean = { false }): DropStatus = when {
     kind == DropKind.SOCIAL -> DropStatus.SOCIAL
     isDecided -> DropStatus.DECIDED
-    fromCarId != myCarId && myCarId !in votes -> DropStatus.NEEDS_ANSWER
+    fromCarId != myCarId && myCarId !in votes && !isSkipped(id) -> DropStatus.NEEDS_ANSWER
     else -> DropStatus.VOTING
 }
 

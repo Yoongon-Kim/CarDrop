@@ -103,6 +103,8 @@ fun PrimaryButton(
     enabled: Boolean = true,
     /** Blue by default; [CdColors.Violet] on social screens (board 09). */
     containerColor: Color = CdColors.Blue,
+    /** White by default; board 14's white button on the blue card uses [CdColors.BlueDark]. */
+    contentColor: Color = CdColors.White,
 ) {
     Button(
         onClick = onClick,
@@ -116,7 +118,7 @@ fun PrimaryButton(
             text,
             fontSize = 19.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = CdColors.White,
+            color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 import kotlin.math.roundToInt
 
 /** State shared by boards 04, 05, 06 and 14. Services are supplied by AppContainer. */
@@ -227,6 +228,40 @@ class DriveViewModel(
         if (!navigation.launch()) return guidanceError(navigation.route.value.lastAction ?: "길안내를 시작할 수 없어요")
         _action.value = DriveActionState()
         return true
+    }
+
+    /**
+     * True when guidance may start without a tap (board 14's 3-second countdown): the in-app navigator.
+     * Handing the route to another map app switches apps, which needs the driver's own tap (see CLAUDE.md).
+     */
+    val autoStartsGuidance: Boolean get() = liveNavigation != null
+
+    /** Board 14 "도착 예정": when each car reaches [drop]'s decided place. */
+    fun arrivals(drop: Drop): List<Arrival> {
+        val place = drop.decidedCandidate?.place ?: return emptyList()
+        val current = crew.value ?: return emptyList()
+        val way = myWayTo(place)
+        return crewArrivals(
+            drop, current.cars, positions.value, myCarId, skipped(drop.id), way?.first, way?.second,
+            navigation.route.value.destination?.name ?: current.destination.name,
+            System.currentTimeMillis(), ZoneId.systemDefault(),
+        )
+    }
+
+    /** This car's distance (km) and time (minutes) to [place] along the trip; null when not known yet. */
+    private fun myWayTo(place: Place): Pair<Double, Double>? {
+        if (liveNavigation != null) {
+            val state = liveNavigation.state.value
+            val live = state.route ?: return null
+            val placeKm = live.waypointKm?.takeIf { navigation.route.value.waypoint?.id == place.id }
+                ?: live.geometry.locate(place.lat, place.lng).takeIf { it.offMeters < 1_500 }?.km
+                ?: return null
+            return (placeKm - state.progressKm) to live.secondsBetween(state.progressKm, placeKm) / 60
+        }
+        val me = positions.value[myCarId] ?: return null
+        val placeLeftKm = DemoRoute.totalKm - RouteGeometry(DemoRoute.points).locate(place.lat, place.lng).km
+        val km = me.kmToDestination - placeLeftKm
+        return km to if (me.kmToDestination > 0) me.etaMinutes * km / me.kmToDestination else 0.0
     }
 
     private fun guidanceError(message: String): Boolean {

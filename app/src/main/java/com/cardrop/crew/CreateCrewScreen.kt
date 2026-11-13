@@ -30,7 +30,6 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
-import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.TightLetterSpacing
@@ -58,7 +57,18 @@ fun CreateCrewScreen(
             titleSize = 32.sp,
             titleLetterSpacing = TightLetterSpacing,
         ) {
-            SecondaryButton("받은 코드로 참여", onClick = onJoinWithCode)
+            // White on the grey page (design line 99); the grey SecondaryButton didn't show on it.
+            PrimaryButton(
+                "받은 코드로 참여",
+                onClick = onJoinWithCode,
+                containerColor = CdColors.White,
+                contentColor = CdColors.Ink2,
+                height = 50.dp,
+                radius = 14.dp,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                horizontalPadding = 18.dp,
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
             CdCard(modifier = Modifier.weight(1f), onClick = onSearchDestination) {

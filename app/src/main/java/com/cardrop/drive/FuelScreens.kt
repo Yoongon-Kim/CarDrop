@@ -1,5 +1,6 @@
 package com.cardrop.drive
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -154,7 +155,22 @@ private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> 
     val snapshot by vm.snapshot.collectAsStateWithLifecycle()
     val action by vm.action.collectAsStateWithLifecycle()
     var chosen by remember(plan) { mutableIntStateOf(0) }
-    ScreenColumn {
+    // The design has no 취소 here; the back button goes back to step 1 instead (while nothing is being sent).
+    BackHandler(enabled = !action.busy) { vm.cancelFuelPlan() }
+    // One full-width button at the bottom (target 358): 76 high, corners 22, 20 px.
+    ScreenColumn(
+        bottom = {
+            PrimaryButton(
+                if (plan.shared) "여기로 정하고 일행에게 알리기" else "여기로 혼자 다녀오기",
+                { vm.confirmFuelStop(chosen, onDone) },
+                Modifier.fillMaxWidth(),
+                !action.busy,
+                height = 76.dp,
+                radius = 22.dp,
+                fontSize = 20.sp,
+            )
+        },
+    ) {
         FuelHeader("AI가 주유소 ${plan.stations.size}곳을 골랐어요")
         Text("가는 길에 있고, 남은 연료로 갈 수 있는 곳만 골랐어요", style = MaterialTheme.typography.bodyLarge, color = CdColors.Gray600)
         // The stations 10 apart (target 349).
@@ -164,15 +180,6 @@ private fun FuelStationPicker(vm: DriveViewModel, plan: FuelPlan, onDone: () -> 
             }
         }
         DriveActionFeedback(action)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            PrimaryButton(
-                if (plan.shared) "여기로 정하고 일행에게 알리기" else "여기로 혼자 다녀오기",
-                { vm.confirmFuelStop(chosen, onDone) },
-                Modifier.weight(2f),
-                !action.busy,
-            )
-            SecondaryButton("취소", { vm.cancelFuelPlan() }, Modifier.weight(1f), !action.busy)
-        }
     }
 }
 

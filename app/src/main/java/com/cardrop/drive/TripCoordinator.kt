@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
  * Runs for the whole app, whatever screen is open:
  * - the crew destination changes -> record it as the route (the driver opens the map app)
  * - the crew forms -> start moving the cars on the route
+ * - the host starts the trip ([TripStart]) -> a car that joined before starts its guidance too
  * - a vote ends -> record the winner as the waypoint and say it aloud
  * - this car gets to the waypoint -> show it ([notice]); it stops there or drives past it -> say it aloud,
  *   tell the crew, and show that too
@@ -35,6 +36,9 @@ class TripCoordinator(
     private val navigation: NavigationHandoff,
     private val voice: VoiceService,
     private val now: () -> Long = System::currentTimeMillis,
+    private val tripStart: TripStart = TripStart.AlwaysStarted,
+    /** True for the in-app navigator; another map app opens only from the driver's tap (CLAUDE.md). */
+    private val autoStartsGuidance: Boolean = false,
 ) {
     private var job: Job? = null
 
@@ -53,7 +57,9 @@ class TripCoordinator(
             var previousKey: String? = null
             var previousCars = emptyList<String>()
             var previousDestination: Place? = null
-            combine(crew.crew, crew.drops) { current, drops -> current to drops }.collect { (current, drops) ->
+            var followedHost = false
+            val updates = combine(crew.crew, crew.drops, tripStart.started) { current, drops, started -> Triple(current, drops, started) }
+            updates.collect { (current, drops, started) ->
                 val key = current?.let { "${it.code}:${it.hostCarId}" }
                 if (key != previousKey) {
                     _notice.value = null
@@ -62,6 +68,7 @@ class TripCoordinator(
                     navigation.decisions.forCrew(key)
                     previousCars = emptyList()
                     previousDestination = null
+                    followedHost = false
                     previousKey = key
                 }
                 if (current == null) return@collect
@@ -72,6 +79,11 @@ class TripCoordinator(
                 if (cars != previousCars || current.destination != previousDestination) route.start(cars, current.destination)
                 previousCars = cars
                 previousDestination = current.destination
+
+                // After the route is set: a car that joined before the host's 출발 starts with the host.
+                val followHost = started && current.hostCarId != crew.myCarId
+                if (followHost && !followedHost && autoStartsGuidance) navigation.launch()
+                followedHost = followHost
 
                 val pending = drops.filter { it.isFor(crew.myCarId) && it.kind == DropKind.DECISION && it.isDecided &&
                     it.decidedCandidate != null && !navigation.decisions.wasHandled(it.id) }

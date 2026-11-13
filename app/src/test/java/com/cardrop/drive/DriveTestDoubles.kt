@@ -40,6 +40,13 @@ internal class TestCrew : CrewRepository {
     override fun leaveCrew() { crew.value = null; drops.value = emptyList() }
 }
 
+/** The host's 출발, set by the test. */
+internal class TestTripStart : TripStart {
+    override val started = MutableStateFlow(false)
+    var starts = 0
+    override fun start() { starts++; started.value = true }
+}
+
 internal class TestNavigation : NavigationHandoff {
     override val route = MutableStateFlow(NavRoute())
     override val decisions = TripDecisions()

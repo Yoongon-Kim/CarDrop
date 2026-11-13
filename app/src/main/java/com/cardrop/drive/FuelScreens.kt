@@ -275,9 +275,9 @@ internal fun FuelInviteBanner(vm: DriveViewModel, invite: FuelInvite, drop: Drop
         joined -> "같이 ${station?.name ?: "주유소"}에 들러요" to "내 내비에도 경유지로 넣었어요 · ${name}에 응답이 전달됐어요"
         passed -> "우리는 가던 길로 가요" to "경로는 그대로예요 · ${name.particle("은", "는")} ${destination}에서 합류해요"
         drop.isDecided -> "이미 결정된 알림이에요" to drop.decidedCandidate?.place?.name.orEmpty()
-        // The design's question (664): "민지 차가 주유소 간대요, 같이 갈래요?" (이/가 picked for the name).
+        // The design's question and hint (664-665): "민지 차가 주유소 간대요, 같이 갈래요?" (이/가 picked for the name).
         else -> "${name.particle("이", "가")} 주유소 간대요, 같이 갈래요?" to
-            ("아니면 그냥 가던 길 가도 돼요" + if (voice != null) " · “같이 가자”라고 말해도 돼요" else "")
+            "아니면 그냥 가던 길 가도 돼요 · “같이 가자”라고 말해도 돼요"
     }
     val shape = RoundedCornerShape(22.dp)
     Row(

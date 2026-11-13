@@ -110,10 +110,10 @@ fun VoteScreen(
     var pick by remember(dropId) { mutableStateOf(VotePick.from(drop.votes[vm.myCarId], drop.candidates)) }
     // The place this car's vote counts for (place 1 for 아무 데나); null for a pass.
     val counted = pick.countedId(drop.candidates)
-    // Answered, or the vote is over: nothing to pick any more.
-    val alreadyVoted = vm.myCarId in drop.votes || drop.isDecided
+    // Answered, or the vote is over: the pick can't change any more.
+    val locked = vm.myCarId in drop.votes || drop.isDecided
     // 돌림판 is a small extra: only before answering, and only when there is something to choose between.
-    val canSpin = !alreadyVoted && drop.candidates.size >= 2
+    val canSpin = !locked && drop.candidates.size >= 2
     var wheelOpen by remember(dropId) { mutableStateOf(false) }
     // A pass keeps this car's route. A new destination is for the whole crew, so that vote can't be passed.
     val canPass = drop.topic != DropTopic.DESTINATION
@@ -129,10 +129,10 @@ fun VoteScreen(
             PrimaryButton(
                 text = when {
                     drop.isDecided -> "결과 보기"
-                    alreadyVoted -> "응답했어요"
+                    locked -> "응답했어요"
                     else -> "응답하기"
                 },
-                enabled = drop.isDecided || (!alreadyVoted && vote != null),
+                enabled = drop.isDecided || (!locked && vote != null),
                 onClick = {
                     if (drop.isDecided) {
                         onOpenResult(dropId)
@@ -204,7 +204,7 @@ fun VoteScreen(
                         row.forEach { (index, candidate) ->
                             // The cars that voted for it, in crew order; this car too once it picked it (target line 718).
                             val voters = cars.filter { car ->
-                                drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !alreadyVoted && counted == candidate.id)
+                                drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !locked && counted == candidate.id)
                             }
                             CandidateCard(
                                 number = index + 1,
@@ -213,7 +213,7 @@ fun VoteScreen(
                                 voters = voters,
                                 picked = pick == VotePick.Place(candidate.id),
                                 counted = counted == candidate.id,
-                                onClick = if (alreadyVoted) null else ({ pick = VotePick.Place(candidate.id) }),
+                                onClick = if (locked) null else ({ pick = VotePick.Place(candidate.id) }),
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                         }
@@ -230,7 +230,7 @@ fun VoteScreen(
                     onBackground = CdColors.BlueLight,
                     onText = CdColors.BlueDark,
                     onEdge = CdColors.Blue,
-                    enabled = !alreadyVoted,
+                    enabled = !locked,
                 ) { pick = VotePick.Anywhere }
                 if (canPass) {
                     ChoiceButton(
@@ -239,7 +239,7 @@ fun VoteScreen(
                         onBackground = CdColors.RedLight,
                         onText = CdColors.Red,
                         onEdge = CdColors.Alert,
-                        enabled = !alreadyVoted,
+                        enabled = !locked,
                     ) { pick = VotePick.Pass }
                 }
                 Spacer(Modifier.weight(1f))

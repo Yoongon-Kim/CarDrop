@@ -94,10 +94,16 @@ Use it to rehearse the 시연 on one emulator.
 
 - Used: `Fuel.getFuelPercent` (permission `CAR_ENERGY`), `Odometer.getRangeRemainingDistance` and
   `getTripCurrentDrivingTime` (`CAR_DRIVE`), `Gear.getCurrentGearSelectionState` (`CAR_DRIVE`).
+- Units, from the SDK's own docs (not yet measured on the emulator): range is in metres, driving time in
+  minutes. `vehicle/VehicleValues.kt` converts range to km and drops impossible values (unit tested).
+- Fuel and driving time are read only if their capability check says they are readable
+  (`checkFuelPercentCapabilities`, `checkTripCurrentDrivingTimeCapabilities`). 2.3.2 has no such check for
+  range or gear. A value that fails stays null (gear: `UNKNOWN`); `adb logcat -s CarDropVehicle` shows why.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
-- The SDK has no vehicle speed or location API. Car positions come from `ScriptedRouteSimulator`.
-- Driving-time units are unverified (seconds assumed). See the TODO in `PleosVehicleRepository`.
+  If gear stays `UNKNOWN`, boards 04, 05, 06 and 14 stay voice-only even when parked (`drive/DriveRules.kt`).
+- The SDK has no vehicle speed or location API. Car positions come from GPS (`navi/GpsCrewPositions.kt`), or
+  from `ScriptedRouteSimulator` with `cardrop.navApp=naver`.
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 
 ## Voice notes (Pleos speech SDKs 3.3.1, checked on the emulator 2026-11-13)

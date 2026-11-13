@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.DropTopic
 import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
@@ -61,7 +62,12 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
         val start = { if (started || vm.startGuidance()) onDone() }
         val skip = { if (vm.skipStop(drop.id)) onDone() }
         val ids = drop.voterIds(crew?.cars?.map { it.id }.orEmpty())
-        val changed = route.lastAction ?: "왼쪽 내비의 경유지를 바꿨어요"
+        // What changed in the navigator, in the target's words (line 493); the navigator's toast keeps its own.
+        // When the place isn't in the route (e.g. "…는 이미 지났어요"), the navigator's last message says why.
+        val destinationVote = drop.topic == DropTopic.DESTINATION
+        val inRoute = if (destinationVote) route.destination?.id == winner.place.id else route.waypoint?.id == winner.place.id
+        val fixed = if (destinationVote) "왼쪽 내비의 목적지를 바꿨어요" else "왼쪽 내비의 경유지를 바꿨어요"
+        val changed = if (inRoute) fixed else route.lastAction ?: fixed
         val status = when {
             skipped -> "우리 차는 이 경유지에 들르지 않아요"
             countdown && !started -> {

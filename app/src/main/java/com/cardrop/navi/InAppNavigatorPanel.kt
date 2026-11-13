@@ -40,6 +40,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -223,7 +224,7 @@ private fun Toast(text: String) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Tag("CarDrop", CdColors.Blue)
+        Tag("CarDrop", CdColors.Blue, vertical = 2.dp, horizontal = 7.dp) // a little wider than the ETA tags (target 65)
         Text(text, color = CdColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 2)
     }
 }
@@ -272,8 +273,9 @@ private fun EtaLine(tag: String, color: Color, row: EtaRow) {
     }
 }
 
+/** A small white-on-colour tag: "경유", "목적지" (padding 3 / 6) and the toast's "CarDrop" (2 / 7). */
 @Composable
-private fun Tag(text: String, color: Color) {
+private fun Tag(text: String, color: Color, vertical: Dp = 3.dp, horizontal: Dp = 6.dp) {
     Text(
         text,
         color = CdColors.White,
@@ -282,7 +284,7 @@ private fun Tag(text: String, color: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(color)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .padding(horizontal = horizontal, vertical = vertical),
     )
 }
 

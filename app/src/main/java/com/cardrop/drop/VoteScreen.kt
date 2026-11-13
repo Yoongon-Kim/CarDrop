@@ -104,8 +104,27 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
 
     // The sender's car, as the tag names it: "아빠 차의 제안". This car's own vote says "우리 차".
     val sender = if (drop.fromCarId == vm.myCarId) "우리 차" else vm.carName(drop.fromCarId)
+    val vote = pick.vote(drop.candidates)
 
-    ScreenColumn {
+    // 응답하기 sits at the bottom of the screen (target line 467, `margin-top: auto`): 72 high, corners 22, 20 / 800.
+    ScreenColumn(bottom = {
+        PrimaryButton(
+            text = if (alreadyVoted) "응답했어요" else "응답하기",
+            enabled = !alreadyVoted && vote != null,
+            onClick = {
+                if (vote != null) {
+                    // A pass skips the stop first, so the stop never reaches this car's route, even if this
+                    // answer is the last one and ends the vote at once.
+                    if (pick == VotePick.Pass) onPass(dropId)
+                    vm.vote(dropId, vote)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            height = 72.dp,
+            radius = 22.dp,
+            fontSize = 20.sp,
+        )
+    }) {
         // Target lines 426-430 and 711-713: an orange tag, the big title and why these places, at the top.
         ScreenHeader(
             eyebrow = null,
@@ -243,20 +262,6 @@ fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTim
             )
         }
         TodoNote("일행 위치 지도 (board 11)")
-        val vote = pick.vote(drop.candidates)
-        PrimaryButton(
-            text = if (alreadyVoted) "응답했어요" else "응답하기",
-            enabled = !alreadyVoted && vote != null,
-            onClick = {
-                if (vote != null) {
-                    // A pass skips the stop first, so the stop never reaches this car's route, even if this
-                    // answer is the last one and ends the vote at once.
-                    if (pick == VotePick.Pass) onPass(dropId)
-                    vm.vote(dropId, vote)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 

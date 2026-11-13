@@ -260,7 +260,7 @@ private class NavMapLayers(private val style: Style, ratio: Float) {
                 PropertyFactory.iconIgnorePlacement(true),
             ),
         )
-        style.addLayer(labelLayer(LYR_PLACE_LABELS, SRC_PLACES, offsetY = 22f))
+        style.addLayer(labelLayer(LYR_PLACE_LABELS, SRC_PLACES, offsetY = PIN_TAG_GAP))
         style.addLayer(
             SymbolLayer(LYR_ME, SRC_ME).withProperties(
                 PropertyFactory.iconImage(IMG_ME),

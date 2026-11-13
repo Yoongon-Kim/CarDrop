@@ -348,7 +348,7 @@ private class KakaoMapLayers(map: KakaoMap, private val markers: MapMarkers, pri
         if (old?.first == place) return old
         old?.second?.remove()
         if (place == null) return null
-        val (image, anchorY) = withTag(icon(), gap = 22f, text = place.name)
+        val (image, anchorY) = withTag(icon(), gap = PIN_TAG_GAP, text = place.name)
         val label = labels.addLabel(LabelOptions.from(at(place.lat, place.lng)).setStyles(style(image, anchorY)).setRank(RANK_PIN))
         return label?.let { place to it }
     }

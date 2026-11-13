@@ -7,6 +7,7 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.DisplayMetrics
+import com.cardrop.core.ui.cssBlurToShadowRadius
 
 /**
  * Owner: Member B.
@@ -48,17 +49,22 @@ internal class MapMarkers(private val ratio: Float) {
     /** The destination marker from the design: blue, a flag. */
     fun destinationPin(): Bitmap = squarePin(MARKER_BLUE, null)
 
-    private fun squarePin(color: Int, text: String?): Bitmap = bitmap(42f, 42f) {
+    /**
+     * The design's "경" pin (target line 55): 38 px with a 2 px white border (42 across), corners 12,
+     * `box-shadow: 0 4px 12px rgba(0,0,0,0.2)`. The image has room around the pin for the shadow.
+     */
+    private fun squarePin(color: Int, text: String?): Bitmap = bitmap(PIN_SIZE + 2 * SHADOW_ROOM, PIN_SIZE + 2 * SHADOW_ROOM) {
+        translate(SHADOW_ROOM, SHADOW_ROOM)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x33000000
-        drawRoundRect(RectF(2f, 4f, 40f, 42f), 13f, 13f, paint)
         paint.color = MARKER_WHITE
-        drawRoundRect(RectF(2f, 2f, 40f, 40f), 13f, 13f, paint)
+        paint.setShadowLayer(cssBlurToShadowRadius(12f), 0f, 4f, 0x33000000) // drawn only under this white shape
+        drawRoundRect(RectF(0f, 0f, PIN_SIZE, PIN_SIZE), 12f, 12f, paint)
+        paint.clearShadowLayer()
         paint.color = color
-        drawRoundRect(RectF(4f, 4f, 38f, 38f), 11f, 11f, paint)
+        drawRoundRect(RectF(2f, 2f, PIN_SIZE - 2f, PIN_SIZE - 2f), 10f, 10f, paint)
         paint.color = MARKER_WHITE
         if (text != null) {
-            paint.textSize = 15f
+            paint.textSize = 14f
             paint.typeface = Typeface.DEFAULT_BOLD
             paint.textAlign = Paint.Align.CENTER
             drawText(text, 21f, 21f - (paint.ascent() + paint.descent()) / 2, paint)
@@ -97,6 +103,15 @@ internal class MapMarkers(private val ratio: Float) {
 
 /** Map labels and markers a bit larger than the UI scale, so they read on the car screen. */
 internal const val MAP_SCALE = 1.25f
+
+/** The waypoint and destination pins: 42 design px across. */
+private const val PIN_SIZE = 42f
+
+/** Room around a marker for its soft shadow (the design's 12 px blur + 4 px offset). */
+private const val SHADOW_ROOM = 16f
+
+/** How far below a pin's centre its name tag starts (design px): just under the 42 px pin. */
+internal const val PIN_TAG_GAP = 24f
 
 internal const val MARKER_WHITE = 0xFFFFFFFF.toInt()
 internal const val MARKER_BLUE = 0xFF2F6FE0.toInt()

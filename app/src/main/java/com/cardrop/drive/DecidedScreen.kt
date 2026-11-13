@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drop.VoteRules
@@ -24,7 +25,7 @@ import com.cardrop.voice.VoiceService
 import kotlin.math.ceil
 
 /**
- * Board 14, as in the design: a blue result card ("{place} 결정되었어요"), guidance that starts by itself after
+ * Board 14, as in the design: a blue result card ("{place}로 결정되었어요"), guidance that starts by itself after
  * 3 seconds unless the driver picks "우리 차는 안 들르기", and when each car reaches the stop ("도착 예정").
  *
  * The countdown runs only with the in-app navigator ([DriveViewModel.autoStartsGuidance]). Once it has started
@@ -87,7 +88,7 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                 )
             }
             Text(
-                "${winner.place.name}\n결정되었어요",
+                "${winner.place.name.withRo()}\n결정되었어요",
                 color = CdColors.White, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 45.sp,
             )
             Text(status, color = CdColors.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)

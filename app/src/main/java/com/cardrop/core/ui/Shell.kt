@@ -20,23 +20,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
+import com.cardrop.core.model.Car
 import com.cardrop.core.navigation.Screen
 import com.cardrop.core.ui.theme.CdColors
 
@@ -57,11 +54,11 @@ fun ScreenColumn(content: @Composable ColumnScope.() -> Unit) {
 private data class RailItem(val label: String, val icon: ImageVector, val screen: Screen)
 
 private val railItems = listOf(
-    RailItem("홈", Icons.Filled.Home, Screen.Drive),
-    RailItem("드랍", Icons.AutoMirrored.Filled.Send, Screen.DropSend),
-    RailItem("크루", Icons.Filled.Person, Screen.CreateCrew),
-    RailItem("게임", Icons.Filled.PlayArrow, Screen.Games),
-    RailItem("편지함", Icons.Filled.Email, Screen.Inbox),
+    RailItem("홈", CdIcons.Home, Screen.Drive),
+    RailItem("드랍", CdIcons.Send, Screen.DropSend),
+    RailItem("크루", CdIcons.Crew, Screen.CreateCrew),
+    RailItem("게임", CdIcons.Game, Screen.Games),
+    RailItem("편지함", CdIcons.Inbox, Screen.Inbox),
 )
 
 private fun Screen.railGroup(): Screen = when (this) {
@@ -83,6 +80,8 @@ fun CarDropShell(
     onTab: (Screen) -> Unit,
     navPanel: (@Composable () -> Unit)?,
     overlay: @Composable () -> Unit,
+    /** This car, drawn at the bottom of the rail with "내 차" (as in the design). */
+    myCar: Car? = null,
     content: @Composable () -> Unit,
 ) {
     DesignScale(designWidth = if (navPanel != null) DESIGN_WIDTH + NAV_PANEL_WIDTH else DESIGN_WIDTH) {
@@ -90,7 +89,7 @@ fun CarDropShell(
             if (navPanel != null) {
                 Box(modifier = Modifier.width(NAV_PANEL_WIDTH.dp).fillMaxHeight()) { navPanel() }
             }
-            Rail(current = current.railGroup(), onTab = onTab)
+            Rail(current = current.railGroup(), onTab = onTab, myCar = myCar)
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 content()
                 overlay()
@@ -121,12 +120,14 @@ private const val DESIGN_HEIGHT = 900f
 private const val NAV_PANEL_WIDTH = 533f
 
 @Composable
-private fun Rail(current: Screen, onTab: (Screen) -> Unit) {
+private fun Rail(current: Screen, onTab: (Screen) -> Unit, myCar: Car?) {
     Column(
         modifier = Modifier
             .width(88.dp)
             .fillMaxHeight()
             .background(CdColors.White)
+            // The design's thin line between the navigator and CarDrop.
+            .drawBehind { drawLine(CdColors.Gray200, Offset.Zero, Offset(0f, size.height), strokeWidth = 1.dp.toPx()) }
             .padding(vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -153,6 +154,11 @@ private fun Rail(current: Screen, onTab: (Screen) -> Unit) {
                 Icon(item.icon, contentDescription = null, tint = tint)
                 Text(item.label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
             }
+        }
+        if (myCar != null) {
+            Spacer(Modifier.weight(1f))
+            CarBadge(myCar)
+            Text("내 차", color = CdColors.Gray600, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

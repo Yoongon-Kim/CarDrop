@@ -40,9 +40,7 @@ import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.CircleLayer
-import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.Layer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
@@ -231,7 +229,6 @@ private class NavMapLayers(private val style: Style, private val ratio: Float) {
     private var destinationLabel: String? = null
 
     init {
-        applyDesignColours()
         showKoreanNames()
         style.addImage(IMG_ME, mePuck())
         style.addImage(IMG_WAYPOINT, squarePin(ORANGE, "경"))
@@ -341,18 +338,6 @@ private class NavMapLayers(private val style: Style, private val ratio: Float) {
             addStringProperty("icon", icon)
             addStringProperty("label", label)
         }
-
-    /** The design's colours for land, water and parks (board left third). */
-    private fun applyDesignColours() {
-        (style.getLayer("background") as? BackgroundLayer)?.setProperties(PropertyFactory.backgroundColor("#E9EEF3"))
-        (style.getLayer("water") as? FillLayer)?.setProperties(PropertyFactory.fillColor("#C9E0F5"))
-        listOf("park", "landcover_wood").forEach {
-            (style.getLayer(it) as? FillLayer)?.setProperties(PropertyFactory.fillColor("#DCEFE2"))
-        }
-        listOf("highway_motorway_casing", "highway_major_casing").forEach {
-            (style.getLayer(it) as? LineLayer)?.setProperties(PropertyFactory.lineColor("#CBD3DD"))
-        }
-    }
 
     /** The base map labels default to "Latin\nKorean"; show the Korean name only. */
     private fun showKoreanNames() {
@@ -465,8 +450,11 @@ private class NavMapLayers(private val style: Style, private val ratio: Float) {
 
 private const val TAG = "CarDropNavMap"
 
-/** OpenFreeMap: free, no API key, OpenStreetMap data. Attribution is shown in the panel. */
-private const val STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
+/**
+ * OpenFreeMap: free, no API key, OpenStreetMap data. Attribution is shown in the panel.
+ * "liberty" is the colourful style (closer to a Korean navigation map than the pale "positron").
+ */
+private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
 /** Used when the map style can't be downloaded: just the design's land colour. */
 private const val OFFLINE_STYLE =

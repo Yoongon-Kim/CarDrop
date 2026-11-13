@@ -4,6 +4,8 @@ import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.Place
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.haversineKm
+import com.cardrop.navi.forMatching
+import com.cardrop.navi.knownPlaceMatches
 
 /**
  * Owner: lead. Board 10's list: the AI's picks (best first), then the places the driver added,
@@ -66,28 +68,6 @@ data class PlacePick(
 fun findKnownPlace(name: String, places: List<Place>): Place? = knownPlaceMatches(name, places).firstOrNull()
 
 /**
- * All of [places] that fit [name], best first: exact names, then names that contain it. Used when
- * there is no place search (no Kakao key, or no internet): a place needs a location before it can
- * become a waypoint, so then drivers can add only places the app already knows.
- */
-fun knownPlaceMatches(name: String, places: List<Place>): List<Place> {
-    val query = name.forMatching()
-    if (query.isEmpty()) return emptyList()
-    val exact = places.filter { it.name.forMatching() == query }
-    val core = query.removeSuffix("휴게소")
-    if (core.length < 2) return exact
-    return (exact + places.filter { core in it.name.forMatching() }).distinctBy { it.id }
-}
-
-/**
- * What to search for while the driver is typing [typed]. A Korean keyboard sends half-built
- * letters ("덕ㅍ" on the way to "덕평"), which find nothing, so a lone consonant or vowel at the end
- * is dropped: "덕평ㅈ" searches "덕평" again instead of emptying the list.
- */
-fun placeQuery(typed: String): String =
-    typed.trim().trimEnd { it in '\u3131'..'\u318E' || it in '\u1100'..'\u11FF' }.trim()
-
-/**
  * True when [other] is this place under another name: within 300 m, and one name contains the
  * other ("덕평자연휴게소" and "덕평자연휴게소 양방향"). A different shop next door has another name,
  * so "스타벅스 덕평휴게소점" stays its own place.
@@ -100,6 +80,3 @@ private fun Place.isSameSpot(other: Place): Boolean {
 }
 
 private const val SAME_SPOT_KM = 0.3
-
-/** Letters and digits only, lower case: spaces and punctuation from speech don't matter. */
-private fun String.forMatching(): String = filter { it.isLetterOrDigit() }.lowercase()

@@ -139,7 +139,10 @@ fun DropSendScreen(
                 TopicTile("일행에게 한마디", "자주 쓰는 말", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
                     onShout(toCarIds)
                 }
-                Spacer(Modifier.weight(1f)) // 음성 메시지 comes here
+                // The target's 음성 메시지 opens board 09 too (`voice: G.shout`, line 660); nothing is recorded.
+                TopicTile("음성 메시지", "녹음해서", CdIcons.Mic, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
+                    onShout(toCarIds)
+                }
                 TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f))
                 TopicTile("게임 초대", "정차 시 시작", CdIcons.Game, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onGames)
                 Spacer(Modifier.weight(1f)) // 같이 켜기 comes here

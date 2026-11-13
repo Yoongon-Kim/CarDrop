@@ -4,6 +4,17 @@ import android.util.Log
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+
+/**
+ * One sentence the app said aloud. [count] goes up by one with every sentence, so the same words said
+ * twice are two different lines (the caption shows again). A StateFlow ignores a value equal to the
+ * one it holds, so without [count] a repeated sentence would be lost.
+ */
+data class SpokenLine(val text: String, val count: Int)
+
+/** The line after this one: [text] with the next count. */
+fun SpokenLine?.next(text: String) = SpokenLine(text, (this?.count ?: 0) + 1)
 
 /**
  * Owner: lead.
@@ -13,8 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
  * Android's own TextToSpeech can't reach the Pleos speech engine (day-1 check, see CLAUDE.md).
  */
 interface VoiceService {
-    /** The last sentence spoken, so the UI can show it as a caption. */
-    val lastSpoken: StateFlow<String?>
+    /** The last sentence spoken, so the UI can show it as a caption. Each [speak] makes a new line. */
+    val lastSpoken: StateFlow<SpokenLine?>
 
     /**
      * True while the microphone is listening: from [listen] until a sentence is heard, nothing is
@@ -33,15 +44,15 @@ interface VoiceService {
 }
 
 class FakeVoiceService : VoiceService {
-    private val _lastSpoken = MutableStateFlow<String?>(null)
-    override val lastSpoken: StateFlow<String?> = _lastSpoken
+    private val _lastSpoken = MutableStateFlow<SpokenLine?>(null)
+    override val lastSpoken: StateFlow<SpokenLine?> = _lastSpoken
 
     private val _listening = MutableStateFlow(false)
     override val listening: StateFlow<Boolean> = _listening
 
     override fun speak(text: String) {
         Log.i("CarDropVoice", "speak: $text")
-        _lastSpoken.value = text
+        _lastSpoken.update { it.next(text) }
     }
 
     override suspend fun listen(placeName: Boolean): String? {

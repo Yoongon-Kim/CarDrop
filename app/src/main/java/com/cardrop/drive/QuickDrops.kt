@@ -53,11 +53,17 @@ object QuickDropRules {
     const val FULL_HINT = "기존 기능 하나를 해제하면 추가할 수 있어요."
 
     /**
-     * The drops for these saved [keys], in their order: only ones that exist and aren't cut, each once, at most
-     * [SLOTS]. Nothing saved = no drops: the canvas starts with four empty slots that the driver fills.
+     * Board 04's slots until the driver saves their own list: 휴게소 and 주유, the other two empty (the lead's choice,
+     * 2026-11-14; the canvas starts with all four empty).
      */
-    fun fromKeys(keys: List<String>?): List<QuickDrop> =
-        keys.orEmpty()
+    val DEFAULTS = listOf(QuickDrop.REST, QuickDrop.FUEL)
+
+    /**
+     * The drops for these saved [keys], in their order: only ones that exist and aren't cut, each once, at most
+     * [SLOTS].
+     */
+    fun fromKeys(keys: List<String>): List<QuickDrop> =
+        keys
             .mapNotNull { key -> QuickDrop.entries.firstOrNull { it.key == key } }
             .filter { it.available }
             .distinct()
@@ -83,10 +89,11 @@ object QuickDropRules {
         else -> Pick.Changed(draft + drop)
     }
 
-    /** How the device keeps the list: the keys with commas between them, e.g. "rest,shout". */
+    /** How the device keeps the list: the keys with commas between them, e.g. "rest,shout"; an emptied list is "". */
     fun encode(drops: List<QuickDrop>): String = drops.joinToString(",") { it.key }
 
-    fun decode(saved: String?): List<QuickDrop> = fromKeys(saved?.split(","))
+    /** The saved list; nothing saved yet ([saved] = null) = [DEFAULTS]. A list the driver emptied stays empty. */
+    fun decode(saved: String?): List<QuickDrop> = if (saved == null) DEFAULTS else fromKeys(saved.split(","))
 }
 
 /** Where board 04's quick drops are kept (like board 09's phrases in [com.cardrop.ai.PhraseStore]). */

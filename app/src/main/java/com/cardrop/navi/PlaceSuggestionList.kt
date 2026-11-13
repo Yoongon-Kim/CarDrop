@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.model.Place
 import com.cardrop.core.ui.CdIcons
+import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CdColors
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -42,9 +42,11 @@ import kotlin.math.roundToInt
 val KeyboardRoom = 320.dp
 
 /**
- * The places that fit what the driver is typing (boards 02 and 10): "‘경포’ 검색 결과", then one
- * white card of lines. Put it in a scrolling column. [inList] marks places already chosen
- * ("후보에 있어요"); [bordered] adds a grey edge for white pop-ups.
+ * The places that fit what the driver is typing (boards 02 and 10): one white card of lines, with no
+ * heading above it (board 02 puts the card straight under the search box). Put it in a scrolling
+ * column. [inList] marks places already chosen ("후보에 있어요"); [bordered] adds a grey edge for white
+ * pop-ups. While a new search runs, the last places stay until the new ones arrive; before the first
+ * places there is a short "찾는 중…" line instead.
  */
 @Composable
 fun PlaceSuggestionList(
@@ -53,13 +55,11 @@ fun PlaceSuggestionList(
     bordered: Boolean = false,
     inList: (Place) -> Boolean = { false },
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("‘${suggestions.query}’ 검색 결과", color = CdColors.Gray600, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        if (suggestions.searching) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-    }
     suggestions.note?.let { Text(it, color = CdColors.OrangeDark, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
     if (suggestions.places.isEmpty()) {
-        if (!suggestions.searching) {
+        if (suggestions.searching) {
+            StatusText("‘${suggestions.query}’ 찾는 중…")
+        } else {
             Text("‘${suggestions.query}’에 맞는 장소가 없어요", color = CdColors.Ink2, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
         return
@@ -68,8 +68,9 @@ fun PlaceSuggestionList(
 }
 
 /**
- * Places as one white card of lines (design board 02: pin, name, address, distance). [highlight]
- * is what the driver typed: those letters show in blue, as Kakao Map marks what matched.
+ * Places as one white card of lines (design board 02: pin, name, address, distance), each with a thin
+ * grey line under it, the last one too. [highlight] is what the driver typed: those letters show in
+ * blue, as Kakao Map marks what matched.
  */
 @Composable
 fun PlaceCard(
@@ -88,11 +89,10 @@ fun PlaceCard(
             .then(if (bordered) Modifier.border(2.dp, CdColors.Gray100, shape) else Modifier)
             .padding(vertical = 6.dp),
     ) {
-        places.forEachIndexed { index, place ->
-            if (index > 0) {
-                Spacer(Modifier.fillMaxWidth().padding(horizontal = 22.dp).height(1.dp).background(CdColors.Gray100))
-            }
+        places.forEach { place ->
             PlaceLine(place, highlight, inList(place.place), onClick = { onPick(place) })
+            // The board's `border-bottom: 1px solid #F2F4F6` on every line, inside the card's 22 px sides.
+            Spacer(Modifier.fillMaxWidth().padding(horizontal = 22.dp).height(1.dp).background(CdColors.Gray100))
         }
     }
 }

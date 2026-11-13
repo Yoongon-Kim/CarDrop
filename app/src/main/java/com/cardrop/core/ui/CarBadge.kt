@@ -28,14 +28,15 @@ import com.cardrop.core.model.CarColor
  * The little car from the design boards, drawn in the car's colour. Used wherever a car appears.
  *
  * [size] works like the design's badge size: the car is `size x 1.65` wide and `size x 1.1` tall.
- * A connected car bobs gently, as in the design. A car that hasn't joined yet is grey and faded.
+ * A connected car bobs gently, as in the design; with `bob = false` it stands still (board 15's opponent
+ * chips: `size = 24` ≈ the design's 40 x 27, target line 740). A car that hasn't joined yet is grey and faded.
  */
 @Composable
-fun CarBadge(car: Car, size: Int = 40) {
+fun CarBadge(car: Car, size: Int = 40, bob: Boolean = true) {
     val color = if (car.connected) car.color else CarColor.GRAY
     val bobMillis = color.bobMillis
     // Read inside graphicsLayer, so the bobbing only redraws the car, not the screen around it.
-    val lift = if (bobMillis != null) {
+    val lift = if (bob && bobMillis != null) {
         rememberInfiniteTransition(label = "carBob").animateFloat(
             initialValue = 0f,
             targetValue = 1f,

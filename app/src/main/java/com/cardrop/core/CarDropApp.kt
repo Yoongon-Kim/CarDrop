@@ -1,6 +1,9 @@
 package com.cardrop.core
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -171,8 +174,10 @@ fun CarDropApp(container: AppContainer) {
 }
 
 /**
- * Shows this car getting to the crew's stop (stopped / drove past), when the microphone is listening,
- * what the voice just said (the fake voice has no sound), and quiet social messages.
+ * Top right: the card for this car getting to the crew's stop (stopped / drove past).
+ * Bottom right, just above the DEMO button (so they don't cover the screen header): the black captions
+ * for the microphone listening, what the voice just said (the fake voice has no sound; fades out after
+ * a few seconds), and quiet social messages.
  */
 @Composable
 private fun Captions(container: AppContainer, socialMessage: String?) {
@@ -180,15 +185,39 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
     val spoken by container.voice.lastSpoken.collectAsStateWithLifecycle()
     val stopNotice by container.stopNotice.collectAsStateWithLifecycle()
     val navRoute by container.navigation.route.collectAsStateWithLifecycle()
-    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopEnd) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+
+    // The voice keeps its last sentence forever, so the caption hides itself: each new sentence shows
+    // for SPOKEN_CAPTION_MILLIS, then fades out. (The same sentence twice in a row counts as one.)
+    var spokenVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(spoken) {
+        spokenVisible = spoken != null
+        delay(SPOKEN_CAPTION_MILLIS)
+        spokenVisible = false
+    }
+
+    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Box(modifier = Modifier.align(Alignment.TopEnd)) {
             StopNoticeCard(stopNotice, navRoute.waypoint)
+        }
+        Column(
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = CAPTIONS_ABOVE_DEMO),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
             if (listening) Caption("마이크 · 듣고 있어요… 말씀하세요")
-            spoken?.let { Caption("음성 · $it") }
+            AnimatedVisibility(visible = spokenVisible, enter = fadeIn(), exit = fadeOut()) {
+                spoken?.let { Caption("음성 · $it") }
+            }
             socialMessage?.let { Caption("소셜 · $it") }
         }
     }
 }
+
+/** Room for the DEMO button (about 40 dp tall) in the same corner, plus a small gap. */
+private val CAPTIONS_ABOVE_DEMO = 50.dp
+
+/** How long the "음성 · …" caption stays before it fades out. */
+private const val SPOKEN_CAPTION_MILLIS = 5_000L
 
 @Composable
 private fun Caption(text: String) {

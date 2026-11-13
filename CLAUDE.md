@@ -54,6 +54,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   icons) and `core/ui/theme/Theme.kt` (`CdColors` = the design's colours). Use these instead of raw Material
   styling. `core/ui/ComponentsPreview.kt` shows the controls in Android Studio's preview.
 - `TodoNote("...")` marks unbuilt parts of a screen. Remove it when the part is done.
+- After a place or car name, pick the particle with `core/text/Korean.kt`: `name.particle("을", "를")`,
+  `particle("이", "가")`, `name.withRo()` (로/으로). Never hard-code 를/는/가/로 after a name ("경포해변로").
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).
 - Board 10: a driver can add only places the app knows (`findKnownPlace` in `ai/PlacePick.kt`: rest stops,

@@ -7,6 +7,8 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.Place
 import com.cardrop.drive.GeoPoint
+import com.cardrop.drop.ProposalRules
+import com.cardrop.drop.VoteRules
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
@@ -154,6 +156,53 @@ class CrewViewModel(
             val place = destinationSearch.best(text) ?: return@launch // the list already says nothing fits
             pickDestination(place)
             onPicked()
+        }
+    }
+
+    // ---- destination proposal (board 08 목적지 변경, board 11 다른 목적지 제안하기) ----
+    // Its search is board 02's above: the two screens are never open together.
+
+    /** The proposal's enter key: the top place for [text] goes to [onFound]; nothing when no place fits. */
+    fun bestDestination(text: String, onFound: (Place) -> Unit) {
+        viewModelScope.launch { destinationSearch.best(text)?.let(onFound) }
+    }
+
+    /** Sending a proposal: [sending] greys the button out, [error] says why it didn't go. */
+    data class ProposalSend(val sending: Boolean = false, val error: String? = null)
+
+    private val _proposal = MutableStateFlow(ProposalSend())
+    val proposal: StateFlow<ProposalSend> = _proposal
+
+    /** The proposal screen opened, or another place was picked: an old error no longer fits. */
+    fun clearProposalError() {
+        if (!_proposal.value.sending) _proposal.value = ProposalSend()
+    }
+
+    /**
+     * Sends "[place]로 목적지를 바꿀까요?" to [toCarIds] (empty = the whole crew), then [onSent] runs with the new
+     * drop. This car proposed it, so its own answer is 찬성 right away.
+     * [against] = the proposal this one answers ("다른 목적지 제안하기"): this car first says 반대 to it, which
+     * turns it down (VoteRules), unless it is over or this car answered it already.
+     */
+    fun proposeDestination(place: Place, toCarIds: List<String>, against: Drop? = null, onSent: (Drop) -> Unit) {
+        if (_proposal.value.sending) return // a second tap while the first is on its way
+        _proposal.value = ProposalSend(sending = true)
+        viewModelScope.launch {
+            val sent = try {
+                if (against != null && !against.isDecided && myCarId !in against.votes) repo.vote(against.id, VoteRules.NO)
+                val drop = repo.sendDrop(ProposalRules.draft(place, toCarIds))
+                drop.candidates.firstOrNull()?.let { repo.vote(drop.id, it.id) }
+                drop
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _proposal.value = ProposalSend(error = "제안을 보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.")
+                return@launch
+            }
+            _proposal.value = ProposalSend()
+            stopListening()
+            destinationSearch.clear()
+            onSent(sent)
         }
     }
 

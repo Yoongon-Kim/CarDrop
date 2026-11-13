@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Car
+import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.ui.CarBadge
@@ -48,9 +49,13 @@ import com.cardrop.crew.CrewViewModel
 /**
  * Board 08 드랍 보내기 · Owner: Member A.
  * Choose who gets it (크루 전체, one car alone, or a 조합 of cars), then what to send: a decision topic
- * (휴게소, 식사, 주유 · 충전, 목적지 변경) opens board 10 (AI candidates), 한마디 and 음성 메시지 open board 09.
+ * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates), 한마디 and 음성 메시지 open board 09.
  * Both get the chosen cars (empty = whole crew). 게임 초대 opens board 15 ([onGames]), where the driver picks
  * the game and who to play. The ✕ at the top right ([onClose]) goes back to 홈 (board 04).
+ *
+ * 목적지 변경 is different: a driver who wants another destination knows where, so the tile opens
+ * "어디로 제안할까요?" ([DestinationProposalPanel]) on this screen: search the place, confirm, and it goes out as a
+ * 찬성 / 반대 proposal ([onProposalSent] gets the new drop). Its "AI 추천 받기" still opens board 10.
  */
 @Composable
 fun DropSendScreen(
@@ -59,6 +64,7 @@ fun DropSendScreen(
     onShout: (toCarIds: List<String>) -> Unit,
     onGames: () -> Unit,
     onClose: () -> Unit,
+    onProposalSent: (Drop) -> Unit,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
@@ -66,6 +72,20 @@ fun DropSendScreen(
     // The cars ticked under 조합 만들기. Kept while another button is picked, so the combination comes back.
     var mixIds by remember { mutableStateOf(emptySet<String>()) }
     val toCarIds = sendTo.toCarIds(others, mixIds)
+    // True after 목적지 변경 was tapped: the proposal's search takes this screen's place until it is sent or closed.
+    var proposing by remember { mutableStateOf(false) }
+
+    if (proposing) {
+        DestinationProposalPanel(
+            vm = vm,
+            title = "어디로 제안할까요?",
+            recipients = crew?.recipientLabel(toCarIds, vm.myCarId) ?: "크루 전체",
+            onBack = { proposing = false },
+            onAskAi = { onPickTopic(DropTopic.DESTINATION, toCarIds) },
+            onSend = { place -> vm.proposeDestination(place, toCarIds, onSent = onProposalSent) },
+        )
+        return
+    }
 
     ScreenColumn {
         // The title alone, with a ✕ at the right (target lines 364-366).
@@ -129,9 +149,9 @@ fun DropSendScreen(
                 TopicTile("주유 · 충전", "잔량 기준 추천", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f)) {
                     onPickTopic(DropTopic.FUEL, toCarIds)
                 }
-                // A vote on a new crew destination, through board 10 like the others (D8).
-                TopicTile("목적지 변경", "모두 함께", CdIcons.Flag, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f)) {
-                    onPickTopic(DropTopic.DESTINATION, toCarIds)
+                // A new crew destination: the driver searches for it and proposes it (찬성 / 반대).
+                TopicTile("목적지 변경", "직접 골라 제안", CdIcons.Flag, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f)) {
+                    proposing = true
                 }
             }
         }

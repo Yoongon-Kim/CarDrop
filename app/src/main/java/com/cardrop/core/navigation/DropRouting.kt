@@ -7,8 +7,10 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.text.particle
+import com.cardrop.core.text.withRo
 import com.cardrop.crew.CrewRepository
 import com.cardrop.drive.TripDecisions
+import com.cardrop.drop.VoteRules
 import com.cardrop.voice.VoiceService
 
 /**
@@ -19,6 +21,7 @@ import com.cardrop.voice.VoiceService
  * - a FUEL drop -> board 06 (같이 갈래요?)
  * - any other DECISION drop -> board 11 (vote), announced by voice
  * - a vote that just ended -> board 14 (decision), only if it changed this car's route ([DecidedScreenPicker])
+ * - a destination proposal that was just turned down -> said aloud ("…로 바꾸자는 제안은 반대가 있어서…")
  *
  * [memory] says what was already opened. It comes from AppContainer, so when an activity restart starts
  * this effect again, old drops are not opened a second time or said aloud again.
@@ -42,12 +45,19 @@ fun DropRoutingEffect(
                         navigator.go(Screen.FuelThem(drop.id))
                     }
                     else -> {
-                        voice.speak("${sender.particle("이", "가")} 투표를 보냈어요. ${drop.title}")
+                        // A destination proposal asks 찬성 / 반대 on one place; any other vote picks between places.
+                        val what = if (VoteRules.isProposal(drop)) "목적지 변경을 제안했어요" else "투표를 보냈어요"
+                        voice.speak("${sender.particle("이", "가")} $what. ${drop.title}")
                         navigator.go(Screen.Vote(drop.id))
                     }
                 }
             }
             memory.decidedToOpen(crew.crew.value, drops)?.let { navigator.go(Screen.Decided(it.id)) }
+            // A proposal that was turned down opens no board 14 and changes no route, so it is said aloud instead.
+            for (drop in memory.newlyRejected(drops)) {
+                val place = drop.candidates.firstOrNull()?.place ?: continue
+                voice.speak("${place.name.withRo()} 바꾸자는 제안은 반대가 있어서 목적지는 그대로예요")
+            }
         }
     }
 }
@@ -89,6 +99,22 @@ class DropRoutingMemory(private val myCarId: () -> String, isSkipped: (dropId: S
 
     /** The finished vote whose board 14 should open now, or null ([DecidedScreenPicker]). */
     fun decidedToOpen(crew: Crew?, drops: List<Drop>): Drop? = decided.pick(crew, drops)
+
+    /** Destination proposals for this car that were still open when last seen. */
+    private val openProposals = mutableSetOf<String>()
+
+    /**
+     * The destination proposals for this car that were turned down since the last call, each once. Only proposals
+     * this car saw while they were open, so an old one (a reconnect delivers the whole history) isn't said again.
+     * Not for a car that said 반대 itself: it knows already.
+     */
+    fun newlyRejected(drops: List<Drop>): List<Drop> {
+        val me = myCarId()
+        val proposals = drops.filter { it.isFor(me) && VoteRules.isProposal(it) }
+        val rejected = proposals.filter { VoteRules.rejected(it) && openProposals.remove(it.id) && !VoteRules.saidNo(it, me) }
+        proposals.filter { !it.isDecided }.forEach { openProposals += it.id }
+        return rejected
+    }
 }
 
 /**

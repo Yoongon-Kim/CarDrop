@@ -80,4 +80,67 @@ class VoteRulesTest {
         assertEquals("a", VoteRules.winner(d, cars))
         assertEquals(0, VoteRules.agreeing(d, cars))
     }
+
+    // ---- destination proposals: one place, 찬성 or 반대 ----
+
+    private fun proposal(votes: Map<String, String>, deadline: Long = 10_000) = drop(votes, deadline).copy(
+        topic = DropTopic.DESTINATION,
+        candidates = candidates.take(1),
+    )
+
+    @Test
+    fun `only a destination drop with one place is a proposal`() {
+        assertTrue(VoteRules.isProposal(proposal(emptyMap())))
+        // Three destinations to choose from (the AI's picks) is an ordinary vote.
+        assertFalse(VoteRules.isProposal(drop(emptyMap()).copy(topic = DropTopic.DESTINATION)))
+        // One rest stop is a vote too: only a new destination is asked as 찬성 / 반대.
+        assertFalse(VoteRules.isProposal(drop(emptyMap()).copy(candidates = candidates.take(1))))
+    }
+
+    @Test
+    fun `a proposal passes when nobody says no, silent cars included`() {
+        val d = proposal(mapOf("me" to "a", "uncle" to "a"))
+        assertFalse(VoteRules.isOver(d, cars, nowMillis = 5_000)) // minji and aunt can still answer
+        assertTrue(VoteRules.isOver(d, cars, nowMillis = 10_000))
+        assertEquals("a", VoteRules.winner(d, cars))
+        assertEquals(4, VoteRules.agreeing(d, cars))
+    }
+
+    @Test
+    fun `one no turns a proposal down at once`() {
+        val d = proposal(mapOf("me" to "a", "uncle" to "a", "minji" to VoteRules.NO))
+        assertTrue(VoteRules.isOver(d, cars, nowMillis = 0)) // doesn't wait for aunt or the deadline
+        assertEquals(VoteRules.REJECTED, VoteRules.winner(d, cars))
+        assertTrue(VoteRules.saidNo(d, "minji"))
+        assertFalse(VoteRules.saidNo(d, "uncle"))
+    }
+
+    @Test
+    fun `a turned-down proposal has no decided place`() {
+        val d = proposal(mapOf("minji" to VoteRules.NO)).copy(decidedCandidateId = VoteRules.REJECTED)
+        assertTrue(d.isDecided)
+        assertTrue(VoteRules.rejected(d))
+        assertEquals(null, d.decidedCandidate) // so the navigator and board 14 leave it alone
+        assertEquals(0, VoteRules.agreeing(d, cars))
+    }
+
+    @Test
+    fun `the sender of a proposal has answered even without a vote`() {
+        // A bot's proposal, or board 10 with one destination ticked: the sender ("me") wrote no vote.
+        val d = proposal(mapOf("uncle" to "a", "minji" to "a", "aunt" to "a"))
+        assertTrue(VoteRules.isOver(d, cars, nowMillis = 0)) // everyone else said 찬성: no need to wait for the timer
+        assertEquals("a", VoteRules.winner(d, cars))
+        // In an ordinary vote the sender still has to answer.
+        assertFalse(VoteRules.isOver(drop(mapOf("uncle" to "a", "minji" to "a", "aunt" to "a")), cars, nowMillis = 0))
+    }
+
+    @Test
+    fun `a no from a car the proposal was not sent to does not count`() {
+        // Sent to uncle only: the voters are me and uncle.
+        val d = proposal(mapOf("aunt" to VoteRules.NO)).copy(toCarIds = listOf("uncle"))
+        val voters = d.voterIds(cars)
+        assertEquals(listOf("me", "uncle"), voters)
+        assertFalse(VoteRules.isOver(d, voters, nowMillis = 0))
+        assertEquals("a", VoteRules.winner(d, voters))
+    }
 }

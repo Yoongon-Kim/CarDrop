@@ -5,6 +5,8 @@ import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
+import com.cardrop.drop.ProposalRules
+import com.cardrop.drop.VoteRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -87,5 +89,40 @@ class DropRoutingMemoryTest {
         carId = DemoData.aunt.id // joined as 이모 차
         val laterByAunt = drop("later-by-aunt", from = DemoData.aunt.id)
         assertEquals(listOf(toAunt), memory.newFromOthers(listOf(toAunt, byAunt, laterByAunt)))
+    }
+
+    /** 삼촌 차's proposal to go to 속초 instead, with [votes] so far; [rejected] = one car said 반대 and it ended. */
+    private fun proposal(id: String, votes: Map<String, String> = emptyMap(), rejected: Boolean = false): Drop {
+        val draft = ProposalRules.draft(DemoData.destinations[2], toCarIds = emptyList())
+        return Drop(
+            id = id, fromCarId = DemoData.uncle.id, kind = draft.kind, topic = draft.topic, title = draft.title,
+            candidates = draft.candidates, votes = votes, createdAtMillis = 1, deadlineMillis = 0,
+            decidedCandidateId = if (rejected) VoteRules.REJECTED else null,
+        )
+    }
+
+    @Test
+    fun `a proposal turned down is said once, to the cars that did not say no`() {
+        val memory = DropRoutingMemory({ me })
+        val open = proposal("p1")
+        assertEquals(emptyList<Drop>(), memory.newlyRejected(listOf(open)))
+
+        // 민지 차 said 반대: this car hears it once.
+        val down = proposal("p1", votes = mapOf(DemoData.minji.id to VoteRules.NO), rejected = true)
+        assertEquals(listOf(down), memory.newlyRejected(listOf(down)))
+        assertEquals(emptyList<Drop>(), memory.newlyRejected(listOf(down)))
+
+        // The car that said 반대 itself knows already.
+        val mine = DropRoutingMemory({ me })
+        mine.newlyRejected(listOf(proposal("p2")))
+        val saidNo = proposal("p2", votes = mapOf(me to VoteRules.NO), rejected = true)
+        assertEquals(emptyList<Drop>(), mine.newlyRejected(listOf(saidNo)))
+    }
+
+    @Test
+    fun `a proposal that was over before this car saw it is not said`() {
+        // A reconnect delivers the history: a proposal turned down long ago stays quiet.
+        val old = proposal("old", votes = mapOf(DemoData.minji.id to VoteRules.NO), rejected = true)
+        assertEquals(emptyList<Drop>(), DropRoutingMemory({ me }).newlyRejected(listOf(old)))
     }
 }

@@ -156,7 +156,13 @@ private fun DestinationCard(crew: Crew?, trip: DestinationTrip?, onSearchDestina
             }
             Text("검색", color = CdColors.BlueDark, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
         }
-        Text("입력하면 내비 목적지에 바로 반영돼요 · 일행 모두 같은 목적지로", style = MaterialTheme.typography.bodyMedium)
+        // "왼쪽 내비": the navigator is the left third of the screen.
+        Text(
+            "입력하면 왼쪽 내비 목적지에 바로 반영돼요 · 일행 모두 같은 목적지로",
+            color = CdColors.BlueDark,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

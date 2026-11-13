@@ -130,6 +130,12 @@ private fun ButtonsAndCardsPreview() {
                 )
                 SecondaryButton("다시 시도", onClick = {}, height = 58.dp, radius = 16.dp, fontSize = 16.sp)
             }
+            // Board 09's send button, greyed out its own way: still violet, fainter.
+            PrimaryButton(
+                "문구를 추가해주세요", onClick = {}, enabled = false, containerColor = CdColors.Violet,
+                height = 68.dp, fontSize = 18.sp, horizontalPadding = 34.dp,
+                disabledContainerColor = CdColors.Violet.copy(alpha = 0.5f), disabledContentColor = CdColors.White,
+            )
             // Cards: today's (radius 26, padding 22 x 18, gap 10), then board 05's (radius 24, padding 24, gap 10).
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CdCard(Modifier.weight(1f)) {

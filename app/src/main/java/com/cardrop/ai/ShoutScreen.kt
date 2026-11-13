@@ -129,6 +129,8 @@ private fun ShoutContent(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("받는 차 · $recipients", color = CdColors.Gray600, fontSize = 15.sp, modifier = Modifier.weight(1f))
             val chosen = state.chosenText
+            // The design's send button (402): 68 high, corners 20, sides 34, 18 px, always violet. When it can't send
+            // (no phrase, the editor is open, listening) it stays violet, only fainter.
             PrimaryButton(
                 text = when {
                     state.hearing -> "듣는 중…"
@@ -138,7 +140,13 @@ private fun ShoutContent(
                 enabled = chosen != null && state.editor == null && !state.hearing,
                 onClick = onSend,
                 containerColor = CdColors.Violet,
-                modifier = Modifier.height(68.dp).widthIn(max = 560.dp),
+                modifier = Modifier.widthIn(max = 560.dp),
+                height = 68.dp,
+                radius = 20.dp,
+                fontSize = 18.sp,
+                horizontalPadding = 34.dp,
+                disabledContainerColor = CdColors.Violet.copy(alpha = 0.5f),
+                disabledContentColor = CdColors.White,
             )
         }
     }

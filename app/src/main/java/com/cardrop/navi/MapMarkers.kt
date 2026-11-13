@@ -7,15 +7,43 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.DisplayMetrics
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.resolveAsTypeface
+import com.cardrop.core.ui.cssBlurToShadowRadius
+import com.cardrop.core.ui.theme.NotoSansKr
+
+/**
+ * The app's font (Noto Sans KR, `core/ui/theme/Theme.kt`) as the two Android typefaces the marker images use:
+ * [bold] (700) for the name tags, [extraBold] (800) for the "경" pin, as in the design (target line 55).
+ */
+internal class MarkerFonts(val bold: Typeface, val extraBold: Typeface)
+
+/**
+ * [MarkerFonts] taken from Compose, so the map's text is the same font file and weights as the app's Text.
+ * The font is in the app (`res/font`), so it loads at once and the typefaces are ready here.
+ */
+@Composable
+internal fun rememberMarkerFonts(): MarkerFonts {
+    val resolver = LocalFontFamilyResolver.current
+    return remember(resolver) {
+        MarkerFonts(
+            bold = resolver.resolveAsTypeface(NotoSansKr, FontWeight.Bold).value,
+            extraBold = resolver.resolveAsTypeface(NotoSansKr, FontWeight.ExtraBold).value,
+        )
+    }
+}
 
 /**
  * Owner: Member B.
  *
  * The marker images both maps draw ([NavMap] = MapLibre, [KakaoNavMap] = Kakao): this car, the waypoint
- * and destination pins, and the small name tags. Drawn with Android's Canvas so Korean text uses the
- * system font. Sizes are in design px; [ratio] is how many real pixels one design px gets.
+ * and destination pins, and the small name tags. Drawn with Android's Canvas, with the app's font ([fonts]).
+ * Sizes are in design px; [ratio] is how many real pixels one design px gets.
  */
-internal class MapMarkers(private val ratio: Float) {
+internal class MapMarkers(private val ratio: Float, private val fonts: MarkerFonts) {
 
     /** Creates a bitmap of [w] x [h] design px, sharp at our pixel ratio. */
     fun bitmap(w: Float, h: Float, draw: Canvas.() -> Unit): Bitmap =
@@ -24,19 +52,25 @@ internal class MapMarkers(private val ratio: Float) {
             Canvas(this).apply { scale(ratio, ratio); draw() }
         }
 
-    /** This car: the design's blue dot with a white arrow showing the driving direction. */
-    fun mePuck(): Bitmap = bitmap(48f, 48f) {
+    /**
+     * This car: the design's blue dot (target line 57: 30 px, a 4 px white border, so 38 across, and
+     * `box-shadow: 0 4px 12px rgba(0,0,0,0.25)`), plus our white arrow showing the driving direction.
+     * The image has room around the dot for the shadow.
+     */
+    fun mePuck(): Bitmap = bitmap(PUCK_SIZE + 2 * SHADOW_ROOM, PUCK_SIZE + 2 * SHADOW_ROOM) {
+        translate(SHADOW_ROOM, SHADOW_ROOM)
+        val c = PUCK_SIZE / 2 // the centre: 19
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x40000000
-        drawCircle(24f, 26f, 20f, paint)
         paint.color = MARKER_WHITE
-        drawCircle(24f, 24f, 20f, paint)
+        paint.setShadowLayer(cssBlurToShadowRadius(12f), 0f, 4f, 0x40000000) // the shadow comes with the white ring
+        drawCircle(c, c, c, paint)
+        paint.clearShadowLayer()
         paint.color = MARKER_BLUE
-        drawCircle(24f, 24f, 15f, paint)
+        drawCircle(c, c, 15f, paint)
         paint.color = MARKER_WHITE
         drawPath(
             Path().apply {
-                moveTo(24f, 14f); lineTo(31f, 31f); lineTo(24f, 27f); lineTo(17f, 31f); close()
+                moveTo(c, c - 10f); lineTo(c + 7f, c + 7f); lineTo(c, c + 3f); lineTo(c - 7f, c + 7f); close()
             },
             paint,
         )
@@ -48,18 +82,23 @@ internal class MapMarkers(private val ratio: Float) {
     /** The destination marker from the design: blue, a flag. */
     fun destinationPin(): Bitmap = squarePin(MARKER_BLUE, null)
 
-    private fun squarePin(color: Int, text: String?): Bitmap = bitmap(42f, 42f) {
+    /**
+     * The design's "경" pin (target line 55): 38 px with a 2 px white border (42 across), corners 12,
+     * `box-shadow: 0 4px 12px rgba(0,0,0,0.2)`. The image has room around the pin for the shadow.
+     */
+    private fun squarePin(color: Int, text: String?): Bitmap = bitmap(PIN_SIZE + 2 * SHADOW_ROOM, PIN_SIZE + 2 * SHADOW_ROOM) {
+        translate(SHADOW_ROOM, SHADOW_ROOM)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x33000000
-        drawRoundRect(RectF(2f, 4f, 40f, 42f), 13f, 13f, paint)
         paint.color = MARKER_WHITE
-        drawRoundRect(RectF(2f, 2f, 40f, 40f), 13f, 13f, paint)
+        paint.setShadowLayer(cssBlurToShadowRadius(12f), 0f, 4f, 0x33000000) // drawn only under this white shape
+        drawRoundRect(RectF(0f, 0f, PIN_SIZE, PIN_SIZE), 12f, 12f, paint)
+        paint.clearShadowLayer()
         paint.color = color
-        drawRoundRect(RectF(4f, 4f, 38f, 38f), 11f, 11f, paint)
+        drawRoundRect(RectF(2f, 2f, PIN_SIZE - 2f, PIN_SIZE - 2f), 10f, 10f, paint)
         paint.color = MARKER_WHITE
         if (text != null) {
-            paint.textSize = 15f
-            paint.typeface = Typeface.DEFAULT_BOLD
+            paint.textSize = 14f
+            paint.typeface = fonts.extraBold // the design's 14/800
             paint.textAlign = Paint.Align.CENTER
             drawText(text, 21f, 21f - (paint.ascent() + paint.descent()) / 2, paint)
         } else {
@@ -81,7 +120,7 @@ internal class MapMarkers(private val ratio: Float) {
     fun labelPill(text: String): Bitmap {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = fonts.bold
         }
         val width = paint.measureText(text) + 16f
         return bitmap(width + 2f, 24f) {
@@ -97,6 +136,18 @@ internal class MapMarkers(private val ratio: Float) {
 
 /** Map labels and markers a bit larger than the UI scale, so they read on the car screen. */
 internal const val MAP_SCALE = 1.25f
+
+/** The waypoint and destination pins: 42 design px across. */
+private const val PIN_SIZE = 42f
+
+/** This car's dot: 38 design px across (its white ring included). */
+private const val PUCK_SIZE = 38f
+
+/** Room around a marker for its soft shadow (the design's 12 px blur + 4 px offset). */
+private const val SHADOW_ROOM = 16f
+
+/** How far below a pin's centre its name tag starts (design px): just under the 42 px pin. */
+internal const val PIN_TAG_GAP = 24f
 
 internal const val MARKER_WHITE = 0xFFFFFFFF.toInt()
 internal const val MARKER_BLUE = 0xFF2F6FE0.toInt()

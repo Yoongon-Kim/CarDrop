@@ -12,7 +12,7 @@ import org.json.JSONException
 object ShoutPhrases {
     const val MAX_LENGTH = 80
 
-    /** The design's phrases, used until the driver changes the list. */
+    /** The design's 6 phrases (target line 689), used until the driver changes the list. */
     val DEFAULTS = listOf(
         "먼저 가세요, 따라갈게요",
         "천천히 와요~",
@@ -20,8 +20,6 @@ object ShoutPhrases {
         "뒤에 사고 났어요, 조심!",
         "곧 도착해요",
         "배고파요, 밥 먹고 가요",
-        "여기 주차 공간 부족해!",
-        "길 잘못 들었어ㅠ",
     )
 
     /** The saved list, or [DEFAULTS] when nothing usable was saved. A list the driver emptied stays empty. */

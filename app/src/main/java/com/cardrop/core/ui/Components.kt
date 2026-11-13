@@ -35,8 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -46,58 +52,113 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.core.ui.theme.NotoSansKr
+import com.cardrop.core.ui.theme.TightLetterSpacing
 
 /*
  * Shared building blocks that match the design's look. Use these instead of styling raw
  * Material components on every screen, so all screens stay consistent.
  */
 
-/** The top of every screen: small grey line, big title, optional thing on the right. */
+/**
+ * The top of every screen: a small grey line (the eyebrow), the big title, an optional grey line under
+ * the title (the subtitle) and an optional thing on the right ([trailing]).
+ *
+ * The defaults are today's look. Set a screen's values from its board, e.g. board 04's header
+ * (`<header ... align-items: center>`, eyebrow 14px / 700, `gap: 2px`, title 28px with `letter-spacing: -0.02em`):
+ * `ScreenHeader(eyebrow = "…", title = "…", eyebrowWeight = FontWeight.Bold, titleSize = 28.sp,
+ * titleLetterSpacing = TightLetterSpacing, gap = 2.dp, verticalAlignment = Alignment.CenterVertically)`.
+ */
 @Composable
 fun ScreenHeader(
-    eyebrow: String,
+    /** The small line above the title; `null` = none (e.g. boards 03 and 09 have only a subtitle). */
+    eyebrow: String?,
     title: String,
+    modifier: Modifier = Modifier,
     /** Grey by default; the design colours some, e.g. board 05's orange "연료 경고" ([CdColors.OrangeDark]). */
     eyebrowColor: Color = Color.Unspecified,
+    eyebrowSize: TextUnit = 14.sp,
+    /** Regular (400) by default; the design's 700 is [FontWeight.Bold], 800 is [FontWeight.ExtraBold]. */
+    eyebrowWeight: FontWeight = FontWeight.Normal,
+    /** Drawn above the title (before the eyebrow, if both are set), e.g. board 11's tag [Pill]. */
+    tag: (@Composable () -> Unit)? = null,
+    titleSize: TextUnit = 30.sp,
+    /** Pass [TightLetterSpacing] where the design's title has `letter-spacing: -0.02em`. */
+    titleLetterSpacing: TextUnit = TextUnit.Unspecified,
+    /** A grey line under the title (boards 03, 09, 11). */
+    subtitle: String? = null,
+    subtitleSize: TextUnit = 14.sp,
+    /** Space between the tag, eyebrow, title and subtitle (the design's `gap`; none = `0.dp`). */
+    gap: Dp = 4.dp,
+    /**
+     * How the text and [trailing] line up: the design's `align-items`. [Alignment.Bottom] = `flex-end`
+     * (today's look), [Alignment.CenterVertically] = `center`, [Alignment.Top] = `flex-start`.
+     */
+    verticalAlignment: Alignment.Vertical = Alignment.Bottom,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Bottom,
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = verticalAlignment,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-            Text(eyebrow, style = MaterialTheme.typography.bodyMedium, color = eyebrowColor)
-            Text(title, style = MaterialTheme.typography.headlineLarge)
+        Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = Modifier.weight(1f)) {
+            tag?.invoke()
+            if (eyebrow != null) {
+                Text(
+                    eyebrow,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = eyebrowColor,
+                    fontSize = eyebrowSize,
+                    fontWeight = eyebrowWeight,
+                )
+            }
+            Text(title, style = MaterialTheme.typography.headlineLarge, fontSize = titleSize, letterSpacing = titleLetterSpacing)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, fontSize = subtitleSize)
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
     }
 }
 
-/** White rounded card, the design's main container. */
+/**
+ * White rounded card, the design's main container. The defaults are today's look; set the board's
+ * values with [radius] (`border-radius`), [contentPadding] (`padding`) and [gap] (space between items).
+ */
 @Composable
 fun CdCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     selected: Boolean = false,
+    radius: Dp = 26.dp,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 22.dp, vertical = 18.dp),
+    gap: Dp = 10.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(radius)
     Column(
         modifier = modifier
             .clip(shape)
             .background(if (selected) CdColors.BlueLight else CdColors.White)
             .then(if (selected) Modifier.border(2.dp, CdColors.Blue, shape) else Modifier)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 22.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(contentPadding),
+        verticalArrangement = Arrangement.spacedBy(gap),
         content = content,
     )
 }
 
+/**
+ * The big button. The defaults are today's look; the boards' buttons are 50-80 high, so set the board's
+ * [height], [radius] (`border-radius`), [fontSize] / [fontWeight] and [horizontalPadding] per screen.
+ * A greyed-out button (`enabled = false`) is light grey with grey text (an app choice: the board draws none).
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -108,39 +169,72 @@ fun PrimaryButton(
     containerColor: Color = CdColors.Blue,
     /** White by default; board 14's white button on the blue card uses [CdColors.BlueDark]. */
     contentColor: Color = CdColors.White,
+    /** At least this tall (the text is one line, so this is its height). */
+    height: Dp = 64.dp,
+    radius: Dp = 20.dp,
+    fontSize: TextUnit = 19.sp,
+    /** [FontWeight.ExtraBold] = the design's 800; [FontWeight.Bold] = 700. */
+    fontWeight: FontWeight = FontWeight.ExtraBold,
+    horizontalPadding: Dp = 24.dp,
+    /** The greyed-out look by default; board 09 keeps its violet, fainter: `CdColors.Violet.copy(alpha = 0.5f)`. */
+    disabledContainerColor: Color = DisabledButtonBackground,
+    disabledContentColor: Color = DisabledButtonText,
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 64.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
-        contentPadding = PaddingValues(horizontal = 24.dp),
+        modifier = modifier.heightIn(min = height),
+        shape = RoundedCornerShape(radius),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor, disabledContainerColor = disabledContainerColor),
+        contentPadding = PaddingValues(horizontal = horizontalPadding),
     ) {
         Text(
             text,
-            fontSize = 19.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = contentColor,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            color = if (enabled) contentColor else disabledContentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
+/** The grey button next to a [PrimaryButton]. Same size options as [PrimaryButton], with today's look as defaults. */
 @Composable
-fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    height: Dp = 64.dp,
+    radius: Dp = 20.dp,
+    fontSize: TextUnit = 18.sp,
+    fontWeight: FontWeight = FontWeight.ExtraBold,
+    horizontalPadding: Dp = 24.dp,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 64.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = CdColors.Gray100, contentColor = CdColors.Ink2),
-        contentPadding = PaddingValues(horizontal = 24.dp),
+        modifier = modifier.heightIn(min = height),
+        shape = RoundedCornerShape(radius),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = CdColors.Gray100,
+            contentColor = CdColors.Ink2,
+            disabledContainerColor = DisabledButtonBackground,
+            disabledContentColor = DisabledButtonText,
+        ),
+        contentPadding = PaddingValues(horizontal = horizontalPadding),
     ) {
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        Text(text, fontSize = fontSize, fontWeight = fontWeight)
     }
 }
+
+/*
+ * Greyed-out buttons: #E5E8EB with #8B95A1 text, so the text stays readable (Material's default is white
+ * text on light grey). The 11-10 boards draw no greyed-out button; these are the newer canvas's colours.
+ */
+private val DisabledButtonBackground = CdColors.Gray200
+private val DisabledButtonText = CdColors.Gray450
 
 /** The square "뒤로" button at the top left of a sub-screen (design: `.cd-back`). */
 @Composable
@@ -159,9 +253,9 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 /**
  * Colours for [CdChip], from the design's `.cd-chip` classes. The design calls the violet ones
- * `is-purple` and `is-primary-purple`.
+ * `is-purple` and `is-primary-purple`. [dashedBorder], when set, draws a 1 dp dashed line around the chip.
  */
-enum class ChipStyle(val background: Color, val content: Color) {
+enum class ChipStyle(val background: Color, val content: Color, val dashedBorder: Color? = null) {
     Gray(CdColors.Gray100, CdColors.Ink2),
     White(CdColors.White, CdColors.Ink2),
     Blue(CdColors.BlueLight, CdColors.BlueDark),
@@ -169,12 +263,19 @@ enum class ChipStyle(val background: Color, val content: Color) {
     Primary(CdColors.Blue, CdColors.White),
     PrimaryViolet(CdColors.Violet, CdColors.White),
     Danger(CdColors.RedLight, CdColors.Red),
+    /** White with grey text and a dashed grey line: board 11's "고민되면 돌려보기" (`1px dashed #B0B8C1`). */
+    Dashed(CdColors.White, CdColors.Gray600, dashedBorder = CdColors.Gray400),
 }
 
 /**
  * Small rounded button (design: `.cd-chip`), e.g. "문구 추가", "삭제", "말해서 추가".
- * It is 44 high; pass `Modifier.height(54.dp)` to line it up with a [CdTextField].
+ * The defaults are today's look: 44 high, radius 14, 14sp, a 16 dp icon, 16 dp at each side. Pass
+ * `height = 54.dp` to line it up with a [CdTextField], `radius = 999.dp` for a fully round chip.
  * When [enabled] is false it fades to 40% and ignores taps.
+ *
+ * Board 11's spin chip: `CdChip("고민되면 돌려보기", onClick, style = ChipStyle.Dashed, icon = CdIcons.Wheel,
+ * height = 36.dp, radius = 999.dp, fontSize = 12.sp, iconSize = 24.dp, iconTint = Color.Unspecified,
+ * contentPadding = PaddingValues(start = 6.dp, end = 12.dp))`.
  */
 @Composable
 fun CdChip(
@@ -184,30 +285,58 @@ fun CdChip(
     style: ChipStyle = ChipStyle.Gray,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    height: Dp = 44.dp,
+    /** The corners (`border-radius`); `999.dp` makes the ends fully round. */
+    radius: Dp = 14.dp,
+    fontSize: TextUnit = 14.sp,
+    /** [FontWeight.ExtraBold] = the design's 800; [FontWeight.Bold] = 700. */
+    fontWeight: FontWeight = FontWeight.ExtraBold,
+    iconSize: Dp = 16.dp,
+    /** The icon's colour; [Color.Unspecified] keeps a coloured icon's own colours (e.g. [CdIcons.Wheel]). */
+    iconTint: Color = style.content,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
     Row(
         modifier = modifier
-            .height(44.dp)
+            .height(height)
             .alpha(if (enabled) 1f else 0.4f)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(radius))
             .background(style.background)
+            .then(if (style.dashedBorder != null) Modifier.dashedBorder(style.dashedBorder, radius) else Modifier)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = style.content, modifier = Modifier.size(16.dp))
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(iconSize))
         }
         Text(
             text = text,
             color = style.content,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/**
+ * A 1 dp dashed line just inside the edge, like CSS `border: 1px dashed`: dashes and gaps 3 dp long, as
+ * browsers draw a 1 px dashed border. [radius] = the shape's corners (capped at half the height, like CSS).
+ */
+private fun Modifier.dashedBorder(color: Color, radius: Dp): Modifier = drawBehind {
+    val line = 1.dp.toPx()
+    val dash = 3.dp.toPx()
+    val corner = (radius.toPx().coerceAtMost(size.minDimension / 2) - line / 2).coerceAtLeast(0f)
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(line / 2, line / 2),
+        size = Size(size.width - line, size.height - line),
+        cornerRadius = CornerRadius(corner),
+        style = Stroke(width = line, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
+    )
 }
 
 /**
@@ -235,7 +364,7 @@ fun CdTextField(
         onValueChange = { onValueChange(it.take(maxLength)) },
         modifier = modifier.height(54.dp),
         singleLine = true,
-        textStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink),
+        textStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink, fontFamily = NotoSansKr),
         cursorBrush = SolidColor(focusColor),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = {
@@ -301,18 +430,28 @@ fun ErrorText(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** Small rounded label, e.g. "연결됨", "P · 정차 중에만 열려요". */
+/**
+ * Small fully round label, e.g. "연결됨", "P · 정차 중에만 열려요". The defaults are today's look (14sp,
+ * 14 x 8 padding); the boards' pills are mostly 13px with `padding: 6px 12px` ([fontSize], [padding]).
+ */
 @Composable
-fun Pill(text: String, background: Color = CdColors.BlueLight, color: Color = CdColors.BlueDark) {
+fun Pill(
+    text: String,
+    modifier: Modifier = Modifier,
+    background: Color = CdColors.BlueLight,
+    color: Color = CdColors.BlueDark,
+    fontSize: TextUnit = 14.sp,
+    padding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+) {
     Text(
         text = text,
         color = color,
-        fontSize = 14.sp,
+        fontSize = fontSize,
         fontWeight = FontWeight.ExtraBold,
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(999.dp))
             .background(background)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(padding),
     )
 }
 
@@ -338,10 +477,27 @@ fun InfoRow(
     }
 }
 
-/** "AI" tag used wherever the AI wrote something. */
+/**
+ * "AI" tag used wherever the AI wrote something. The default is today's round pill (14sp); `small = true` is
+ * the small square-ish tag on board 11's AI card (target line 466: 12px / 800, white on #3182F6, radius 6,
+ * padding 3 x 7).
+ */
 @Composable
-fun AiTag() {
-    Pill("AI", background = CdColors.Blue, color = CdColors.White)
+fun AiTag(small: Boolean = false) {
+    if (!small) {
+        Pill("AI", background = CdColors.Blue, color = CdColors.White)
+        return
+    }
+    Text(
+        text = "AI",
+        color = CdColors.White,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(CdColors.Blue)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
 }
 
 /** Placeholder for parts of a screen that are not built yet. Delete it once the part exists. */

@@ -63,6 +63,12 @@ fun crewStrip(cars: List<Car>, positions: Map<String, CarPosition>): List<StripC
     }
 }
 
+/**
+ * The order to draw the strip's cars in: the last car first, the leader last. A Box draws its children in order,
+ * so when two markers overlap, the car in front ends up on top.
+ */
+fun drawingOrder(strip: List<StripCar>): List<StripCar> = strip.sortedByDescending { it.rank }
+
 /** "선두" for the leading car, otherwise how far behind it, e.g. "2.1km 뒤". */
 fun gapText(leaderKmToDestination: Float, kmToDestination: Float): String {
     val behind = kmToDestination - leaderKmToDestination
@@ -94,7 +100,7 @@ internal fun CrewRoad(cars: List<Car>, positions: Map<String, CarPosition>, myCa
         StripLabel("크루 위치", CdColors.Ink, 14, Modifier.align(Alignment.TopStart))
         destinationName?.let { StripLabel("$it 방면 →", CdColors.Green, 13, Modifier.align(Alignment.TopEnd)) }
         if (strip.isEmpty()) StatusText("차량 위치를 기다리고 있어요", Modifier.align(Alignment.Center))
-        strip.forEach { car ->
+        drawingOrder(strip).forEach { car ->
             val x = car.along * VIEW_WIDTH
             val centerX = (x * widthPx / VIEW_WIDTH).roundToInt()
             val roadY = (RoadShape.yAt(x) * heightPx / VIEW_HEIGHT).roundToInt()
@@ -214,21 +220,24 @@ internal fun CrewCards(
     onMyLowFuel: (() -> Unit)?,
 ) {
     val leaderKm = positions.values.minOfOrNull { it.kmToDestination }
-    cars.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            row.forEach { car ->
-                val mine = car.id == myCarId
-                CrewCard(
-                    car = car,
-                    position = positions[car.id],
-                    leaderKm = leaderKm,
-                    fuel = if (mine) myFuel else null,
-                    rangeKm = if (mine) myRangeKm else null,
-                    onLowFuel = if (mine) onMyLowFuel else null,
-                    modifier = Modifier.weight(1f),
-                )
+    // Two columns, 10 apart both ways (the design's grid with `gap: 10px`, target 254).
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        cars.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { car ->
+                    val mine = car.id == myCarId
+                    CrewCard(
+                        car = car,
+                        position = positions[car.id],
+                        leaderKm = leaderKm,
+                        fuel = if (mine) myFuel else null,
+                        rangeKm = if (mine) myRangeKm else null,
+                        onLowFuel = if (mine) onMyLowFuel else null,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
-            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -243,7 +252,7 @@ private fun CrewCard(
     onLowFuel: (() -> Unit)?,
     modifier: Modifier,
 ) {
-    val low = fuel != null && fuel <= LOW_FUEL_PERCENT
+    val low = fuel != null && fuel < LOW_FUEL_CARD_PERCENT
     val tint = (if (car.connected) car.color else CarColor.GRAY).tint()
     val shape = RoundedCornerShape(22.dp)
     val gap = when {

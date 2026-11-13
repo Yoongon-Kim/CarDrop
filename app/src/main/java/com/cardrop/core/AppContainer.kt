@@ -12,14 +12,14 @@ import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.core.demo.DemoCar
+import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
 import com.cardrop.core.navigation.DropRoutingMemory
-import com.cardrop.drive.DemoRoute
 import com.cardrop.drive.FirebaseTrip
 import com.cardrop.drive.GeoPoint
+import com.cardrop.drive.PlaceTimes
 import com.cardrop.drive.RouteSimulator
-import com.cardrop.drive.ScriptedRouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
 import com.cardrop.drive.TripCodeFile
@@ -35,7 +35,6 @@ import com.cardrop.navi.KakaoPlaceSearch
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.OsrmDirections
 import com.cardrop.navi.NavigationHandoff
-import com.cardrop.navi.NaverMapHandoff
 import com.cardrop.vehicle.FakeVehicleRepository
 import com.cardrop.vehicle.PleosVehicleRepository
 import com.cardrop.vehicle.VehicleRepository
@@ -45,7 +44,6 @@ import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -66,73 +64,69 @@ class AppContainer(context: Context) {
     // Member A
     /** Which car this device drives in the real crew: the DEMO panel's "내 차", else `cardrop.myCar`. */
     val myCar: String = DemoCar.current(context)
+    /** Real crew or bot crew on this device: the DEMO panel's "크루" switch, else `cardrop.useRealCrew` ([DemoCrew]). */
+    val useRealCrew: Boolean = DemoCrew.current(context)
     /**
-     * `cardrop.useRealCrew=true`: the real crew on Firebase, shared by several devices; this device is
-     * [myCar]. Otherwise the fake crew with bot cars (also the way back if the network fails).
+     * [useRealCrew]: the real crew on Firebase, shared by several devices; this device is [myCar].
+     * Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
     val crew: CrewRepository =
-        if (BuildConfig.USE_REAL_CREW) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
+        if (useRealCrew) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
 
     // Lead
     /** Real crew: the host's 출발 and every car's position, shared through Firebase (drive/FirebaseTrip.kt). */
-    private val firebaseTrip: FirebaseTrip? = if (BuildConfig.USE_REAL_CREW) FirebaseTrip(appScope, crew) else null
+    private val firebaseTrip: FirebaseTrip? = if (useRealCrew) FirebaseTrip(appScope, crew) else null
     /** With the real crew the cars wait for the host's 출발; the bot crew never waits. */
     val tripStart: TripStart = firebaseTrip ?: TripStart.AlwaysStarted
 
     // Member B
     val vehicle: VehicleRepository =
         if (BuildConfig.USE_REAL_VEHICLE) PleosVehicleRepository(context) else FakeVehicleRepository()
-    /**
-     * `inapp` (default): a real navigator inside CarDrop - GPS + live routes (Kakao, then OSRM).
-     * `naver`: hand the route to Naver Map; car positions then come from the scripted simulator.
-     */
-    val inAppNavigation: InAppNavigation? =
-        if (BuildConfig.NAV_APP == "naver") {
-            null
-        } else {
-            InAppNavigation(
-                scope = appScope,
-                location = AndroidLocationSource(context.applicationContext),
-                router = FallbackRouteProvider(
-                    listOfNotNull(
-                        BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoDirections),
-                        OsrmDirections(),
-                    ),
-                ),
-                kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
-            )
-        }
-    val route: RouteSimulator = inAppNavigation?.let { GpsCrewPositions(appScope, it, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions) }
-        ?: ScriptedRouteSimulator(
+    /** The navigator inside CarDrop (the left third): GPS + live routes (Kakao, then OSRM). */
+    val inAppNavigation: InAppNavigation =
+        InAppNavigation(
             scope = appScope,
-            // This car stands still in P; the bot cars always drive.
-            isParked = { carId -> carId == crew.myCarId && vehicle.snapshot.value.isParked },
+            location = AndroidLocationSource(context.applicationContext),
+            router = FallbackRouteProvider(
+                listOfNotNull(
+                    BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoDirections),
+                    OsrmDirections(),
+                ),
+            ),
+            kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
         )
-    // TODO(Member B): "kakao" -> KakaoNaviHandoff (Kakao Navi SDK, see CLAUDE.md)
-    val navigation: NavigationHandoff = inAppNavigation ?: NaverMapHandoff(context.applicationContext)
+    /** Every car's position: this car from GPS, the others from their devices (real crew) or behind it (bots). */
+    val route: RouteSimulator = GpsCrewPositions(appScope, inAppNavigation, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions)
+    val navigation: NavigationHandoff = inAppNavigation
 
     /**
      * Board 01's "약 62km · 1시간 5분": road distance and drive time from this car to the crew destination, on
-     * the navigator's live route. Null until that route is there, and always with `cardrop.navApp=naver`.
+     * the navigator's live route. Null until that route is there.
      */
     val destinationTrip: StateFlow<DestinationTrip?> =
-        inAppNavigation?.let { nav ->
-            combine(nav.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
-                .stateIn(appScope, SharingStarted.Eagerly, null)
-        } ?: MutableStateFlow(null)
+        combine(inAppNavigation.state, crew.crew) { state, current -> current?.destination?.let { tripToDestination(state, it) } }
+            .stateIn(appScope, SharingStarted.Eagerly, null)
 
     /**
-     * Where this car is: the navigator's GPS fix (there before departure too), else its place in the crew
-     * positions (`cardrop.navApp=naver`). Null before the first fix. Board 02 and 10 search near it.
+     * Boards 10 and 11: how far a place is from this car by road and how long it takes ("9km", "6분"), and the
+     * crew's average ("12분 · 4대 평균"), on the navigator's live route. A new snapshot on every GPS fix.
      */
-    fun myPosition(): GeoPoint? =
-        inAppNavigation?.state?.value?.fix?.let { GeoPoint(it.lat, it.lng) }
-            ?: route.positions.value[crew.myCarId]?.let { GeoPoint(it.lat, it.lng) }
+    val placeTimes: StateFlow<PlaceTimes> =
+        combine(inAppNavigation.state, route.positions) { state, positions -> PlaceTimes(state, positions, crew.myCarId) }
+            .stateIn(appScope, SharingStarted.Eagerly, PlaceTimes())
 
-    /** Rest stops / stations still ahead of every car: what the AI and the DEMO panel may offer. */
-    fun stopsAhead(pool: List<Place>): List<Place> =
-        inAppNavigation?.placesAhead(pool) ?: DemoRoute.placesAhead(pool, route.positions.value.values)
+    /**
+     * Where this car is: the navigator's GPS fix (there before departure too). Null before the first fix.
+     * Board 02 and 10 search near it.
+     */
+    fun myPosition(): GeoPoint? = inAppNavigation.state.value.fix?.let { GeoPoint(it.lat, it.lng) }
+
+    /**
+     * Rest stops / stations still ahead of every car: what the AI and the DEMO panel may offer.
+     * Empty until the navigator has a route (the callers then offer the pool's last places).
+     */
+    fun stopsAhead(pool: List<Place>): List<Place> = inAppNavigation.placesAhead(pool).orEmpty()
 
     // Lead
     /** Claude when local.properties has `cardrop.claudeApiKey`; the fake without one, or when a Claude call fails. */
@@ -161,13 +155,13 @@ class AppContainer(context: Context) {
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
      * keeps the driver on the same screen and doesn't open old drops again.
      */
-    val navigator = AppNavigator(start = DemoCar.startScreen(BuildConfig.USE_REAL_CREW, myCar))
+    val navigator = AppNavigator(start = DemoCar.startScreen(useRealCrew, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
     private val trip = TripCoordinator(
         appScope, crew, route, navigation, voice,
         tripStart = tripStart,
-        autoStartsGuidance = inAppNavigation != null,
+        autoStartsGuidance = true,
     )
 
     /** This car got to the crew's stop, stopped there or drove past it: the card on the CarDrop side. */

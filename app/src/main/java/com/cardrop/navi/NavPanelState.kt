@@ -65,9 +65,14 @@ fun navPanelState(
     val waypointRow = route.waypoint?.let { place ->
         val eta = live?.waypointKm?.let { clock(nowMillis, live.secondsBetween(km, it), zone) }
         EtaRow(place.name, eta.orEmpty())
-    }
+    } ?: nav.parkedAt?.let { EtaRow("${it.name} · 정차 중", "P") } // stopped there (design 631)
     val destinationRow = route.destination?.let { place ->
-        EtaRow(place.name, live?.let { clock(nowMillis, it.secondsBetween(km, it.totalKm), zone) }.orEmpty())
+        val eta = when {
+            nav.arrived -> "도착" // the design's last screen (632): the arrival time becomes "도착"
+            live != null -> clock(nowMillis, live.secondsBetween(km, live.totalKm), zone)
+            else -> ""
+        }
+        EtaRow(place.name, eta)
     }
     return NavPanelState(
         banner = banner,

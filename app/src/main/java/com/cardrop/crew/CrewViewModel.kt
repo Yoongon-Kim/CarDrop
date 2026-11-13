@@ -47,7 +47,8 @@ class CrewViewModel(
     sealed interface JoinState {
         data object Idle : JoinState
         data object Searching : JoinState
-        data class Found(val crew: Crew) : JoinState
+        /** [routeBefore]: where this car's navigator was heading before it joined (null = no route). */
+        data class Found(val crew: Crew, val routeBefore: Place? = null) : JoinState
         data object NotFound : JoinState
     }
 
@@ -64,18 +65,31 @@ class CrewViewModel(
         viewModelScope.launch { repo.setDestination(place) }
     }
 
+    /**
+     * Board 01's 바꾸기: gives the crew a new name, for every car in it. Spaces around the name are dropped;
+     * an empty name keeps the old one.
+     */
+    fun renameCrew(name: String) {
+        val clean = name.trim()
+        if (clean.isEmpty() || clean == crew.value?.name) return
+        viewModelScope.launch { repo.renameCrew(clean) }
+    }
+
     /** Board 02: the places that fit the destination being typed, like Kakao Map's list. */
     private val destinationSearch = PlaceSuggester(viewModelScope, placeSearch, DemoData.destinations, here)
     val destinationSuggestions: StateFlow<PlaceSuggestions> = destinationSearch.state
 
-    /** Board 02 "말로 검색": the grey line under the box, and whether the mic is listening. */
-    data class DestinationVoice(val listening: Boolean = false, val status: String? = null)
+    /** Board 02 "말로 검색" and board 03 "말로": whether the mic is listening, and the grey line about it. */
+    data class VoiceInput(val listening: Boolean = false, val status: String? = null)
 
-    private val _destinationVoice = MutableStateFlow(DestinationVoice())
-    val destinationVoice: StateFlow<DestinationVoice> = _destinationVoice
+    private val _destinationVoice = MutableStateFlow(VoiceInput())
+    val destinationVoice: StateFlow<VoiceInput> = _destinationVoice
+    private val _codeVoice = MutableStateFlow(VoiceInput())
+    /** Board 03's 말로 key, listening for the join code. */
+    val codeVoice: StateFlow<VoiceInput> = _codeVoice
     private var listenJob: Job? = null
 
-    /** False without a voice service: board 02 then has no "말로 검색" button. */
+    /** False without a voice service: board 02 then has no "말로 검색" button, board 03's 말로 is greyed out. */
     val canListen: Boolean get() = voice != null
 
     /** Board 02 opens with no old suggestions, and not listening. */
@@ -84,10 +98,11 @@ class CrewViewModel(
         destinationSearch.clear()
     }
 
-    /** Board 02 closes: stop the microphone if it is still listening. */
+    /** Board 02 or 03 closes: stop the microphone if it is still listening. */
     fun stopListening() {
         listenJob?.cancel()
-        _destinationVoice.value = DestinationVoice()
+        _destinationVoice.value = VoiceInput()
+        _codeVoice.value = VoiceInput()
     }
 
     /**
@@ -98,21 +113,21 @@ class CrewViewModel(
     fun listenForDestination(onHeard: (String) -> Unit) {
         val voice = voice ?: return
         if (_destinationVoice.value.listening) return
-        _destinationVoice.value = DestinationVoice(listening = true, status = "듣고 있어요… 가고 싶은 곳을 말해 주세요")
+        _destinationVoice.value = VoiceInput(listening = true, status = "듣고 있어요… 가고 싶은 곳을 말해 주세요")
         listenJob = viewModelScope.launch {
             val heard = try {
                 voice.listen(placeName = true)?.trim()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _destinationVoice.value = DestinationVoice(status = "마이크를 열 수 없어요. 키보드로 입력할 수 있어요.")
+                _destinationVoice.value = VoiceInput(status = "마이크를 열 수 없어요. 키보드로 입력할 수 있어요.")
                 return@launch
             }
             if (heard.isNullOrEmpty()) {
-                _destinationVoice.value = DestinationVoice(status = "음성을 듣지 못했어요. 다시 말하거나 키보드로 입력하세요.")
+                _destinationVoice.value = VoiceInput(status = "음성을 듣지 못했어요. 다시 말하거나 키보드로 입력하세요.")
                 return@launch
             }
-            _destinationVoice.value = DestinationVoice()
+            _destinationVoice.value = VoiceInput()
             onHeard(heard)
             destinationSearch.onTyped(heard)
         }
@@ -140,10 +155,62 @@ class CrewViewModel(
         }
     }
 
-    fun joinCrew(code: String) {
+    /** The code board 03 is looking up now; null = none (the driver changed the code). */
+    private var joiningCode: String? = null
+
+    /**
+     * Board 03: the 6 digits of [code] are in (typed, or heard by 말로). Looks the crew up and joins it. [routeBefore] is
+     * where this car's navigator is heading now. Read it before joining: joining puts the crew's destination
+     * in its place at once (TripCoordinator), and board 03 offers it as a stop on the way ("…들렀다 가기").
+     */
+    fun joinCrew(code: String, routeBefore: Place? = null) {
+        joiningCode = code
+        clearCodeStatus()
         _join.value = JoinState.Searching
         viewModelScope.launch {
-            _join.value = repo.joinCrew(code)?.let { JoinState.Found(it) } ?: JoinState.NotFound
+            val found = repo.joinCrew(code)
+            // The driver erased a digit while we were looking: this answer is for a code no longer on screen.
+            if (joiningCode != code) return@launch
+            _join.value = found?.let { JoinState.Found(it, routeBefore) } ?: JoinState.NotFound
+        }
+    }
+
+    /** Board 03: the code changed (a digit erased, or the screen opened again): no crew shown. */
+    fun clearJoin() {
+        joiningCode = null
+        clearCodeStatus()
+        _join.value = JoinState.Idle
+    }
+
+    /** The driver changed the code by hand: an old line about what the mic heard no longer fits. */
+    private fun clearCodeStatus() {
+        if (!_codeVoice.value.listening) _codeVoice.value = VoiceInput()
+    }
+
+    /**
+     * Board 03 "말로": listen for the join code ("코드 482917", "사팔이 구일칠") and hand its 6 digits to
+     * [onHeard]. Anything else ("배고파", 5 digits) leaves the boxes as they are, and the grey line says so.
+     */
+    fun listenForCode(onHeard: (String) -> Unit) {
+        val voice = voice ?: return
+        if (_codeVoice.value.listening) return
+        _codeVoice.value = VoiceInput(listening = true, status = "듣고 있어요… “코드 482917”처럼 말해 주세요")
+        listenJob = viewModelScope.launch {
+            val heard = try {
+                voice.listen()?.trim()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _codeVoice.value = VoiceInput(status = "마이크를 열 수 없어요. 숫자를 눌러 넣어 주세요.")
+                return@launch
+            }
+            val code = heard?.let(JoinRules::codeFromSpeech)
+            _codeVoice.value = when {
+                heard.isNullOrEmpty() -> VoiceInput(status = "음성을 듣지 못했어요. 다시 말하거나 숫자를 눌러 주세요.")
+                code == null -> VoiceInput(status = "‘$heard’에서 코드 6자리를 찾지 못했어요")
+                else -> VoiceInput()
+            }
+            if (code != null) onHeard(code)
         }
     }
 
@@ -154,6 +221,15 @@ class CrewViewModel(
     fun vote(dropId: String, candidateId: String) {
         viewModelScope.launch { repo.vote(dropId, candidateId) }
     }
+
+    /** Board 01 "말로 읽어주기": says the join code aloud, digit by digit. Nothing without a voice service. */
+    fun speakCode() {
+        val code = crew.value?.code ?: return
+        voice?.speak(CrewVoice.codeSentence(code))
+    }
+
+    /** Board 01 "말로 읽어주기" is shown only with a voice service. */
+    val canSpeak: Boolean get() = voice != null
 
     fun carName(carId: String): String =
         crew.value?.cars?.firstOrNull { it.id == carId }?.name ?: "알 수 없는 차"

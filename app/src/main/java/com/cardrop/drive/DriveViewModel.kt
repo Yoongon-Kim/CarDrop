@@ -201,12 +201,15 @@ class DriveViewModel(
                 crewRepo.sendDrop(DropDraft(
                     kind = DropKind.DECISION, topic = DropTopic.FUEL,
                     title = "연료가 부족해요 · 같이 주유할까요?",
-                    message = "연료 ${car.fuelPercent ?: "—"}% · 주행 가능 ${car.rangeKm?.toInt() ?: "—"}km · ${place.name}$distance",
+                    // Board 06's top line, as in the design (244): "민지 차 · 주행 가능 85km · 덕평 주유소 9km"
+                    // (the banner puts the car's name in front).
+                    message = "주행 가능 ${car.rangeKm?.toInt() ?: "—"}km · ${place.name}$distance",
                     candidates = listOf(chosen.candidate),
                 ))
             } else {
                 val destination = navigation.route.value.destination ?: requireCrew().destination
-                navigation.setRoute(destination, place, "우리 차만 ${place.name}에 들러요")
+                // The navigator's toast, worded as in the design (629); the waypoint row shows which station.
+                navigation.setRoute(destination, place, "주유소를 경유지로 넣었어요")
                 check(navigation.launch()) { navigation.route.value.lastAction ?: "길안내를 시작할 수 없어요" }
             }
             ensureCrew(key)

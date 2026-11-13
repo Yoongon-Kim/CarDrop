@@ -33,6 +33,9 @@ interface CrewRepository {
 
     suspend fun setDestination(destination: Place)
 
+    /** Board 01's 바꾸기: the crew's new name (e.g. "강릉 여행" -> "가족 여행"), for every car in it. */
+    suspend fun renameCrew(name: String)
+
     suspend fun sendDrop(draft: DropDraft): Drop
 
     suspend fun vote(dropId: String, candidateId: String)

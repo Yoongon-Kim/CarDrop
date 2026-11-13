@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -50,32 +51,44 @@ import com.cardrop.core.demo.DemoData
 import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.model.Place
 import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.CdTextField
 import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.ErrorText
+import com.cardrop.core.ui.LastItemAtBottom
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CarDropTheme
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.drive.CrewTime
+import com.cardrop.drive.PlaceTimes
+import com.cardrop.drive.PlaceTrip
 import com.cardrop.navi.KeyboardRoom
 import com.cardrop.navi.PlaceSuggestion
 import com.cardrop.navi.PlaceSuggestionList
 import com.cardrop.navi.PlaceSuggestions
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/** No times at all: for the quick-drop pop-up, which nobody shows at the moment. */
+private val NoPlaceTimes: StateFlow<PlaceTimes> = MutableStateFlow(PlaceTimes())
 
 /**
  * Board 10 AI 추천 (휴게소 · 식사 · 주유) · Owner: lead.
  * The AI's places plus any the driver adds. The ticked ones go into a vote (board 11), sent to
- * [toCarIds], the cars chosen on board 08 (empty = the whole crew).
+ * [toCarIds], the cars chosen on board 08 (empty = the whole crew). [placeTimes] (AppContainer.placeTimes)
+ * says how long the cars take to get to each place.
  */
 @Composable
 fun AiRecommendScreen(
     vm: AiViewModel,
     topic: DropTopic,
     toCarIds: List<String>,
+    placeTimes: StateFlow<PlaceTimes>,
     onBack: () -> Unit,
     onSent: (Drop) -> Unit,
 ) {
@@ -88,6 +101,7 @@ fun AiRecommendScreen(
         onClose = onBack,
         onSent = onSent,
         modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp),
+        placeTimes = placeTimes,
     )
 }
 
@@ -123,18 +137,27 @@ private fun PlacePicker(
     onClose: () -> Unit,
     onSent: (Drop) -> Unit,
     modifier: Modifier,
+    placeTimes: StateFlow<PlaceTimes> = NoPlaceTimes,
 ) {
     val state by vm.picker.collectAsStateWithLifecycle()
     val suggest by vm.suggestions.collectAsStateWithLifecycle()
+    // A new snapshot on every GPS fix, so the minutes count down as the car drives.
+    val times by placeTimes.collectAsStateWithLifecycle()
     var typed by rememberSaveable(topic) { mutableStateOf("") }
     val recipients = vm.recipientLabel(toCarIds)
+    // The cars that take part: the "4대 평균" is theirs.
+    val carIds = vm.involvedCarIds(toCarIds)
     PlacePickerContent(
         title = pickerTitle(topic, state),
-        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · $recipients" else "${topic.driverQuote()} · 받는 차 $recipients",
+        // The page shows only what the driver said (target line 409); board 08 already showed who gets it.
+        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · $recipients" else topic.driverQuote(),
         state = state,
         typed = typed,
         popup = popup,
         modifier = modifier,
+        crewTime = { place -> times.crewTime(place, carIds) },
+        trip = times::trip,
+        carCount = carIds.size,
         suggest = suggest,
         onTypedChange = {
             typed = it
@@ -158,7 +181,11 @@ private fun PlacePicker(
     )
 }
 
-/** What board 10 draws for a given [state]. No ViewModel, so the previews below can show it. */
+/**
+ * What board 10 draws for a given [state]. No ViewModel, so the previews below can show it. [crewTime] = how long
+ * the cars that take part need to get to a place, on average; [trip] = this car's way there (null = not known);
+ * [carCount] = how many cars take part.
+ */
 @Composable
 private fun PlacePickerContent(
     title: String,
@@ -167,6 +194,9 @@ private fun PlacePickerContent(
     typed: String,
     popup: Boolean,
     modifier: Modifier = Modifier,
+    crewTime: (Place) -> CrewTime? = { null },
+    trip: (Place) -> PlaceTrip? = { null },
+    carCount: Int = 4,
     suggest: PlaceSuggestions = PlaceSuggestions(),
     onTypedChange: (String) -> Unit = {},
     onClearTyped: () -> Unit = {},
@@ -179,14 +209,16 @@ private fun PlacePickerContent(
     onRetry: () -> Unit = {},
     onSend: () -> Unit = {},
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // While the driver types, the screen works like Kakao Map's search: the list steps aside, the
+    // text box moves up under the title and the places that fit show below it. Pleos's keyboard
+    // covers the lower third of the screen without shrinking our window, so the box must not
+    // sit low while typing.
+    val suggesting = suggest.shown
+    // The send button, when it shows, is the last item: it goes to the bottom of the page (target line 421,
+    // `margin-top: auto`), the same way ScreenColumn's bottom slot does. The pop-up just wraps its content.
+    val arrangement = if (suggesting || state.loading) Arrangement.spacedBy(14.dp) else SendButtonAtBottom
+    Column(modifier = modifier, verticalArrangement = arrangement) {
         PickerHeader(title, subtitle, popup, onClose)
-
-        // While the driver types, the screen works like Kakao Map's search: the list steps aside, the
-        // text box moves up under the title and the places that fit show below it. Pleos's keyboard
-        // covers the lower third of the screen without shrinking our window, so the box must not
-        // sit low while typing.
-        val suggesting = suggest.shown
 
         // The list scrolls on its own when it is long; the controls below stay in view.
         if (!suggesting) Column(
@@ -210,7 +242,22 @@ private fun PlacePickerContent(
                     aiPick = !state.pick.isAdded(candidate.id),
                     selected = state.pick.isSelected(candidate.id),
                     popup = popup,
+                    crewTime = crewTime(candidate.place),
+                    km = trip(candidate.place)?.kmText,
                     onToggle = { onToggle(candidate.id) },
+                )
+            }
+            if (state.pick.aiCount > 0) {
+                // What the AI looked at (target line 420), under its picks.
+                Text(
+                    aiSawText(carCount),
+                    color = CdColors.Gray600,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (popup) CdColors.Gray100 else CdColors.White)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                 )
             }
         }
@@ -269,24 +316,34 @@ private fun PlacePickerContent(
                 text = if (count > 0) "이 ${count}곳으로 투표 보내기" else "후보를 골라주세요",
                 enabled = count > 0,
                 onClick = onSend,
-                modifier = Modifier.fillMaxWidth().height(if (popup) 64.dp else 76.dp),
+                modifier = Modifier.fillMaxWidth(),
+                // The page's button as in the target (line 421): 78 high, corners 22, 21 / 800.
+                height = if (popup) 64.dp else 78.dp,
+                radius = if (popup) 20.dp else 22.dp,
+                fontSize = if (popup) 19.sp else 21.sp,
             )
         }
     }
 }
 
-/** Back button (page) or close button (pop-up), the line about who gets it, and the big title. */
+/** Board 10's items 14 apart, with the last one (the send button) moved down to the bottom when there's room. */
+private val SendButtonAtBottom = LastItemAtBottom(14.dp)
+
+/**
+ * Back button (page) or close button (pop-up), the small line above (the page: what the driver said), and the big
+ * title. The page's is as in the target (line 409): 14px grey quote straight above a 30 / 800 title.
+ */
 @Composable
 private fun PickerHeader(title: String, subtitle: String, popup: Boolean, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         if (!popup) BackButton(onClick = onClose)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (popup) 2.dp else 0.dp)) {
             Text(subtitle, fontSize = 14.sp, color = CdColors.Gray600)
             Text(
                 title,
                 fontSize = if (popup) 24.sp else 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-0.02).em,
+                letterSpacing = if (popup) (-0.02).em else TextUnit.Unspecified,
                 color = CdColors.Ink,
             )
         }
@@ -308,11 +365,15 @@ private fun PickerHeader(title: String, subtitle: String, popup: Boolean, onClos
 /** Tile colours for the AI's 1st, 2nd and 3rd place (design: blue, orange, teal). */
 private val tileColors = listOf(
     CdColors.BlueLight to CdColors.BlueDark,
-    CdColors.OrangeLight to CdColors.OrangeDark,
+    CdColors.OrangeLight to CdColors.OrangeDeep,
     CdColors.TealLight to CdColors.TealDark,
 )
 
-/** One place: tap anywhere on it to tick or untick it. */
+/**
+ * One place: tap anywhere on it to tick or untick it. As in the target (lines 413-415, 699) the rows are white with
+ * corners 24, and the AI's top pick has a blue edge. The round tick at the right shows what goes into the vote: the
+ * target has no ticks, the app keeps them (D11).
+ */
 @Composable
 private fun PlaceRow(
     candidate: Candidate,
@@ -320,24 +381,27 @@ private fun PlaceRow(
     aiPick: Boolean,
     selected: Boolean,
     popup: Boolean,
+    crewTime: CrewTime?,
+    /** How far it is from this car by road, e.g. "9km"; null = not known (off the route, no route yet). */
+    km: String?,
     onToggle: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(24.dp)
     val borderColor = when {
-        selected -> CdColors.Blue
-        popup -> CdColors.Gray100
+        aiPick && rank == 0 -> CdColors.Blue
+        popup -> CdColors.Gray100 // a white row on the white pop-up needs an edge
         else -> CdColors.White
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (selected) CdColors.BlueTint else CdColors.White)
+            .background(CdColors.White)
             .border(2.dp, borderColor, shape)
             .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
             .padding(horizontal = if (popup) 16.dp else 20.dp, vertical = if (popup) 12.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val (tileBackground, tileText) = if (aiPick) tileColors[rank % tileColors.size] else CdColors.Gray100 to CdColors.Ink2
         Box(
@@ -359,7 +423,7 @@ private fun PlaceRow(
                 Text(
                     candidate.place.name,
                     color = CdColors.Ink,
-                    fontSize = 19.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -367,8 +431,13 @@ private fun PlaceRow(
                 )
                 if (aiPick && rank == 0) AiPickBadge()
             }
-            // A place the driver added: "직접 추가한 장소 · <its address>", so two 스타벅스 can be told apart.
-            val meta = if (aiPick) candidate.place.detail else joinNonBlank(candidate.reason, candidate.place.detail)
+            // The distance first, as in the target ("9km · 주유 · 푸드코트 · 산책로", line 694). A place the driver
+            // added: "직접 추가한 장소 · <its address>", so two 스타벅스 can be told apart.
+            val meta = if (aiPick) {
+                joinNonBlank(km.orEmpty(), candidate.place.detail)
+            } else {
+                joinNonBlank(km.orEmpty(), candidate.reason, candidate.place.detail)
+            }
             if (meta.isNotBlank()) {
                 Text(meta, color = CdColors.Gray600, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -376,15 +445,31 @@ private fun PlaceRow(
                 Text(candidate.reason, color = CdColors.BlueDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
-        // Places the driver added have no detour time yet.
-        if (aiPick) {
-            Text("+${candidate.detourMinutes}분", color = CdColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        // How long the cars take to get there, on average (target lines 416, 694: "12분" over "4대 평균"). Only
+        // for places on the route ahead (PlaceTimes); with only this car's time known it says "내 차".
+        if (crewTime != null) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(crewTime.minutesText, color = CdColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    if (crewTime.cars >= 2) "${crewTime.cars}대 평균" else "내 차",
+                    color = CdColors.Gray600,
+                    fontSize = 12.sp,
+                )
+            }
         }
         CheckCircle(selected)
     }
 }
 
 private fun joinNonBlank(vararg parts: String): String = parts.filter { it.isNotBlank() }.joinToString(" · ")
+
+/**
+ * The card under the AI's picks: what it looked at (target line 420, "4대 모두 지나가는 경로 · …"). The number is
+ * how many cars take part; a car alone has no arrival times to compare.
+ */
+private fun aiSawText(cars: Int): String =
+    if (cars >= 2) "AI가 본 정보 · ${cars}대 모두 지나가는 경로 · 도착 시간 차이 · 연료 · 연속 운전 시간 · 리뷰 평점"
+    else "AI가 본 정보 · 지나가는 경로 · 연료 · 연속 운전 시간 · 리뷰 평점"
 
 /** The small "AI 추천" label on the AI's best place. */
 @Composable
@@ -485,11 +570,14 @@ private fun PlacePickerPagePreview() {
     CarDropTheme {
         PlacePickerContent(
             title = "AI가 휴게소 3곳을 골랐어요",
-            subtitle = "“휴게소 들렀다 가자” · 받는 차 크루 전체",
+            subtitle = "“휴게소 들렀다 가자”",
             state = previewState,
             typed = "",
             popup = false,
             modifier = Modifier.fillMaxSize().background(CdColors.Gray100).padding(horizontal = 28.dp, vertical = 24.dp),
+            // Sample times: 9km and 12분 for the first stop, then 24 km and 12 minutes more for each.
+            crewTime = { place -> DemoData.restStops.indexOf(place).takeIf { it >= 0 }?.let { CrewTime(12.0 + it * 12, 4) } },
+            trip = { place -> DemoData.restStops.indexOf(place).takeIf { it >= 0 }?.let { PlaceTrip(9.0 + it * 24, 6.0 + it * 12) } },
         )
     }
 }
@@ -501,7 +589,7 @@ private fun PlaceSuggestionsPreview() {
     CarDropTheme {
         PlacePickerContent(
             title = "AI가 휴게소 3곳을 골랐어요",
-            subtitle = "“휴게소 들렀다 가자” · 받는 차 크루 전체",
+            subtitle = "“휴게소 들렀다 가자”",
             state = previewState.copy(status = null, heard = null),
             suggest = PlaceSuggestions(
                     query = "덕평",

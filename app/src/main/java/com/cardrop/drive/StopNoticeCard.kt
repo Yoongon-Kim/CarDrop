@@ -56,7 +56,7 @@ data class StopNotice(val place: Place, val kind: Kind, val crewTold: Boolean = 
 /**
  * Owner: Member B.
  *
- * A card at the top right of the CarDrop side, above the captions:
+ * A card at the top right of the CarDrop side, just below the screen header (`core/CarDropApp.kt` places it):
  * - at the stop: "문막휴게소에 왔어요 · 멈추면 크루에게 도착을 알려요", while that stop is still the waypoint;
  * - stopped / drove past: "문막휴게소에 도착했어요 · 크루에게 알렸어요", for 10 seconds.
  * The map toast and the voice say the same; this card is the one that stays long enough to read.

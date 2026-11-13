@@ -3,12 +3,13 @@ package com.cardrop.core.demo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import com.cardrop.BuildConfig
 import com.cardrop.MainActivity
 import com.cardrop.core.navigation.Screen
 
 /**
- * Owner: lead. Which car this device drives in the real crew (`cardrop.useRealCrew=true`), for the demo.
+ * Owner: lead. Which car this device drives in the real crew ([DemoCrew]), for the demo.
  *
  * The DEMO panel's "내 차" picks it and this device remembers it; without a pick it is `cardrop.myCar`
  * from local.properties. Picking restarts the app, so every part starts again as the new car (some
@@ -33,18 +34,25 @@ object DemoCar {
         if (useRealCrew && car != HOST) Screen.JoinCrew else Screen.CreateCrew
 
     /** The car this device drives now. */
-    fun current(context: Context): String = resolve(prefs(context).getString(PREF_KEY, null), BuildConfig.MY_CAR)
+    fun current(context: Context): String = resolve(demoPrefs(context).getString(PREF_KEY, null), BuildConfig.MY_CAR)
 
     /** Remembers [car] and restarts the app as that car. */
     fun pickAndRestart(context: Context, car: String) {
         require(car in KEYS) { "unknown car $car" }
         // commit(), not apply(): the process ends right below, before apply() would write.
-        prefs(context).edit().putString(PREF_KEY, car).commit()
-        context.startActivity(Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java)))
-        // A new process makes a new AppContainer, so nothing keeps the old car.
-        Runtime.getRuntime().exit(0)
+        demoPrefs(context).edit().putString(PREF_KEY, car).commit()
+        restartApp(context)
     }
 
-    private fun prefs(context: Context) = context.getSharedPreferences("cardrop_demo", Context.MODE_PRIVATE)
     private const val PREF_KEY = "myCar"
+}
+
+/** What the DEMO panel picked on this device ([DemoCar], [DemoCrew]). */
+internal fun demoPrefs(context: Context): SharedPreferences =
+    context.getSharedPreferences("cardrop_demo", Context.MODE_PRIVATE)
+
+/** Starts the app again in a new process. A new process makes a new AppContainer, so nothing keeps the old pick. */
+internal fun restartApp(context: Context) {
+    context.startActivity(Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java)))
+    Runtime.getRuntime().exit(0)
 }

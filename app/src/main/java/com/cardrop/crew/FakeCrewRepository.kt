@@ -10,6 +10,7 @@ import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
 import com.cardrop.drop.VoteRules
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,9 @@ import java.util.UUID
  *
  * In-memory crew with 3 bot cars, so the whole flow works on one emulator with no network.
  * Bots join a few seconds after the crew is created and vote a few seconds after a drop.
+ * The trip starts like the real crew's: with this car's 출발 (it is the host; a bot that hasn't joined by then stays
+ * behind), or by itself once all 3 bots have joined (about 7 s after the crew is made). A crew joined with its code
+ * (board 03) is on the road already.
  */
 class FakeCrewRepository(
     private val scope: CoroutineScope,
@@ -38,6 +42,9 @@ class FakeCrewRepository(
     override val drops: StateFlow<List<Drop>> = _drops
 
     private val bots = listOf(DemoData.uncle, DemoData.minji, DemoData.aunt)
+
+    /** The bots accepting the invite one by one; stopped when the trip starts. */
+    private var botJoins: Job? = null
 
     init {
         // Closes votes whose deadline has passed.
@@ -56,10 +63,12 @@ class FakeCrewRepository(
             destination = destination,
             hostCarId = myCarId,
             cars = listOf(DemoData.me) + bots.map { it.copy(connected = false) },
+            joinDeadlineMillis = now() + JoinRules.JOIN_WINDOW_MILLIS,
         )
         _crew.value = crew
         // Bots accept the invite one by one; 이모 차 is slow, like in board 01.
-        scope.launch {
+        botJoins?.cancel()
+        botJoins = scope.launch {
             listOf(DemoData.uncle to 1_500L, DemoData.minji to 1_500L, DemoData.aunt to 4_000L)
                 .forEach { (bot, wait) ->
                     delay(wait)
@@ -78,9 +87,19 @@ class FakeCrewRepository(
             destination = DemoData.gyeongpo,
             hostCarId = DemoData.uncle.id,
             cars = listOf(DemoData.me) + bots,
+            startedAtMillis = now(), // the bots are on the road already
         )
         _crew.value = crew
         return crew
+    }
+
+    override suspend fun startTrip() {
+        botJoins?.cancel() // a bot that hasn't joined by now stays behind
+        _crew.update { crew ->
+            if (crew == null || crew.isStarted) return@update crew
+            val missing = JoinRules.missingCars(crew)
+            crew.copy(startedAtMillis = now(), cars = crew.cars.filterNot { it.id in missing })
+        }
     }
 
     override suspend fun setDestination(destination: Place) {
@@ -104,6 +123,7 @@ class FakeCrewRepository(
     }
 
     override fun leaveCrew() {
+        botJoins?.cancel()
         _crew.value = null
         _drops.value = emptyList()
     }
@@ -153,7 +173,9 @@ class FakeCrewRepository(
     }
 
     private fun botVote(dropId: String, bot: Car, rank: Int, except: String?) {
-        if (bot.id == except) return
+        // A bot left out of the trip (it hadn't joined by 출발) doesn't vote.
+        val inTrip = _crew.value?.cars?.any { it.id == bot.id } == true
+        if (bot.id == except || !inTrip) return
         updateDrop(dropId) { drop ->
             // A bot only answers drops that were sent to it.
             if (drop.isDecided || !drop.isFor(bot.id)) return@updateDrop drop

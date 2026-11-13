@@ -50,6 +50,8 @@ class CrewViewModel(
         /** [routeBefore]: where this car's navigator was heading before it joined (null = no route). */
         data class Found(val crew: Crew, val routeBefore: Place? = null) : JoinState
         data object NotFound : JoinState
+        /** The crew's trip started without this car: it didn't join within 3 minutes. */
+        data object Closed : JoinState
     }
 
     private val _join = MutableStateFlow<JoinState>(JoinState.Idle)
@@ -168,10 +170,31 @@ class CrewViewModel(
         clearCodeStatus()
         _join.value = JoinState.Searching
         viewModelScope.launch {
-            val found = repo.joinCrew(code)
+            val found = try {
+                repo.joinCrew(code)
+            } catch (e: CrewClosedException) {
+                if (joiningCode == code) _join.value = JoinState.Closed
+                return@launch
+            }
             // The driver erased a digit while we were looking: this answer is for a code no longer on screen.
             if (joiningCode != code) return@launch
             _join.value = found?.let { JoinState.Found(it, routeBefore) } ?: JoinState.NotFound
+        }
+    }
+
+    /**
+     * Board 01's 출발 (the host only): the crew's trip starts now, without the cars that haven't joined. The
+     * navigator and board 04 follow from the crew ([com.cardrop.drive.TripCoordinator]).
+     */
+    fun startTrip() {
+        viewModelScope.launch {
+            try {
+                repo.startTrip()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The crew stays not started (board 01 still shows 출발), so the host can press it again.
+            }
         }
     }
 

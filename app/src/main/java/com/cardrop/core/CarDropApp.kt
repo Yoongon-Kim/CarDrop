@@ -55,6 +55,9 @@ import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteScreen
 import com.cardrop.navi.InAppNavigatorPanel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 
 /**
  * Owner: lead. Wires every screen to its ViewModel and to the navigator.
@@ -68,7 +71,7 @@ fun CarDropApp(container: AppContainer) {
             container.crew, container.placeSearch, container::myPosition, container.voice, container.destinationTrip,
         ) }
     val driveVm: DriveViewModel = viewModel {
-        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai, tripStart = container.tripStart)
+        DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai)
     }
     val aiVm: AiViewModel = viewModel {
         AiViewModel(
@@ -93,6 +96,17 @@ fun CarDropApp(container: AppContainer) {
     ) { socialMessage = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
+    // The trip just started (the host's 출발, every car joined, or the 3 minutes for joining are over): board 01 gives way to
+    // board 04, on the host and on a car that looked at the crew. Only the change counts (drop(1)): a new activity
+    // with the trip already started keeps the screen the driver chose.
+    LaunchedEffect(container.crew) {
+        container.crew.crew.map { it?.isStarted == true }.distinctUntilChanged().drop(1).collect { started ->
+            if (started && (navigator.current == Screen.CreateCrew || navigator.current == Screen.DestinationSearch)) {
+                navigator.switchTab(Screen.Drive)
+            }
+        }
+    }
+
     val crewNow by container.crew.crew.collectAsStateWithLifecycle()
     val myCar = crewNow?.cars?.firstOrNull { it.id == container.crew.myCarId }
         ?: Car(container.crew.myCarId, "내 차", CarColor.BLUE, isMe = true)
@@ -108,6 +122,7 @@ fun CarDropApp(container: AppContainer) {
             DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },
         myCar = myCar,
+        tripStarted = crewNow?.isStarted == true,
         railExtra = { DemoRailButton(onClick = { demoOpen = !demoOpen }) },
     ) {
         // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
@@ -135,8 +150,10 @@ fun CarDropApp(container: AppContainer) {
                 onSearchDestination = { navigator.go(Screen.DestinationSearch) },
                 onJoinWithCode = { navigator.go(Screen.JoinCrew) },
                 onDepart = {
+                    // The host's 출발: the cars that joined start with this one, the missing ones are left out.
+                    // After the start the button only leads back to board 04 (both calls then do nothing).
                     driveVm.startGuidance()
-                    container.tripStart.start() // the cars that joined start with this one (real crew)
+                    crewVm.startTrip()
                     navigator.switchTab(Screen.Drive)
                 },
             )
@@ -147,7 +164,7 @@ fun CarDropApp(container: AppContainer) {
                 onBack = navigator::back,
             ) { stop ->
                 // Before the host's 출발 this car waits on board 04; TripCoordinator starts it with the host.
-                if (container.tripStart.started.value) driveVm.startGuidance()
+                if (container.crew.crew.value?.isStarted == true) driveVm.startGuidance()
                 // "…들렀다 가기": where this car was heading becomes the waypoint on the way to the crew's
                 // destination. After startGuidance, so the navigator's last message is about the stop.
                 val crewDestination = container.crew.crew.value?.destination

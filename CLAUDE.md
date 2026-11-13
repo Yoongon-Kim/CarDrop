@@ -114,9 +114,16 @@ which car this device drives: the device remembers it and the app restarts as th
 With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 and join it
 with its code. Every new crew gets its own random 6-digit code (`crew/CrewCode.kt`), so two hosts (e.g. two
 emulators both on 아빠 차) never share a crew. Restarting the host's app makes a new crew with a new code, and the
-other cars join again with it (the bot crew keeps 482917). Nobody drives off before the host: a car that
-joins first waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and the host's 출발 starts its guidance
-(`drive/TripStart.kt`, `drive/FirebaseTrip.kt`). The bot crew never waits.
+other cars join again with it (the bot crew keeps 482917). The trip starts with the host's 출발, or by itself: at
+once when every car has joined, else 3 minutes after the crew was made (board 01 counts down;
+`JoinRules.JOIN_WINDOW_MILLIS`; both done by `TripCoordinator` on the host's device). Before that nobody drives off
+or sends drops: a car that joined waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and drops, the inbox and the
+rail's 드랍 / 게임 / 편지함 are greyed out. Cars not connected at the start are left out (`JoinRules.missingCars`;
+`out` in Firebase): they disappear from every screen and vote, and their code then says "이미 출발한 크루예요" (a
+car that was in can join again, e.g. after an app restart). The start belongs to the crew (`Crew.startedAtMillis`,
+`CrewRepository.startTrip`), for the bot crew too: it sets off by itself once its 3 bots have joined (about 7 s
+after board 01 opens), a bot not in by an earlier 출발 stays behind, and a bot crew joined with its code (board 03)
+is on the road already.
 
 ## Several Claude sessions at once
 
@@ -208,9 +215,9 @@ when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permissi
 
 **Several cars (real crew):** each device runs its own GPS script with its car, e.g.
 `python3 tools/drive_gps.py --car uncle` (two emulators on one Mac: add `--serial emulator-5556`). `--car` starts
-the car at its place in the convoy (아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37) and holds it still until the host
-presses 출발 (it asks CarDrop on that emulator for its crew code, `drive/TripCodeFile.kt`, then reads
-`trips/<code>/startedAt` from Firebase; `--code 123456` sets the code by hand); `--no-wait` drives right away. Every device
+the car at its place in the convoy (아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37) and holds it still until the trip
+starts (it asks CarDrop on that emulator for its crew code, `drive/TripCodeFile.kt`, then reads
+`crews/<code>/info/startedAt` from Firebase; `--code 123456` sets the code by hand); `--no-wait` drives right away. Every device
 shares its position through Firebase about once a second, so each one draws the others where they really are.
 
 - Layout: our window holds the whole 1600 x 900 design. The navigator is the left 533 px

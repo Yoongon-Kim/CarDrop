@@ -176,7 +176,7 @@ fun CarDropApp(container: AppContainer) {
             ) { drop ->
                 navigator.go(Screen.Vote(drop.id))
             }
-            is Screen.Vote -> VoteScreen(crewVm, screen.dropId)
+            is Screen.Vote -> VoteScreen(crewVm, screen.dropId, placeTimes = container.placeTimes)
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             Screen.Games -> QuizScreen(aiVm)
         }

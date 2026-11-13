@@ -1,10 +1,22 @@
 package com.cardrop.drop
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,18 +28,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Candidate
+import com.cardrop.core.model.Car
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.ui.AiTag
-import com.cardrop.core.ui.CdCard
+import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.ChipStyle
-import com.cardrop.core.ui.InfoRow
 import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
@@ -36,19 +59,25 @@ import com.cardrop.core.ui.TodoNote
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.TightLetterSpacing
 import com.cardrop.crew.CrewViewModel
+import com.cardrop.drive.PlaceTimes
+import com.cardrop.drive.PlaceTrip
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Board 11 투표 (받는 차) · Owner: Member A.
  * When the vote ends, the app moves to board 14 on its own (see DropRouting).
+ * [placeTimes] (AppContainer.placeTimes) says how far each place is from this car and how long it takes.
  */
 @Composable
-fun VoteScreen(vm: CrewViewModel, dropId: String) {
+fun VoteScreen(vm: CrewViewModel, dropId: String, placeTimes: StateFlow<PlaceTimes>) {
     val drops by vm.drops.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
+    val times by placeTimes.collectAsStateWithLifecycle()
     val drop = drops.firstOrNull { it.id == dropId } ?: return
+    val cars = crew?.cars.orEmpty()
     // Only the sender and the cars it was sent to answer this vote.
-    val carCount = drop.voterIds(crew?.cars?.map { it.id }.orEmpty()).size
+    val carCount = drop.voterIds(cars.map { it.id }).size
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(dropId) {
@@ -118,18 +147,29 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
             AiTag()
             Text("${drop.votes.size}/$carCount 응답 · 무응답은 1순위로 처리돼요", style = MaterialTheme.typography.bodyLarge)
         }
-        drop.candidates.forEachIndexed { index, candidate ->
-            val votes = drop.votes.values.count { it == candidate.id }
-            CdCard(
-                modifier = Modifier.fillMaxWidth(),
-                selected = picked == candidate.id,
-                onClick = { if (!alreadyVoted) picked = candidate.id },
-            ) {
-                InfoRow(
-                    title = "${index + 1}. ${candidate.place.name}",
-                    subtitle = "${candidate.reason} · +${candidate.detourMinutes}분",
-                    trailing = { Pill("${votes}표") },
-                )
+        // The places, 3 to a row and 12 apart; a 4th and 5th place start a new row (target lines 450-456). Cards in
+        // a row are as tall as the tallest, like the target's grid.
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            drop.candidates.withIndex().chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { (index, candidate) ->
+                        // The cars that voted for it, in crew order; this car too once it picked it (target line 718).
+                        val voters = cars.filter { car ->
+                            drop.votes[car.id] == candidate.id || (car.id == vm.myCarId && !alreadyVoted && picked == candidate.id)
+                        }
+                        CandidateCard(
+                            number = index + 1,
+                            candidate = candidate,
+                            trip = times.trip(candidate.place),
+                            voters = voters,
+                            picked = picked == candidate.id,
+                            counted = picked == candidate.id,
+                            onClick = if (alreadyVoted) null else ({ picked = candidate.id }),
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
             }
         }
         if (canSpin && wheelOpen) {
@@ -152,6 +192,116 @@ fun VoteScreen(vm: CrewViewModel, dropId: String) {
         )
         Text("말로도 돼요 · “1번”, “아무 데나”, “패스”", style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+/**
+ * One place in the vote (target lines 452-456, 716-721): a number circle and this car's time to get there at the
+ * top, the name, a grey line (distance · the AI's reason) and, under a thin line, the cars that voted for it.
+ * White, corners 24, padding 18, 8 between the lines. [picked] = this car picked it: light blue with a blue edge.
+ * [counted] = this car's vote goes here without picking it (아무 데나 좋아 counts for place 1): a paler blue with a
+ * dashed edge. The number circle is filled in both cases. [onClick] = null once this car has answered.
+ */
+@Composable
+private fun CandidateCard(
+    number: Int,
+    candidate: Candidate,
+    trip: PlaceTrip?,
+    voters: List<Car>,
+    picked: Boolean,
+    counted: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                when {
+                    picked -> CdColors.BlueLight
+                    counted -> CdColors.BlueTint
+                    else -> CdColors.White
+                },
+            )
+            .then(
+                when {
+                    picked -> Modifier.border(2.dp, CdColors.Blue, shape)
+                    counted -> Modifier.dashedEdge(CountedEdge, radius = 24.dp)
+                    else -> Modifier
+                },
+            )
+            .selectable(selected = picked, enabled = onClick != null, role = Role.RadioButton, onClick = { onClick?.invoke() })
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            NumberCircle(number, filled = picked || counted)
+            Spacer(Modifier.weight(1f))
+            // Places off the route have no time (PlaceTimes).
+            trip?.let { Text(it.minutesText, color = CdColors.Ink, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold) }
+        }
+        Text(
+            candidate.place.name,
+            color = CdColors.Ink,
+            fontSize = 21.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val meta = listOfNotNull(trip?.kmText, candidate.reason.ifBlank { null }).joinToString(" · ")
+        if (meta.isNotEmpty()) {
+            Text(meta, color = CdColors.Gray600, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind { drawLine(CdColors.Gray100, Offset.Zero, Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
+                .padding(top = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            voters.forEach { CarBadge(it, size = 28) }
+            Text(
+                if (voters.isEmpty()) "아직 없음" else "${voters.size}표",
+                color = CdColors.Gray600,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+/** The place's number: an orange ring, or filled blue once this car's vote goes there (target line 721). */
+@Composable
+private fun NumberCircle(number: Int, filled: Boolean) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .then(if (filled) Modifier.background(CdColors.Blue) else Modifier.border(2.dp, CdColors.Orange, CircleShape)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("$number", color = if (filled) CdColors.White else CdColors.OrangeDark, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+/** The dashed edge of place 1 when 아무 데나 좋아 is picked (`2px dashed #90C2FF`, target line 720). */
+private val CountedEdge = Color(0xFF90C2FF)
+
+/**
+ * A 2 dp dashed line just inside the edge, like CSS `border: 2px dashed`: dashes and gaps 6 dp long (browsers
+ * draw a dashed border's dashes about 3 times as long as it is thick). [radius] = the shape's corners.
+ */
+private fun Modifier.dashedEdge(color: Color, radius: Dp): Modifier = drawBehind {
+    val line = 2.dp.toPx()
+    val dash = 6.dp.toPx()
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(line / 2, line / 2),
+        size = Size(size.width - line, size.height - line),
+        cornerRadius = CornerRadius((radius.toPx() - line / 2).coerceAtLeast(0f)),
+        style = Stroke(width = line, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
+    )
 }
 
 /** What the vote is about, after "{보낸 차}의 제안 · " in the tag (target lines 711-713: "식사", "주유"). */

@@ -180,7 +180,7 @@ fun CarDropApp(container: AppContainer) {
 }
 
 /**
- * Top right: the card for this car getting to the crew's stop (stopped / drove past).
+ * Top right, below the screen header: the card for this car getting to the crew's stop (stopped / drove past).
  * Bottom right, just above the DEMO button (so they don't cover the screen header): the black captions
  * for the microphone listening, what the voice just said (the fake voice has no sound; fades out after
  * a few seconds), and quiet social messages.
@@ -203,7 +203,9 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
     }
 
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+        // Below the screen header (not over board 04's 음성 모드 pill and inbox button), and in line with the
+        // screen's right edge (16 + 12 = ScreenColumn's 28).
+        Box(modifier = Modifier.align(Alignment.TopEnd).padding(top = STOP_NOTICE_TOP, end = 12.dp)) {
             StopNoticeCard(stopNotice, navRoute.waypoint)
         }
         Column(
@@ -222,6 +224,12 @@ private fun Captions(container: AppContainer, socialMessage: String?) {
 
 /** Room for the DEMO button (about 40 dp tall) in the same corner, plus a small gap. */
 private val CAPTIONS_ABOVE_DEMO = 50.dp
+
+/**
+ * The stop card's distance from the top, inside the 16 dp around the captions: a screen header ends about
+ * 88 dp down (24 dp screen padding + board 04's header, about 64 dp), so the card starts about 14 dp below it.
+ */
+private val STOP_NOTICE_TOP = 86.dp
 
 /** How long the "음성 · …" caption stays before it fades out. */
 private const val SPOKEN_CAPTION_MILLIS = 5_000L

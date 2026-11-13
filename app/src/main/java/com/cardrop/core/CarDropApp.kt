@@ -42,7 +42,7 @@ import com.cardrop.drive.DecidedScreen
 import com.cardrop.drive.DriveMainScreen
 import com.cardrop.drive.DriveViewModel
 import com.cardrop.drive.FuelMeScreen
-import com.cardrop.drive.FuelThemScreen
+import com.cardrop.drive.FuelInvite
 import com.cardrop.drop.DropSendScreen
 import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteScreen
@@ -89,6 +89,23 @@ fun CarDropApp(container: AppContainer) {
             DemoPanel(container)
         },
     ) {
+        // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
+        val driveScreen: @Composable (FuelInvite?) -> Unit = { invite ->
+            DriveMainScreen(
+                vm = driveVm,
+                onQuickDrop = { topic -> navigator.go(Screen.AiRecommend(topic)) },
+                onOpenDropSend = { navigator.go(Screen.DropSend) },
+                onOpenInbox = { navigator.go(Screen.Inbox) },
+                onFuelWarning = { navigator.go(Screen.FuelMe) },
+                onSpeak = {
+                    aiVm.suggestByVoice(
+                        onTopic = { topic -> navigator.go(Screen.AiRecommend(topic)) },
+                        onMessage = { text -> navigator.go(Screen.Shout(text)) },
+                    )
+                },
+                invite = invite,
+            )
+        }
         when (val screen = navigator.current) {
             Screen.CreateCrew -> CreateCrewScreen(
                 vm = crewVm,
@@ -104,26 +121,10 @@ fun CarDropApp(container: AppContainer) {
                 driveVm.startGuidance()
                 navigator.switchTab(Screen.Drive)
             }
-            Screen.Drive -> DriveMainScreen(
-                vm = driveVm,
-                onQuickDrop = { topic -> navigator.go(Screen.AiRecommend(topic)) },
-                onOpenDropSend = { navigator.go(Screen.DropSend) },
-                onOpenInbox = { navigator.go(Screen.Inbox) },
-                onFuelWarning = { navigator.go(Screen.FuelMe) },
-                onSpeak = {
-                    aiVm.suggestByVoice(
-                        onTopic = { topic -> navigator.go(Screen.AiRecommend(topic)) },
-                        onMessage = { text -> navigator.go(Screen.Shout(text)) },
-                    )
-                },
-            )
+            Screen.Drive -> driveScreen(null)
             Screen.FuelMe -> FuelMeScreen(driveVm, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
-            is Screen.FuelThem -> FuelThemScreen(
-                vm = driveVm,
-                dropId = screen.dropId,
-                carName = crewVm::carName,
-                onDone = { navigator.switchTab(Screen.Drive) },
-                voice = container.voice,
+            is Screen.FuelThem -> driveScreen(
+                FuelInvite(screen.dropId, crewVm::carName, container.voice) { navigator.switchTab(Screen.Drive) },
             )
             Screen.Inbox -> InboxScreen(crewVm) { drop ->
                 navigator.go(

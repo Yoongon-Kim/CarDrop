@@ -20,7 +20,14 @@ import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 
 @Composable
-internal fun CrewDriveOverview(cars: List<Car>, positions: Map<String, CarPosition>, myCarId: String, fuel: Int? = null) {
+internal fun CrewDriveOverview(
+    cars: List<Car>,
+    positions: Map<String, CarPosition>,
+    myCarId: String,
+    fuel: Int? = null,
+    /** Shown between the crew strip and the crew cards, e.g. board 06's fuel banner. */
+    afterStrip: @Composable () -> Unit = {},
+) {
     val located = cars.filter { positions[it.id] != null }.sortedByDescending { positions[it.id]!!.kmToDestination }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth().height(174.dp).clip(RoundedCornerShape(24.dp)).background(CdColors.TealLight)) {
@@ -47,6 +54,7 @@ internal fun CrewDriveOverview(cars: List<Car>, positions: Map<String, CarPositi
                 }
             }
         }
+        afterStrip()
         cars.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { car ->

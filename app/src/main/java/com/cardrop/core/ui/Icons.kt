@@ -25,6 +25,11 @@ object CdIcons {
         "M12 18v3",
     )
     val Check = lineIcon("Check", strokeWidth = 3f, "M20 6 9 17l-5-5")
+    val Fuel = lineIcon(
+        "Fuel",
+        strokeWidth = 2f,
+        "M3 22V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v17M3 22h11M14 9h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3M6 8h5",
+    )
 }
 
 /** Builds an icon from SVG path strings, drawn as lines (no fill), like the design's `<svg>` tags. */

@@ -29,10 +29,12 @@ import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Gear
+import com.cardrop.core.model.Place
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.vehicle.FakeVehicleRepository
+import kotlin.math.roundToInt
 
 /**
  * Owner: lead. A small "DEMO" button (bottom right) that stages the 시연 moments on one emulator:
@@ -76,7 +78,7 @@ fun DemoPanel(container: AppContainer) {
             }
             if (crewRepo != null && crew != null) {
                 DemoButton("민지 차 연료 경고 받기") {
-                    crewRepo.injectDrop(DemoData.minji, FakeCrewRepository.demoFuelDraft(demoCandidates(container)))
+                    crewRepo.injectDrop(DemoData.minji, minjiFuelInvite(container))
                 }
                 DemoButton("삼촌 차 휴게소 투표 받기") {
                     crewRepo.injectDrop(
@@ -106,6 +108,35 @@ fun DemoPanel(container: AppContainer) {
 }
 
 /** The next 3 rest stops every car still has ahead (falls back to the last ones near the end). */
+/**
+ * 민지 차's low-fuel invite (board 06). The message names the first stop offered and 민지 차's distance to it,
+ * e.g. "민지 차 · 주행 가능 85km · 횡성휴게소 31km", so the banner matches the station the crew is asked about.
+ */
+private fun minjiFuelInvite(container: AppContainer): DropDraft {
+    val stations = demoCandidates(container)
+    val stop = stations.firstOrNull()?.place
+    val km = stop?.let { minjiKmTo(container, it) }
+    val where = stop?.let { " · ${it.name}" + km?.let { d -> " ${d}km" }.orEmpty() }.orEmpty()
+    return DropDraft(
+        kind = DropKind.DECISION,
+        topic = DropTopic.FUEL,
+        title = "민지 차 연료가 부족해요 · 같이 갈래요?",
+        message = "민지 차 · 주행 가능 85km$where",
+        candidates = stations,
+    )
+}
+
+/** 민지 차's distance to [place] along the live route (km); null without the in-app navigator's route. */
+private fun minjiKmTo(container: AppContainer, place: Place): Int? {
+    val state = container.inAppNavigation?.state?.value ?: return null
+    val route = state.route ?: return null
+    val positions = container.route.positions.value
+    val minjiBehind = (positions[DemoData.minji.id]?.kmToDestination ?: 0f) -
+        (positions[container.crew.myCarId]?.kmToDestination ?: 0f)
+    val km = route.geometry.locate(place.lat, place.lng).km - state.progressKm + minjiBehind
+    return km.roundToInt().takeIf { it > 0 }
+}
+
 private fun demoCandidates(container: AppContainer): List<Candidate> =
     container.stopsAhead(DemoData.restStops)
         .ifEmpty { DemoData.restStops.takeLast(3) }

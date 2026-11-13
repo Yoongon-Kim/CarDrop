@@ -21,7 +21,10 @@ import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.theme.CdColors
 
-/** Board 04 주행 메인 · Owner: Member B. */
+/**
+ * Board 04 주행 메인 · Owner: Member B (now the lead).
+ * With an [invite] it is board 06: another car's fuel invitation shows as a banner on this screen, as in the design.
+ */
 @Composable
 fun DriveMainScreen(
     vm: DriveViewModel,
@@ -30,8 +33,10 @@ fun DriveMainScreen(
     onOpenInbox: () -> Unit,
     onFuelWarning: () -> Unit,
     onSpeak: () -> Unit,
+    invite: FuelInvite? = null,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
+    val drops by vm.drops.collectAsStateWithLifecycle()
     val positions by vm.positions.collectAsStateWithLifecycle()
     val snapshot by vm.snapshot.collectAsStateWithLifecycle()
     val navRoute by vm.navRoute.collectAsStateWithLifecycle()
@@ -46,11 +51,17 @@ fun DriveMainScreen(
     val hasCrew = crew != null
     val cars = crew?.cars.orEmpty()
     val myEta = positions[vm.myCarId]?.etaMinutes
+    val inviteDrop = invite?.let { i -> drops.firstOrNull { it.id == i.dropId } }
+    val inviteFrom = if (invite != null && inviteDrop != null) invite.carName(inviteDrop.fromCarId) else null
 
     ScreenColumn {
         ScreenHeader(
             eyebrow = "${crew?.name ?: "크루 없음"} · ${cars.size}대 함께 · 음성 우선",
-            title = if (myEta != null) "${navRoute.destination?.name ?: crew?.destination?.name}까지 ${myEta / 60}시간 ${myEta % 60}분" else "출발 준비 중",
+            title = when {
+                inviteFrom != null -> "$inviteFrom 소식이 왔어요"
+                myEta != null -> "${navRoute.destination?.name ?: crew?.destination?.name}까지 ${myEta / 60}시간 ${myEta % 60}분"
+                else -> "출발 준비 중"
+            },
         ) {
             Pill(input.label)
         }
@@ -66,7 +77,9 @@ fun DriveMainScreen(
             }
         }
 
-        CrewDriveOverview(cars, positions, vm.myCarId, snapshot.fuelPercent)
+        CrewDriveOverview(cars, positions, vm.myCarId, snapshot.fuelPercent) {
+            if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
+        }
 
         Text("퀵 드랍 · 보낼 곳을 골라요", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {

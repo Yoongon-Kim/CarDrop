@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -16,9 +17,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Drop
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.voice.FakeVoiceService
 import com.cardrop.voice.VoiceService
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
@@ -151,52 +155,79 @@ private fun SmallTag(text: String) {
     )
 }
 
-/** Board 06: fuel invitation appears above the driving overview. No provisional reroute. */
+/** Board 06: another car's fuel invitation, shown as a banner on the drive screen (board 04) like the design. */
+class FuelInvite(val dropId: String, val carName: (String) -> String, val voice: VoiceService?, val onDone: () -> Unit)
+
+/**
+ * The board 06 banner. "같이 갈래요" votes for the station and puts it into this car's navigator right away;
+ * "가던 길 갈래요" keeps the route. The banner then says what happened and closes after a few seconds.
+ */
 @Composable
-fun FuelThemScreen(vm: DriveViewModel, dropId: String, carName: (String) -> String, onDone: () -> Unit, voice: VoiceService? = null) {
-    val drops by vm.drops.collectAsStateWithLifecycle()
+internal fun FuelInviteBanner(vm: DriveViewModel, invite: FuelInvite, drop: Drop) {
     val action by vm.action.collectAsStateWithLifecycle()
-    val input by vm.inputMode.collectAsStateWithLifecycle()
     val crew by vm.crew.collectAsStateWithLifecycle()
-    val positions by vm.positions.collectAsStateWithLifecycle()
     val navRoute by vm.navRoute.collectAsStateWithLifecycle()
-    LaunchedEffect(dropId) { vm.clearError() }
-    val drop = drops.firstOrNull { it.id == dropId }
-    ScreenColumn {
-        if (drop == null) {
-            ScreenHeader("연료 알림", "알림을 찾을 수 없어요")
-            SecondaryButton("주행 화면으로", onDone)
-            return@ScreenColumn
+    var passed by remember(drop.id) { mutableStateOf(vm.skipped(drop.id)) }
+    val joined = vm.myCarId in drop.votes
+    val answered = joined || passed
+    LaunchedEffect(drop.id) { vm.clearError() }
+    LaunchedEffect(drop.id, answered) {
+        if (answered) {
+            delay(CLOSE_AFTER_MILLIS)
+            invite.onDone()
         }
-        ScreenHeader("${crew?.name ?: "크루"} · 함께 주행 중", navRoute.destination?.name ?: crew?.destination?.name ?: "주행 메인")
-        val ready = !action.busy && !drop.isDecided && !vm.skipped(drop.id)
-        val join = { vm.joinFuelStop(drop, onDone) }
-        val pass = { vm.declineFuelStop(drop.id); onDone() }
-        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(CdColors.OrangeLight).padding(20.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Pill("${carName(drop.fromCarId)} · 연료 알림", CdColors.Orange, CdColors.White)
-                Text(drop.title, style = MaterialTheme.typography.titleLarge)
-                Text(drop.message)
-                drop.candidates.firstOrNull()?.let {
-                    // A drop from board 05 names one station; only the DEMO panel's drop still has several to vote on.
-                    val voteNote = if (drop.candidates.size > 1) " · 최종 장소는 투표 후 확정돼요" else ""
-                    InfoRow(it.place.name, it.reason + voteNote)
-                }
-                if (drop.isDecided) StatusText("이미 결정된 알림이에요")
-                if (vm.skipped(drop.id)) StatusText("우리 차는 가던 길로 가요")
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SecondaryButton("가던 길 갈래요", pass, Modifier.weight(1f), ready)
-                    PrimaryButton("같이 갈래요", join, Modifier.weight(1f), ready && drop.candidates.isNotEmpty())
+    }
+    val name = invite.carName(drop.fromCarId)
+    val station = drop.candidates.firstOrNull()?.place
+    val destination = navRoute.destination?.name ?: crew?.destination?.name ?: "목적지"
+    val voice = invite.voice?.takeUnless { it is FakeVoiceService }
+    val ready = !action.busy && !answered && !drop.isDecided && station != null
+    val join = { vm.joinFuelStop(drop) }
+    val pass = {
+        vm.declineFuelStop(drop.id)
+        passed = true
+    }
+    val (title, sub) = when {
+        joined -> "같이 ${station?.name ?: "주유소"}에 들러요" to "내 내비에도 경유지로 넣었어요 · ${name}에 응답이 전달됐어요"
+        passed -> "우리는 가던 길로 가요" to "경로는 그대로예요 · ${name}는 ${destination}에서 합류해요"
+        drop.isDecided -> "이미 결정된 알림이에요" to drop.decidedCandidate?.place?.name.orEmpty()
+        else -> "${name}에서 주유소 간대요, 같이 갈래요?" to
+            ("아니면 그냥 가던 길 가도 돼요" + if (voice != null) " · “같이 가자”라고 말해도 돼요" else "")
+    }
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(CdColors.OrangeLight)
+            .border(2.dp, CdColors.OrangeLine, shape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(Modifier.size(52.dp).clip(CircleShape).background(CdColors.Orange), contentAlignment = Alignment.Center) {
+            Icon(CdIcons.Fuel, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(26.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            // The DEMO panel's message already starts with the car's name.
+            Text(
+                if (drop.message.startsWith(name)) drop.message else "$name · ${drop.message}",
+                fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.OrangeDark,
+            )
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+            if (sub.isNotBlank()) Text(sub, fontSize = 13.sp, color = CdColors.Gray600)
+            action.error?.let { ErrorText(it) }
+        }
+        if (ready) {
+            if (voice != null) {
+                VoiceAnswerChip(voice, ready, setOf(DriveVoiceCommand.JOIN, DriveVoiceCommand.PASS)) {
+                    if (it == DriveVoiceCommand.JOIN) join() else pass()
                 }
             }
+            PrimaryButton("가던 길 갈래요", pass, enabled = ready, containerColor = CdColors.White, contentColor = CdColors.Ink2)
+            PrimaryButton("같이 갈래요", join, enabled = ready, containerColor = CdColors.Orange)
         }
-        DriveActionFeedback(action)
-        Pill(input.label)
-        DriveVoiceReply(voice, "“같이 갈래요” 또는 “가던 길 갈래요”라고 말해 주세요", ready,
-            setOf(DriveVoiceCommand.JOIN, DriveVoiceCommand.PASS)) {
-            if (it == DriveVoiceCommand.JOIN) join() else pass()
-        }
-        CrewDriveOverview(crew?.cars.orEmpty(), positions, vm.myCarId)
-        if (!ready) SecondaryButton("주행 화면으로", onDone, enabled = !action.busy)
     }
 }
+
+private const val CLOSE_AFTER_MILLIS = 5_000L

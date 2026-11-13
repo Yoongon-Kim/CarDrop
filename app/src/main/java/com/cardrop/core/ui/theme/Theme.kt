@@ -32,6 +32,8 @@ object CdColors {
     val Orange = Color(0xFFFF8A3D)
     val OrangeLight = Color(0xFFFFF4E6)
     val OrangeDark = Color(0xFFB85700)
+    /** Border of board 06's fuel banner. */
+    val OrangeLine = Color(0xFFFFC58F)
     /** Social drops (한마디, 음성 메시지). Not the same as [Purple], which is the 삼촌 car's colour. */
     val Violet = Color(0xFF6A4CF0)
     val VioletLight = Color(0xFFF1EDFF)

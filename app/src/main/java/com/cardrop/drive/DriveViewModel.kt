@@ -201,7 +201,10 @@ class DriveViewModel(
         }
     }
 
-    /** Vote only. TripCoordinator applies the final winner after the vote closes. */
+    /**
+     * Board 06 "같이 갈래요": vote for the station and put it into this car's navigator right away, as in the design.
+     * The vote still decides: if another station wins, TripCoordinator moves the waypoint there.
+     */
     fun joinFuelStop(drop: Drop, onDone: () -> Unit = {}) = perform("함께 가겠다고 알리고 있어요…") {
         val current = drops.value.firstOrNull { it.id == drop.id } ?: error("연료 알림을 찾을 수 없어요")
         check(!current.isDecided) { "이미 결정된 알림이에요. 결정 화면을 확인해 주세요" }
@@ -210,6 +213,8 @@ class DriveViewModel(
         val key = crewKey()
         crewRepo.vote(current.id, station.id)
         ensureCrew(key)
+        val destination = navigation.route.value.destination ?: requireCrew().destination
+        navigation.setRoute(destination, station.place, "경유지를 ${station.place.name}로 바꿨어요")
         onDone()
     }
 

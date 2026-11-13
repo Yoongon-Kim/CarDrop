@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -325,9 +326,8 @@ private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found
             // Light blue next to the stop, as drawn; the blue main button when it is the only way to go.
             ChoiceButton("바로 $toDestination", primary = stop == null, onClick = { onJoined(null) })
         }
-        Text(
-            "참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요",
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        // The footer sits at the bottom of the card (the design's margin-top: auto): the Spacer takes the room left.
+        Spacer(Modifier.weight(1f))
+        Text("참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요", color = CdColors.Gray600, fontSize = 13.sp)
     }
 }

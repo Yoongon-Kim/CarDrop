@@ -67,7 +67,10 @@ fun CarDropApp(container: AppContainer) {
         DriveViewModel(container.vehicle, container.route, container.navigation, container.crew, container.ai)
     }
     val aiVm: AiViewModel = viewModel {
-        AiViewModel(container.ai, container.crew, container.route, container.vehicle, container.voice, container.phrases)
+        AiViewModel(
+            container.ai, container.crew, container.route, container.vehicle, container.voice, container.phrases,
+            container.placeSearch,
+        )
     }
 
     var socialMessage by remember { mutableStateOf<String?>(null) }

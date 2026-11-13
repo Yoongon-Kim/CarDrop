@@ -1,5 +1,6 @@
 package com.cardrop.ai
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cardrop.core.demo.DemoData
@@ -14,11 +15,16 @@ import com.cardrop.core.model.VehicleSnapshot
 import com.cardrop.core.model.recipientLabel
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.DropDraft
+import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
+import com.cardrop.drive.haversineKm
+import com.cardrop.navi.PlaceSearch
+import com.cardrop.navi.PlaceSuggestion
 import com.cardrop.vehicle.VehicleRepository
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -32,6 +38,8 @@ class AiViewModel(
     private val vehicle: VehicleRepository,
     private val voice: VoiceService,
     private val phraseStore: PhraseStore,
+    /** Board 10's place search (Kakao), or null without a Kakao key: then only the places the app knows. */
+    private val placeSearch: PlaceSearch? = null,
 ) : ViewModel() {
 
     sealed interface Loadable<out T> {
@@ -55,7 +63,23 @@ class AiViewModel(
         val status: String? = null,
         /** Red line under the text box, e.g. for a place we can't find. */
         val inputError: String? = null,
+        /** The places that fit what the driver is typing, shown instead of the list. */
+        val suggest: Suggestions = Suggestions(),
     )
+
+    /** Board 10's suggestions while the driver types, like Kakao Map's. */
+    data class Suggestions(
+        /** What the driver is looking for (the typed text without half-built letters); empty = no suggestions. */
+        val query: String = "",
+        val places: List<PlaceSuggestion> = emptyList(),
+        /** True while a search runs. The last results stay on screen until the new ones arrive. */
+        val searching: Boolean = false,
+        /** Why the list holds only the places the app knows, e.g. no internet. */
+        val note: String? = null,
+    ) {
+        /** True when the suggestions replace board 10's list. */
+        val shown: Boolean get() = query.isNotEmpty()
+    }
 
     private val _picker = MutableStateFlow(PickerState(loading = true))
     val picker: StateFlow<PickerState> = _picker
@@ -107,6 +131,9 @@ class AiViewModel(
 
     private var loadJob: Job? = null
     private var listenJob: Job? = null
+    private var searchJob: Job? = null
+    /** The query of the running or last finished search, so "덕평" -> "덕평ㅈ" doesn't search again. */
+    private var searchedQuery = ""
     private var sending = false
 
     /**
@@ -116,6 +143,7 @@ class AiViewModel(
     fun loadCandidates(topic: DropTopic, toCarIds: List<String> = emptyList()) {
         loadJob?.cancel()
         listenJob?.cancel()
+        stopSearch()
         val currentCrew = crew.crew.value
         if (currentCrew == null) {
             _picker.value = PickerState(aiError = "먼저 크루를 만들거나 참여해 주세요")
@@ -154,19 +182,61 @@ class AiViewModel(
     }
 
     /**
-     * Board 10 "추가": the driver typed a place name. Returns true when the place was added (the
-     * screen then empties the text box), false when we don't know where that place is.
+     * Board 10: the driver typed [text] in the box. After a short pause, search for it; the
+     * screen then shows the places that fit instead of the list. Fewer than 2 letters: no search
+     * (one syllable finds mostly unrelated places), and the list comes back.
      */
-    fun addTypedPlace(name: String): Boolean {
-        val text = name.trim()
-        if (text.isEmpty()) return false
-        val place = findPlace(text)
-        if (place == null) {
-            _picker.update { it.copy(heard = null, status = null, inputError = unknownPlace(text)) }
-            return false
+    fun onTyped(text: String) {
+        val query = placeQuery(text)
+        if (query == searchedQuery) return
+        searchJob?.cancel()
+        searchedQuery = query
+        if (query.length < MIN_QUERY) {
+            _picker.update { it.copy(suggest = Suggestions(), inputError = null) }
+            return
         }
+        // Show "찾는 중" at once; the last results stay until the new ones arrive (no flicker).
+        _picker.update { it.copy(suggest = it.suggest.copy(query = query, searching = true), inputError = null) }
+        searchJob = viewModelScope.launch {
+            delay(TYPING_PAUSE_MS) // typing on: this search is cancelled and a newer one starts
+            val found = searchPlaces(query)
+            if (found.note != null) searchedQuery = "" // typing the same again tries again
+            _picker.update { it.copy(suggest = found) }
+        }
+    }
+
+    /** Board 10: the driver tapped a suggestion. It goes into the list, ticked; the screen empties the box. */
+    fun pickSuggestion(suggestion: PlaceSuggestion) {
+        addPlace(suggestion.place)
+    }
+
+    /**
+     * Board 10 "추가" (or the keyboard's done key): adds the place the driver typed, the same one
+     * as the top suggestion. [onAdded] runs once it is in, so the screen can empty the text box.
+     */
+    fun addTypedPlace(name: String, onAdded: () -> Unit) {
+        val text = name.trim()
+        if (text.isEmpty()) return
+        viewModelScope.launch {
+            val place = resolvePlace(text)
+            if (place == null) {
+                _picker.update { it.copy(heard = null, status = null, inputError = unknownPlace(text)) }
+            } else {
+                addPlace(place)
+                onAdded()
+            }
+        }
+    }
+
+    private fun addPlace(place: Place) {
+        stopSearch()
         _picker.update { it.copy(pick = it.pick.add(place), heard = null, status = null, inputError = null) }
-        return true
+    }
+
+    private fun stopSearch() {
+        searchJob?.cancel()
+        searchedQuery = ""
+        _picker.update { it.copy(suggest = Suggestions()) }
     }
 
     /** Board 10 "말해서 추가": listen for a place name, then show "'…' 후보에 넣기". */
@@ -182,7 +252,7 @@ class AiViewModel(
                 _picker.update { it.copy(listening = false, status = "마이크를 열 수 없어요. 키보드로 입력할 수 있어요.") }
                 return@launch
             }
-            val place = heard?.takeIf { it.isNotEmpty() }?.let(::findPlace)
+            val place = heard?.takeIf { it.isNotEmpty() }?.let { resolvePlace(it) }
             _picker.update {
                 when {
                     heard.isNullOrEmpty() ->
@@ -235,11 +305,45 @@ class AiViewModel(
         }
     }
 
-    /** Places already in the list first, so typing a listed name just ticks it. */
-    private fun findPlace(name: String): Place? =
-        findKnownPlace(name, _picker.value.pick.candidates.map { it.place } + knownPlaces)
+    /**
+     * The place the driver means by [name] (typed or said). Places already in the list first, so
+     * a listed name just ticks it; then the top search result.
+     */
+    private suspend fun resolvePlace(name: String): Place? {
+        findKnownPlace(name, _picker.value.pick.candidates.map { it.place })?.let { return it }
+        val query = placeQuery(name)
+        if (query.length < MIN_QUERY) return null
+        val shown = _picker.value.suggest
+        val found = if (shown.query == query && !shown.searching) shown else searchPlaces(query)
+        return found.places.firstOrNull()?.place
+    }
 
-    private fun unknownPlace(name: String) = "‘$name’의 위치를 찾지 못했어요. 휴게소나 카페 이름을 넣어 주세요."
+    /** Kakao's places for [query]; the places the app knows when there is no Kakao key or the search fails. */
+    private suspend fun searchPlaces(query: String): Suggestions {
+        val here = route.positions.value[crew.myCarId]?.let { GeoPoint(it.lat, it.lng) }
+        val search = placeSearch ?: return Suggestions(query, knownSuggestions(query, here))
+        return try {
+            Suggestions(query, search.search(query, here))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Place search failed for '$query'", e)
+            Suggestions(query, knownSuggestions(query, here), note = "장소 검색이 안 돼요. 인터넷 연결을 확인해 주세요.")
+        }
+    }
+
+    private fun knownSuggestions(query: String, here: GeoPoint?): List<PlaceSuggestion> =
+        knownPlaceMatches(query, knownPlaces).map { place ->
+            PlaceSuggestion(
+                place = place,
+                address = place.detail,
+                distanceKm = here?.let { haversineKm(it, GeoPoint(place.lat, place.lng)) },
+            )
+        }
+
+    private fun unknownPlace(name: String) =
+        if (placeSearch != null) "‘$name’에 맞는 장소를 찾지 못했어요. 다른 이름으로 찾아 보세요."
+        else "‘$name’의 위치를 찾지 못했어요. 휴게소나 카페 이름을 넣어 주세요."
 
     /** Board 04 "말로 제안해요": listen, read the intent, then open the right screen. */
     fun suggestByVoice(onTopic: (DropTopic) -> Unit, onMessage: (String) -> Unit) {
@@ -447,6 +551,14 @@ class AiViewModel(
         DropTopic.CUSTOM -> "어디에 들를까요?"
     }
 }
+
+private const val TAG = "CarDropPlaces"
+
+/** Board 10 searches once this many letters are typed. */
+private const val MIN_QUERY = 2
+
+/** Board 10 searches after the driver stops typing for this long, not on every key. */
+private const val TYPING_PAUSE_MS = 300L
 
 /** The town each rest stop on the demo trip is in (board 15's 지역 퀴즈). 덕평 is in 이천, 문막 in 원주. */
 private val REST_STOP_TOWNS = mapOf(

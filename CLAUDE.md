@@ -58,9 +58,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   `particle("이", "가")`, `name.withRo()` (로/으로). Never hard-code 를/는/가/로 after a name ("경포해변로").
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`).
-- Board 10: a driver can add only places the app knows (`findKnownPlace` in `ai/PlacePick.kt`: rest stops,
-  cafés, destinations), because a voted place needs a location to become a waypoint. A real place search
-  can replace this later. 직접 추가 (`DropTopic.CUSTOM`) opens board 10 with no AI picks.
+- Board 10: typing in "다른 곳을 직접 입력" shows suggestions like Kakao Map's (Kakao Local keyword search,
+  `navi/KakaoPlaceSearch.kt`, key `cardrop.kakaoRestKey`, nearby places first). They replace the list until
+  the box is empty; tapping one (or 추가 = the top one) puts it in the list, ticked. 말해서 추가 takes the top
+  result for what was heard. Without the key, or offline, only places the app knows match (`knownPlaceMatches` in
+  `ai/PlacePick.kt`: rest stops, cafés, destinations). A searched place that is an AI pick under a longer name
+  ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). 직접 추가 (`DropTopic.CUSTOM`) opens board 10
+  with no AI picks. Logs: `adb logcat -s CarDropPlaces`.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 
@@ -118,7 +122,7 @@ landed on `main`.
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
 | `cardrop.navApp` | `inapp` / `naver` / `kakao` | `inapp` (default) draws the navigator inside CarDrop; `naver` hands the route to Naver Map (`kakao` is not built yet) |
 | `cardrop.claudeApiKey` | key | Set = the real AI (`ai/ClaudeAiService.kt`, Anthropic Java SDK); empty = the fake. If a Claude call fails, the fake answers (`adb logcat -s CarDropAi`). The key is built into the APK, so don't share the APK |
-| `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes (empty = OSRM only) |
+| `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes and board 10's place search (empty = OSRM only, and board 10 offers only places the app knows) |
 | `cardrop.kakaoNativeKey` | key | Kakao Developers native app key: the in-app navigator draws Kakao's map (`navi/KakaoNavMap.kt`); empty = MapLibre + OpenFreeMap. If Kakao refuses the key, the app falls back to MapLibre (`adb logcat -s CarDropKakaoMap`) |
 
 ## Vehicle SDK notes (2.3.2, checked against the SDK classes)

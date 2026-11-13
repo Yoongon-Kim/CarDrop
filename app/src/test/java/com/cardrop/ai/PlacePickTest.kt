@@ -76,6 +76,49 @@ class PlacePickTest {
     }
 
     @Test
+    fun aSearchedPlaceThatIsAnAiStopUnderALongerNameTicksTheAiRow() {
+        // Kakao's name and position for 덕평자연휴게소 (about 80 m from the app's point).
+        val kakao = Place("kakao-8256624", "덕평자연휴게소 양방향", 37.241339, 127.389847)
+        val pick = aiPick(deokpyeong, yeoju).toggle("deokpyeong").add(kakao)
+        assertEquals(listOf("deokpyeong", "yeoju"), pick.candidates.map { it.id })
+        assertTrue(pick.isSelected("deokpyeong"))
+        assertEquals(deokpyeong, pick.find(kakao)?.place)
+    }
+
+    @Test
+    fun aDifferentShopAtTheSameStopIsItsOwnPlace() {
+        val starbucks = Place("kakao-1", "스타벅스 덕평휴게소점", 37.24150, 127.38910)
+        val pick = aiPick(deokpyeong).add(starbucks)
+        assertEquals(listOf("deokpyeong", "kakao-1"), pick.candidates.map { it.id })
+    }
+
+    @Test
+    fun theSameNameFarAwayIsItsOwnPlace() {
+        val otherYeoju = Place("kakao-2", "여주휴게소", 37.30, 127.70)
+        assertNull(aiPick(yeoju).find(otherYeoju))
+    }
+
+    @Test
+    fun knownMatchesListExactNamesFirst() {
+        val places = listOf(
+            Place("a", "덕평자연휴게소 주유소", 0.0, 0.0),
+            Place("b", "덕평", 0.0, 0.0),
+            Place("c", "여주휴게소", 0.0, 0.0),
+        )
+        assertEquals(listOf("b", "a"), knownPlaceMatches("덕평", places).map { it.id })
+        assertEquals(emptyList<Place>(), knownPlaceMatches("덕", places))
+    }
+
+    @Test
+    fun halfTypedKoreanLettersAreNotSearched() {
+        assertEquals("덕", placeQuery("덕ㅍ"))
+        assertEquals("덕평", placeQuery("덕평ㅈ"))
+        assertEquals("스타벅스 강릉", placeQuery("  스타벅스 강릉  "))
+        assertEquals("", placeQuery("ㅅ"))
+        assertEquals("CU", placeQuery("CU"))
+    }
+
+    @Test
     fun unknownOrTooShortNamesFindNothing() {
         assertNull(findKnownPlace("투썸플레이스", known + DemoData.cafes))
         assertNull(findKnownPlace("휴게소", known))

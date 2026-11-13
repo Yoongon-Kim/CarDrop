@@ -33,7 +33,20 @@ data class Crew(
     val destination: Place,
     val hostCarId: String,
     val cars: List<Car>,
-)
+    /**
+     * Cars can join until then: 3 minutes after the host made the crew (`JoinRules.JOIN_WINDOW_MILLIS`). At that
+     * time the trip starts by itself. Null = no time limit.
+     */
+    val joinDeadlineMillis: Long? = null,
+    /**
+     * When the trip started: the host's 출발 (board 01), the moment every car had joined, or the join deadline.
+     * Null = not yet, and until then no car sends drops. The cars that hadn't joined by then are left out: they are
+     * no longer in [cars].
+     */
+    val startedAtMillis: Long? = null,
+) {
+    val isStarted: Boolean get() = startedAtMillis != null
+}
 
 /**
  * Who a drop goes to, as the screens say it (design board 08): "크루 전체", or the chosen cars'

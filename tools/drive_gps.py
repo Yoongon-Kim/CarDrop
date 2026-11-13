@@ -16,11 +16,12 @@ Usage (emulator running):
 Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
 
 --car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
-holds the car still at its start until the crew's host presses 출발 (board 01), read from the real crew's
-Firebase (trips/<code>/startedAt, see drive/FirebaseTrip.kt), so every car sets off together. Every real
-crew has its own random code, so the script asks CarDrop on the emulator it drives which crew it is in
-(drive/TripCodeFile.kt) and follows that crew, also when the host makes a new one; --code 123456 sets it
-by hand. --no-wait drives right away (the bot crew has no host to wait for).
+holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, every car joined, or
+3 minutes after the crew was made), read from the real crew's Firebase (crews/<code>/info/startedAt, see
+crew/FirebaseCrewRepository.kt), so every car sets off together. Every real crew has its own random code, so the
+script asks CarDrop on the emulator it drives which crew it is in (drive/TripCodeFile.kt) and follows that crew,
+also when the host makes a new one; --code 123456 sets it by hand. --no-wait drives right away (the bot crew has
+no host to wait for).
 
 --stop shows the navigator's "도착" (arrived): it needs about 10 s standing still within 300 m of the
 voted stop. Without --stop the car drives past every stop, which the navigator reports as "지나침".
@@ -66,7 +67,7 @@ def kotlin_string(path: Path, name: str) -> str:
 
 
 def trip_started(url: str):
-    """True / False from the trip's startedAt in Firebase (REST, no login); None when it can't be read."""
+    """True / False from the crew's startedAt in Firebase (REST, no login); None when it can't be read."""
     try:
         with urllib.request.urlopen(url, timeout=5) as response:
             return json.load(response) is not None
@@ -87,9 +88,10 @@ def device_crew_code(adb):
 
 
 def wait_for_host(stand_still, crew_code, database_url: str, poll_s: float = 1.0):
-    """Calls stand_still() every poll_s seconds until the host has started the trip of the crew that
-    crew_code() names (None while there is none yet; it changes when the host makes a new crew)."""
-    print("Waiting for the host's 출발 (the car stands at its start). Ctrl+C to stop.")
+    """Calls stand_still() every poll_s seconds until the trip of the crew that crew_code() names has started
+    (None while there is none yet; it changes when the host makes a new crew)."""
+    print("Waiting for the trip to start: the host's 출발, every car joined, or 3 minutes after the crew was made"
+          " (the car stands at its start). Ctrl+C to stop.")
     misses = 0
     shown = ""
     while True:
@@ -103,10 +105,10 @@ def wait_for_host(stand_still, crew_code, database_url: str, poll_s: float = 1.0
                 print("  CarDrop on the emulator is in no real crew yet: create or join one"
                       " (bot crew: use --no-wait; or pass --code).")
         if code:
-            url = f"{database_url}/trips/{code}/startedAt.json"
+            url = f"{database_url}/crews/{code}/info/startedAt.json"
             started = trip_started(url)
             if started:
-                print("The host started the trip. Driving.")
+                print("The trip started. Driving.")
                 return
             if started is None:
                 misses += 1

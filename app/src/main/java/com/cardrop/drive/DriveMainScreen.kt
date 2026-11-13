@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -31,6 +32,8 @@ import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.TightLetterSpacing
+import com.cardrop.crew.JoinRules
+import kotlinx.coroutines.delay
 
 /**
  * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick drops and the
@@ -56,26 +59,40 @@ fun DriveMainScreen(
     val input by vm.inputMode.collectAsStateWithLifecycle()
     val warning by vm.fuelWarningPending.collectAsStateWithLifecycle()
     val waitingFor by vm.waitingForHost.collectAsStateWithLifecycle()
-    LaunchedEffect(warning, crew?.code) {
-        if (warning && crew != null) {
+    val hasCrew = crew != null
+    // Drops, the inbox and the fuel warning wait for the trip to start: the host's 출발 (board 01), or the end of
+    // the 3 minutes for joining.
+    val started = crew?.isStarted == true
+    val canDrop = hasCrew && started
+    LaunchedEffect(warning, crew?.code, started) {
+        if (warning && crew != null && started) {
             vm.acknowledgeFuelWarning()
             onFuelWarning()
         }
     }
-    val hasCrew = crew != null
     val cars = crew?.cars.orEmpty()
     val inviteDrop = invite?.let { i -> drops.firstOrNull { it.id == i.dropId } }
     val inviteFrom = if (invite != null && inviteDrop != null) invite.carName(inviteDrop.fromCarId) else null
     val waiting = drops.count { needsMyAnswer(it, vm) }
 
     // 드랍하기 sits at the bottom of the screen, as in the design (`margin-top: auto`, target 274).
-    ScreenColumn(bottom = { DropButton(enabled = hasCrew, onOpenDropSend = onOpenDropSend, onSpeak = onSpeak) }) {
+    ScreenColumn(bottom = {
+        DropButton(
+            enabled = canDrop,
+            beforeStart = hasCrew && !started,
+            joinDeadlineMillis = crew?.joinDeadlineMillis,
+            missing = crew?.let { JoinRules.missingCars(it).size } ?: 0,
+            onOpenDropSend = onOpenDropSend,
+            onSpeak = onSpeak,
+        )
+    }) {
         // The design's header (target 203-206): eyebrow 14/700, 2 px gap, title 28/800 a little tighter, and the
         // pill and inbox button centred on the text.
         ScreenHeader(
             eyebrow = "${crew?.name ?: "크루 없음"} · ${cars.size}대 함께 · 음성 우선",
             title = when {
                 waitingFor != null -> "${waitingFor.orEmpty().particle("이", "가")} 출발하면 같이 출발해요"
+                hasCrew && !started -> "출발 준비 중" // the host, before its 출발
                 inviteFrom != null -> "$inviteFrom 소식이 왔어요"
                 hasCrew && positions.isNotEmpty() -> "모두 잘 오고 있어요"
                 else -> "출발 준비 중"
@@ -88,7 +105,7 @@ fun DriveMainScreen(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 ModePill(input)
-                InboxButton(waiting, enabled = hasCrew, onClick = onOpenInbox)
+                InboxButton(waiting, enabled = canDrop, onClick = onOpenInbox)
             }
         }
 
@@ -96,17 +113,22 @@ fun DriveMainScreen(
         if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
         CrewCards(
             cars, positions, vm.myCarId, snapshot.fuelPercent, snapshot.rangeKm,
-            onMyLowFuel = if (hasCrew) onFuelWarning else null,
+            onMyLowFuel = if (canDrop) onFuelWarning else null,
         )
 
         // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+            Text(
+                if (hasCrew && !started) "퀵 드랍 · 출발하면 쓸 수 있어요" else "퀵 드랍 · 누르면 바로 크루 전체에",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = CdColors.Gray600,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
-                QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
-                QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
-                QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
+                QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, canDrop, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
+                QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, canDrop, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
+                QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, canDrop, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
+                QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, canDrop, Modifier.weight(1f), onShout)
             }
         }
     }
@@ -134,13 +156,14 @@ private fun ModePill(input: DrivingInput) {
     }
 }
 
-/** The inbox button with a red count of drops waiting for this car's answer. */
+/** The inbox button with a red count of drops waiting for this car's answer. Faded while it can't open (before 출발). */
 @Composable
 private fun InboxButton(waiting: Int, enabled: Boolean, onClick: () -> Unit) {
     Box {
         Box(
             modifier = Modifier
                 .size(56.dp)
+                .alpha(if (enabled) 1f else 0.4f) // like the greyed-out quick drops
                 .clip(RoundedCornerShape(18.dp))
                 .background(CdColors.White)
                 .clickable(enabled = enabled, onClick = onClick),
@@ -198,15 +221,27 @@ private fun QuickTile(
     }
 }
 
-/** The design's big blue "드랍하기" button. Its mic circle is a separate button that suggests a drop by voice. */
+/**
+ * The design's big blue "드랍하기" button. Its mic circle is a separate button that suggests a drop by voice.
+ * [beforeStart]: the crew hasn't set off yet, so it is greyed out (the greyed-out buttons' colours, so the text
+ * stays readable) and its second line says why, with the time left until the trip starts by itself ([missing] =
+ * the cars not joined yet).
+ */
 @Composable
-private fun DropButton(enabled: Boolean, onOpenDropSend: () -> Unit, onSpeak: () -> Unit) {
+private fun DropButton(
+    enabled: Boolean,
+    beforeStart: Boolean,
+    joinDeadlineMillis: Long?,
+    missing: Int,
+    onOpenDropSend: () -> Unit,
+    onSpeak: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(if (enabled) CdColors.Blue else CdColors.Gray300)
+            .background(if (enabled) CdColors.Blue else CdColors.Gray200)
             .clickable(enabled = enabled, onClick = onOpenDropSend)
             .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -216,15 +251,45 @@ private fun DropButton(enabled: Boolean, onOpenDropSend: () -> Unit, onSpeak: ()
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(CdColors.White.copy(alpha = 0.22f))
+                .background(if (enabled) CdColors.White.copy(alpha = 0.22f) else CdColors.Gray300)
                 .clickable(enabled = enabled, onClick = onSpeak),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(CdIcons.Mic, contentDescription = "말로 제안하기", tint = CdColors.White, modifier = Modifier.size(26.dp))
+            Icon(
+                CdIcons.Mic,
+                contentDescription = "말로 제안하기",
+                tint = if (enabled) CdColors.White else CdColors.Gray450,
+                modifier = Modifier.size(26.dp),
+            )
         }
         Column {
-            Text("드랍하기", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.White)
-            Text("말로 제안해요 · 스티어링 음성 버튼", fontSize = 14.sp, color = CdColors.White.copy(alpha = 0.9f))
+            Text("드랍하기", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = if (enabled) CdColors.White else CdColors.Gray450)
+            if (beforeStart) {
+                Text(beforeStartNote(joinDeadlineMillis, missing), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CdColors.Gray600)
+            } else {
+                Text(
+                    "말로 제안해요 · 스티어링 음성 버튼",
+                    fontSize = 14.sp,
+                    color = if (enabled) CdColors.White.copy(alpha = 0.9f) else CdColors.Gray600,
+                )
+            }
         }
     }
+}
+
+/**
+ * 드랍하기's second line before the trip starts: "출발하면 드랍을 보낼 수 있어요 · 2:41 뒤 자동 출발 · 안 온 차는 빼고
+ * 가요" (the 3 minutes for joining, counted down every second), or "… · 모두 모였어요 · 곧 출발해요" with every car in.
+ * Without a deadline, the first part only.
+ */
+@Composable
+private fun beforeStartNote(joinDeadlineMillis: Long?, missing: Int): String {
+    val now by produceState(System.currentTimeMillis(), joinDeadlineMillis) {
+        while (joinDeadlineMillis != null) {
+            value = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    val countdown = joinDeadlineMillis?.let { JoinRules.autoStartText(it - now, missing) }
+    return listOfNotNull("출발하면 드랍을 보낼 수 있어요", countdown).joinToString(" · ")
 }

@@ -1,9 +1,15 @@
 package com.cardrop.drop
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,22 +17,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
+import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
+import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.CrewViewModel
 
 /**
  * Board 08 드랍 보내기 · Owner: Member A.
  * Choose the receiving cars (크루 전체, or one or more cars), then what to send: a decision topic
  * opens board 10 (AI candidates), 한마디 opens board 09. Both get the chosen cars (empty = whole crew).
- * 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play.
+ * 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play. The ✕ at the top
+ * right ([onClose]) goes back to 홈 (board 04).
  */
 @Composable
 fun DropSendScreen(
@@ -34,6 +46,7 @@ fun DropSendScreen(
     onPickTopic: (topic: DropTopic, toCarIds: List<String>) -> Unit,
     onShout: (toCarIds: List<String>) -> Unit,
     onGames: () -> Unit,
+    onClose: () -> Unit,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
@@ -42,7 +55,10 @@ fun DropSendScreen(
     val toCarIds = others.map { it.id }.filter { it in picked }
 
     ScreenColumn {
-        ScreenHeader(eyebrow = "누르면 바로 다음 단계로 넘어가요", title = "누구에게 보낼까요?")
+        // The title alone, with a ✕ at the right (target lines 364-366).
+        ScreenHeader(eyebrow = null, title = "누구에게 보낼까요?", gap = 0.dp, verticalAlignment = Alignment.CenterVertically) {
+            CloseButton(onClick = onClose)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             CdCard(modifier = Modifier.weight(1f), selected = picked.isEmpty(), onClick = { picked = emptySet() }) {
                 Text("크루 전체", style = MaterialTheme.typography.titleMedium)
@@ -84,6 +100,21 @@ fun DropSendScreen(
             TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f), onClick = onGames)
             TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
         }
+    }
+}
+
+/** The white square ✕ at the top right: 54 x 54, corners 16, a 24 px cross (target line 366). */
+@Composable
+private fun CloseButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(54.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(CdColors.White)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(CdIcons.Close, contentDescription = "닫기", tint = CdColors.Ink2, modifier = Modifier.size(24.dp))
     }
 }
 

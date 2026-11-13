@@ -163,6 +163,13 @@ private fun DestinationCard(crew: Crew?, trip: DestinationTrip?, onSearchDestina
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
         )
+        // The crew's name (design line 111, decision D6), e.g. "강릉 여행".
+        if (crew != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("일행 이름", color = CdColors.Gray600, fontSize = 15.sp)
+                Text(crew.name, color = CdColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        }
     }
 }
 

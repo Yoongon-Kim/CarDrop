@@ -97,14 +97,18 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                     Box(Modifier.fillMaxHeight().fillMaxWidth(if (started) 1f else progress.value).background(CdColors.White))
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            // 70% of the card wide, 2 : 1, 58 high with corners 16 (target line 495). The CSS buttons have almost
+            // no side padding, so "우리 차는 안 들르기" fits in the smaller one.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(0.7f)) {
                 PrimaryButton(
                     if (started) "주행 화면으로" else "지금 안내 시작", start, Modifier.weight(2f), ready,
                     containerColor = CdColors.White, contentColor = CdColors.BlueDark,
+                    height = 58.dp, radius = 16.dp, fontSize = 17.sp, horizontalPadding = 8.dp,
                 )
                 PrimaryButton(
                     "우리 차는 안 들르기", skip, Modifier.weight(1f), ready && !skipped,
                     containerColor = CdColors.White.copy(alpha = 0.2f),
+                    height = 58.dp, radius = 16.dp, fontSize = 15.sp, fontWeight = FontWeight.Bold, horizontalPadding = 8.dp,
                 )
             }
         }

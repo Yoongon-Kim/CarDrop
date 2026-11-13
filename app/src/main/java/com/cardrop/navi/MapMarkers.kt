@@ -25,19 +25,25 @@ internal class MapMarkers(private val ratio: Float) {
             Canvas(this).apply { scale(ratio, ratio); draw() }
         }
 
-    /** This car: the design's blue dot with a white arrow showing the driving direction. */
-    fun mePuck(): Bitmap = bitmap(48f, 48f) {
+    /**
+     * This car: the design's blue dot (target line 57: 30 px, a 4 px white border, so 38 across, and
+     * `box-shadow: 0 4px 12px rgba(0,0,0,0.25)`), plus our white arrow showing the driving direction.
+     * The image has room around the dot for the shadow.
+     */
+    fun mePuck(): Bitmap = bitmap(PUCK_SIZE + 2 * SHADOW_ROOM, PUCK_SIZE + 2 * SHADOW_ROOM) {
+        translate(SHADOW_ROOM, SHADOW_ROOM)
+        val c = PUCK_SIZE / 2 // the centre: 19
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x40000000
-        drawCircle(24f, 26f, 20f, paint)
         paint.color = MARKER_WHITE
-        drawCircle(24f, 24f, 20f, paint)
+        paint.setShadowLayer(cssBlurToShadowRadius(12f), 0f, 4f, 0x40000000) // the shadow comes with the white ring
+        drawCircle(c, c, c, paint)
+        paint.clearShadowLayer()
         paint.color = MARKER_BLUE
-        drawCircle(24f, 24f, 15f, paint)
+        drawCircle(c, c, 15f, paint)
         paint.color = MARKER_WHITE
         drawPath(
             Path().apply {
-                moveTo(24f, 14f); lineTo(31f, 31f); lineTo(24f, 27f); lineTo(17f, 31f); close()
+                moveTo(c, c - 10f); lineTo(c + 7f, c + 7f); lineTo(c, c + 3f); lineTo(c - 7f, c + 7f); close()
             },
             paint,
         )
@@ -106,6 +112,9 @@ internal const val MAP_SCALE = 1.25f
 
 /** The waypoint and destination pins: 42 design px across. */
 private const val PIN_SIZE = 42f
+
+/** This car's dot: 38 design px across (its white ring included). */
+private const val PUCK_SIZE = 38f
 
 /** Room around a marker for its soft shadow (the design's 12 px blur + 4 px offset). */
 private const val SHADOW_ROOM = 16f

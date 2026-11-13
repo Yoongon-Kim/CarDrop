@@ -36,11 +36,16 @@ object DemoCar {
     /** The car this device drives now. */
     fun current(context: Context): String = resolve(demoPrefs(context).getString(PREF_KEY, null), BuildConfig.MY_CAR)
 
+    /** Remembers [car] (the start question, StartModeScreen). */
+    fun pick(context: Context, car: String) {
+        require(car in KEYS) { "unknown car $car" }
+        // commit(), not apply(): pickAndRestart ends the process right after, before apply() would write.
+        demoPrefs(context).edit().putString(PREF_KEY, car).commit()
+    }
+
     /** Remembers [car] and restarts the app as that car. */
     fun pickAndRestart(context: Context, car: String) {
-        require(car in KEYS) { "unknown car $car" }
-        // commit(), not apply(): the process ends right below, before apply() would write.
-        demoPrefs(context).edit().putString(PREF_KEY, car).commit()
+        pick(context, car)
         restartApp(context)
     }
 
@@ -51,8 +56,14 @@ object DemoCar {
 internal fun demoPrefs(context: Context): SharedPreferences =
     context.getSharedPreferences("cardrop_demo", Context.MODE_PRIVATE)
 
-/** Starts the app again in a new process. A new process makes a new AppContainer, so nothing keeps the old pick. */
+/**
+ * Starts the app again in a new process. A new process makes a new AppContainer, so nothing keeps the old pick.
+ * The pick is already made, so the new start skips the start question (StartMode).
+ */
 internal fun restartApp(context: Context) {
-    context.startActivity(Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java)))
+    context.startActivity(
+        Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java))
+            .putExtra(StartMode.EXTRA_SKIP_QUESTION, true),
+    )
     Runtime.getRuntime().exit(0)
 }

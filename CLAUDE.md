@@ -100,10 +100,16 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 ~/Library/Android/sdk/emulator/emulator -avd Pleos_Connect_v2.1.0   # Pleos emulator
 ```
 
+When CarDrop starts, this demo version first asks how the device runs (not in the official app;
+`core/demo/StartModeScreen.kt`): **봇 크루** (this device alone with three bot cars) or **실제 크루** and its car
+(아빠 / 삼촌 / 민지 / 이모 차). The app's parts are made only after the answer. A build without
+`app/google-services.json` has only the bot crew and doesn't ask. For adb, `--ez cardrop.skipStartQuestion true`
+on `am start` skips it and uses the last answer.
+
 The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
 Use it to rehearse the 시연 on one emulator. Its **크루** switch flips this device between the bot crew and the real
-crew without a rebuild: the app restarts, and the device keeps the pick until `cardrop.useRealCrew` changes
-(`core/demo/DemoCrew.kt`). With the real crew its **내 차** picks
+crew without a rebuild: the app restarts (without the start question), and the device keeps the pick until
+`cardrop.useRealCrew` changes (`core/demo/DemoCrew.kt`). With the real crew its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).
 With the real crew, 아빠 차 starts on board 01 and creates the crew; the other cars start on board 03 and join it
 with its code. Every new crew gets its own random 6-digit code (`crew/CrewCode.kt`), so two hosts (e.g. two
@@ -126,6 +132,8 @@ landed on `main`.
   `ps aux | grep drive_gps`, a fresh install in `adb shell dumpsys package com.cardrop | grep lastUpdateTime`.
   Installing over `com.cardrop` replaces the other session's build and wipes its trip. Before
   `adb shell input tap`, check which app is in front: `adb shell dumpsys activity activities | grep ResumedActivity`.
+  A fresh start of `com.cardrop` shows the start question first (봇 크루 / 실제 크루); a test copy without Firebase
+  doesn't ask.
 - To test while another session's CarDrop stays installed, build a side-by-side copy: add
   `debug { applicationIdSuffix = ".test.<task>" }` to `buildTypes` for that build only (don't commit it), with
   the fake crew and without `app/google-services.json` (Firebase and the Kakao key know only `com.cardrop`, so
@@ -138,7 +146,7 @@ landed on `main`.
 
 | Key | Values | Effect |
 | --- | --- | --- |
-| `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed): `true` without the file stops the build, and a build without it has only the fake. `false` = the fake crew with bot cars. This is the default; the DEMO panel's 크루 switch flips one device without a rebuild until this value changes. Logs: `adb logcat -s CarDropCrew` |
+| `cardrop.useRealCrew` | `true` / `false` | Firebase Realtime Database (project `cardrop-d47ca`, Singapore), so several devices share one crew (`crew/FirebaseCrewRepository.kt`). Needs `app/google-services.json` from Member A (not committed): `true` without the file stops the build, and a build without it has only the fake. `false` = the fake crew with bot cars. This is only the first default: the start question and the DEMO panel's 크루 switch pick the crew on each device, and the device keeps that until this value changes. Logs: `adb logcat -s CarDropCrew` |
 | `cardrop.myCar` | `dad` / `uncle` / `minji` / `aunt` | The car this device drives in the real crew (empty = `dad`) until the DEMO panel's 내 차 picks another one on the device. Give each device a different car; any other value stops the build |
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |

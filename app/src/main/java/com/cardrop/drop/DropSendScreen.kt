@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -115,20 +116,72 @@ fun DropSendScreen(
             )
             Text("누르면 바로 다음 단계로 넘어가요", color = CdColors.Gray600, fontSize = 14.sp, modifier = Modifier.alignByBaseline())
         }
+        // Decision tiles 4 to a row, social tiles 5, 10 apart (target lines 683-687).
         TopicGroup("결정 드랍 · 음성으로 묻고 투표해요", CdColors.BlueDark, CdColors.BlueLight) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                TopicCard("휴게소 가자", "AI가 3곳 추천", Modifier.weight(1f)) { onPickTopic(DropTopic.REST, toCarIds) }
-                TopicCard("밥 먹자", "식당 · 휴게소 맛집", Modifier.weight(1f)) { onPickTopic(DropTopic.FOOD, toCarIds) }
-                TopicCard("주유하자", "가는 길 주유소", Modifier.weight(1f)) { onPickTopic(DropTopic.FUEL, toCarIds) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                TopicTile("휴게소", "AI 3곳 추천", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, Modifier.weight(1f)) {
+                    onPickTopic(DropTopic.REST, toCarIds)
+                }
+                TopicTile("식사", "AI 음식점 추천", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, Modifier.weight(1f)) {
+                    onPickTopic(DropTopic.FOOD, toCarIds)
+                }
+                TopicTile("주유 · 충전", "잔량 기준 추천", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f)) {
+                    onPickTopic(DropTopic.FUEL, toCarIds)
+                }
+                Spacer(Modifier.weight(1f)) // 목적지 변경 comes here
             }
         }
         TopicGroup("소셜 드랍 · 화면에만 조용히", CdColors.VioletDark, CdColors.VioletLight) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                TopicCard("일행에게 한마디", "자주 쓰는 말", Modifier.weight(1f)) { onShout(toCarIds) }
-                TopicCard("게임 초대", "정차 시 시작", Modifier.weight(1f), onClick = onGames)
-                TopicCard("노래 드랍", "이번 주는 빼요", Modifier.weight(1f)) {}
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                TopicTile("일행에게 한마디", "자주 쓰는 말", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
+                    onShout(toCarIds)
+                }
+                Spacer(Modifier.weight(1f)) // 음성 메시지 comes here
+                TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f))
+                TopicTile("게임 초대", "정차 시 시작", CdIcons.Game, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onGames)
+                Spacer(Modifier.weight(1f)) // 같이 켜기 comes here
             }
         }
+    }
+}
+
+/** 노래 드랍's icon colours (target line 658, `song`); no other screen uses them. */
+private val SongTint = Color(0xFFFFF0F5)
+private val SongInk = Color(0xFFD6336C)
+
+/**
+ * One tile: a 48 px icon square (corners 16, a 24 px icon in the tile's colours), the name (16 / 800) and a grey
+ * line (12px), centred, 6 apart; the tile is white, 148 high with corners 22 (target lines 375-381, 658-659, 687).
+ */
+@Composable
+private fun TopicTile(
+    name: String,
+    meta: String,
+    icon: ImageVector,
+    iconBackground: Color,
+    iconColor: Color,
+    modifier: Modifier,
+    onClick: () -> Unit = {},
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        modifier = modifier
+            .height(148.dp)
+            .clip(shape)
+            .background(CdColors.White)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+    ) {
+        Box(
+            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(iconBackground),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(24.dp))
+        }
+        Text(name, color = CdColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(meta, color = CdColors.Gray600, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -215,13 +268,5 @@ private fun CloseButton(onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(CdIcons.Close, contentDescription = "닫기", tint = CdColors.Ink2, modifier = Modifier.size(24.dp))
-    }
-}
-
-@Composable
-private fun TopicCard(title: String, subtitle: String, modifier: Modifier, onClick: () -> Unit) {
-    CdCard(modifier = modifier, onClick = onClick) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium)
     }
 }

@@ -1,5 +1,7 @@
 package com.cardrop.crew
 
+import com.cardrop.core.demo.DemoData
+import com.cardrop.core.model.Place
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -27,6 +29,27 @@ class JoinRulesTest {
     fun aCodeEndingIn2BeforeYoKeepsItsLastDigit() {
         // "…일이요": 이 is the digit 2, then 요.
         assertEquals("482912", JoinRules.codeFromSpeech("사팔이구일이요"))
+    }
+
+    @Test
+    fun theStopOnTheWayIsWhereTheCarWasHeading() {
+        val sinchon = DemoData.seoul // "서울 신촌역"
+        assertEquals(sinchon, JoinRules.stopOnTheWay(sinchon, DemoData.gyeongpo))
+    }
+
+    @Test
+    fun noStopWithoutARouteOrWhenItIsTheCrewDestination() {
+        assertNull(JoinRules.stopOnTheWay(null, DemoData.gyeongpo))
+        assertNull(JoinRules.stopOnTheWay(DemoData.gyeongpo, DemoData.gyeongpo))
+        // The same beach found by Kakao's search: another id, a few metres away.
+        val sameBeach = Place("kakao-1", "경포해수욕장", DemoData.gyeongpo.lat + 0.001, DemoData.gyeongpo.lng)
+        assertNull(JoinRules.stopOnTheWay(sameBeach, DemoData.gyeongpo))
+    }
+
+    @Test
+    fun theNavigatorSaysTheStopWithTheRightParticle() {
+        assertEquals("서울 신촌역을 경유지로 넣었어요", JoinRules.stopAddedNote(DemoData.seoul))
+        assertEquals("여주휴게소를 경유지로 넣었어요", JoinRules.stopAddedNote(DemoData.restStops[1]))
     }
 
     @Test

@@ -1,5 +1,10 @@
 package com.cardrop.crew
 
+import com.cardrop.core.model.Place
+import com.cardrop.core.text.particle
+import com.cardrop.drive.GeoPoint
+import com.cardrop.drive.haversineKm
+
 /**
  * Owner: Member A (board 03's design work: lead). Plain rules for board 03 코드로 참여, kept out of the
  * screen so they can be unit tested (JoinRulesTest).
@@ -22,6 +27,22 @@ object JoinRules {
         val stems = withoutStart.flatMap { start -> listOf(start) + ENDINGS.filter { start.endsWith(it) }.map { start.removeSuffix(it) } }
         return stems.firstNotNullOfOrNull { stem -> digitsOf(stem)?.takeIf { it.length == CODE_LENGTH } }
     }
+
+    /**
+     * Board 03's "…들렀다 가기": the place this car's navigator was heading to before it joined
+     * ([routeBefore]), offered as a waypoint on the way to the crew's destination. Null (no button, and no
+     * "지금 내 내비는…" line) when the car had no route, or was already heading to the crew's destination:
+     * the same place, or one within 300 m of it.
+     */
+    fun stopOnTheWay(routeBefore: Place?, crewDestination: Place): Place? = routeBefore?.takeUnless {
+        it.id == crewDestination.id ||
+            haversineKm(GeoPoint(it.lat, it.lng), GeoPoint(crewDestination.lat, crewDestination.lng)) < SAME_PLACE_KM
+    }
+
+    /** What the navigator says once that stop is the waypoint: "서울 신촌역을 경유지로 넣었어요". */
+    fun stopAddedNote(stop: Place): String = "${stop.name.particle("을", "를")} 경유지로 넣었어요"
+
+    private const val SAME_PLACE_KM = 0.3
 
     /** [text] as digits, or null when one of its letters is not a digit. */
     private fun digitsOf(text: String): String? = buildString {

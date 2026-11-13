@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Place
 import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdCard
@@ -48,14 +49,20 @@ import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
-import com.cardrop.core.ui.TodoNote
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.NotoSansKr
 import com.cardrop.navi.tripKmText
 
 /** Board 03 코드로 참여 · Owner: Member A. With the fake, code 482917 always works. */
 @Composable
-fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) {
+fun JoinCrewScreen(
+    vm: CrewViewModel,
+    /** Where this car's navigator is heading now, or null without a route. Read when the code is complete. */
+    routeDestination: () -> Place?,
+    onBack: () -> Unit,
+    /** The driver picked how to go: [stop] = "…들렀다 가기" (that place becomes the waypoint), null = "바로 …". */
+    onJoined: (stop: Place?) -> Unit,
+) {
     // rememberSaveable: the digits stay when Android rebuilds the screen (e.g. day / night theme).
     var code by rememberSaveable { mutableStateOf("") }
     val join by vm.join.collectAsStateWithLifecycle()
@@ -66,7 +73,7 @@ fun JoinCrewScreen(vm: CrewViewModel, onBack: () -> Unit, onJoined: () -> Unit) 
     // Every change of the code goes through here: the crew is looked up at the 6th digit.
     val changeCode: (String) -> Unit = { digits ->
         code = digits
-        if (digits.length == JoinRules.CODE_LENGTH) vm.joinCrew(digits) else vm.clearJoin()
+        if (digits.length == JoinRules.CODE_LENGTH) vm.joinCrew(digits, routeDestination()) else vm.clearJoin()
     }
 
     ScreenColumn {
@@ -199,7 +206,7 @@ private fun Key(label: String, onClick: () -> Unit, modifier: Modifier = Modifie
 
 /** The right half of board 03: the crew found with the code, or what is happening before that. */
 @Composable
-private fun CrewFound(vm: CrewViewModel, join: CrewViewModel.JoinState, onJoined: () -> Unit) {
+private fun CrewFound(vm: CrewViewModel, join: CrewViewModel.JoinState, onJoined: (stop: Place?) -> Unit) {
     when (join) {
         // The board draws only the found crew; before that, one quiet line in the middle (app extra).
         CrewViewModel.JoinState.Idle -> RightHalfNote { Text("코드 6자리를 넣으면 여기에 크루가 보여요", style = NoteStyle) }
@@ -230,7 +237,7 @@ private val NoteStyle = TextStyle(color = CdColors.Gray600, fontSize = 15.sp, fo
  * that pops in like the design's `cdPop` (line 21): it rises 18 px into place while it fades in, 0.5 s.
  */
 @Composable
-private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found, onJoined: () -> Unit) {
+private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found, onJoined: (stop: Place?) -> Unit) {
     val live by vm.crew.collectAsStateWithLifecycle()
     val trip by vm.trip.collectAsStateWithLifecycle()
     // The crew as it is now (more cars can connect while the card is open); until then, the one found.
@@ -259,11 +266,16 @@ private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found
         // withRo() picks 로 or 으로 for the name: "강릉 경포해변으로", "속초 해수욕장으로", "서울로".
         val toDestination = crew.destination.name.withRo()
         Text("$toDestination 안내할까요?", style = MaterialTheme.typography.titleLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SecondaryButton("신촌역 들렀다 가기", onClick = onJoined)
-            PrimaryButton("바로 $toDestination", onClick = onJoined)
+        // Where this car was driving before it joined, e.g. 신촌역. Null without a route, or when that was the
+        // crew's destination already: then neither the line nor the button shows.
+        val stop = JoinRules.stopOnTheWay(join.routeBefore, crew.destination)
+        if (stop != null) {
+            Text("지금 내 내비는 ${stop.name.withRo()} 안내 중이에요", style = MaterialTheme.typography.bodyMedium)
         }
-        TodoNote("신촌역 경유 버튼은 지금 경로를 경유지로 넣어야 해요 (board 03)")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (stop != null) SecondaryButton("${stop.name} 들렀다 가기", onClick = { onJoined(stop) })
+            PrimaryButton("바로 $toDestination", onClick = { onJoined(null) })
+        }
         Text(
             "참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요",
             style = MaterialTheme.typography.bodyMedium,

@@ -42,6 +42,7 @@ import com.cardrop.crew.CreateCrewScreen
 import com.cardrop.crew.CrewViewModel
 import com.cardrop.crew.DestinationSearchScreen
 import com.cardrop.crew.JoinCrewScreen
+import com.cardrop.crew.JoinRules
 import com.cardrop.drive.DecidedScreen
 import com.cardrop.drive.DriveMainScreen
 import com.cardrop.drive.DriveViewModel
@@ -135,9 +136,19 @@ fun CarDropApp(container: AppContainer) {
                 },
             )
             Screen.DestinationSearch -> DestinationSearchScreen(crewVm, onBack = navigator::back, onPicked = navigator::back)
-            Screen.JoinCrew -> JoinCrewScreen(crewVm, onBack = navigator::back) {
+            Screen.JoinCrew -> JoinCrewScreen(
+                vm = crewVm,
+                routeDestination = { container.navigation.route.value.destination },
+                onBack = navigator::back,
+            ) { stop ->
                 // Before the host's 출발 this car waits on board 04; TripCoordinator starts it with the host.
                 if (container.tripStart.started.value) driveVm.startGuidance()
+                // "…들렀다 가기": where this car was heading becomes the waypoint on the way to the crew's
+                // destination. After startGuidance, so the navigator's last message is about the stop.
+                val crewDestination = container.crew.crew.value?.destination
+                if (stop != null && crewDestination != null) {
+                    container.navigation.setRoute(crewDestination, waypoint = stop, reason = JoinRules.stopAddedNote(stop))
+                }
                 navigator.switchTab(Screen.Drive)
             }
             Screen.Drive -> driveScreen(null)

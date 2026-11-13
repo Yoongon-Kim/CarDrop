@@ -47,7 +47,8 @@ class CrewViewModel(
     sealed interface JoinState {
         data object Idle : JoinState
         data object Searching : JoinState
-        data class Found(val crew: Crew) : JoinState
+        /** [routeBefore]: where this car's navigator was heading before it joined (null = no route). */
+        data class Found(val crew: Crew, val routeBefore: Place? = null) : JoinState
         data object NotFound : JoinState
     }
 
@@ -147,8 +148,12 @@ class CrewViewModel(
     /** The code board 03 is looking up now; null = none (the driver changed the code). */
     private var joiningCode: String? = null
 
-    /** Board 03: the driver typed the last digit of [code]. Looks the crew up and joins it. */
-    fun joinCrew(code: String) {
+    /**
+     * Board 03: the driver typed the last digit of [code]. Looks the crew up and joins it. [routeBefore] is
+     * where this car's navigator is heading now. Read it before joining: joining puts the crew's destination
+     * in its place at once (TripCoordinator), and board 03 offers it as a stop on the way ("…들렀다 가기").
+     */
+    fun joinCrew(code: String, routeBefore: Place? = null) {
         joiningCode = code
         clearCodeStatus()
         _join.value = JoinState.Searching
@@ -156,7 +161,7 @@ class CrewViewModel(
             val found = repo.joinCrew(code)
             // The driver erased a digit while we were looking: this answer is for a code no longer on screen.
             if (joiningCode != code) return@launch
-            _join.value = found?.let { JoinState.Found(it) } ?: JoinState.NotFound
+            _join.value = found?.let { JoinState.Found(it, routeBefore) } ?: JoinState.NotFound
         }
     }
 

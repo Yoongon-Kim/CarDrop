@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,8 +35,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,10 +49,8 @@ import com.cardrop.core.ui.BackButton
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.ErrorText
 import com.cardrop.core.ui.Pill
-import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
-import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.StatusText
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.NotoSansKr
@@ -220,6 +222,36 @@ private fun CrewFound(vm: CrewViewModel, join: CrewViewModel.JoinState, onJoined
     }
 }
 
+/**
+ * One of board 03's choices (design lines 193-194): full width, text at the left, padding 18, radius 16.
+ * [primary] = blue with white text, at least 62 high, 17/800; else light blue with blue text, at least
+ * 58 high, 16/800. [suffix] follows the text in small letters (13/500): "· 서울 신촌역을 경유지로".
+ */
+@Composable
+private fun ChoiceButton(text: String, primary: Boolean, onClick: () -> Unit, suffix: String? = null) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = if (primary) 62.dp else 58.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (primary) CdColors.Blue else CdColors.BlueLight)
+            .clickable(role = Role.Button, onClick = onClick)
+            // A long place name wraps to a second line; 10 above and below keeps it off the edges.
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            buildAnnotatedString {
+                append(text)
+                if (suffix != null) withStyle(SpanStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium)) { append(" $suffix") }
+            },
+            color = if (primary) CdColors.White else CdColors.BlueDark,
+            fontSize = if (primary) 17.sp else 16.sp,
+            fontWeight = FontWeight.ExtraBold,
+        )
+    }
+}
+
 /** Centred in the right half, on the grey page. */
 @Composable
 private fun RightHalfNote(content: @Composable ColumnScope.() -> Unit) {
@@ -283,9 +315,15 @@ private fun FoundCrewCard(vm: CrewViewModel, join: CrewViewModel.JoinState.Found
             Text("$toDestination 안내할까요?", color = CdColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
             if (stop != null) {
                 Text("지금 내 내비는 ${stop.name.withRo()} 안내 중이에요", color = CdColors.Gray600, fontSize = 14.sp)
-                SecondaryButton("${stop.name} 들렀다 가기", onClick = { onJoined(stop) }, modifier = Modifier.fillMaxWidth())
+                ChoiceButton(
+                    "${stop.name} 들렀다 가기",
+                    suffix = "· ${JoinRules.stopAsWaypoint(stop)}",
+                    primary = true,
+                    onClick = { onJoined(stop) },
+                )
             }
-            PrimaryButton("바로 $toDestination", onClick = { onJoined(null) }, modifier = Modifier.fillMaxWidth())
+            // Light blue next to the stop, as drawn; the blue main button when it is the only way to go.
+            ChoiceButton("바로 $toDestination", primary = stop == null, onClick = { onJoined(null) })
         }
         Text(
             "참여하면 도착할 때까지 일행에게 내 위치가 보여요 · 방장이 수락하면 연결돼요",

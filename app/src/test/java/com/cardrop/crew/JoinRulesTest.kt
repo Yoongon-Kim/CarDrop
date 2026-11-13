@@ -47,7 +47,8 @@ class JoinRulesTest {
     }
 
     @Test
-    fun theNavigatorSaysTheStopWithTheRightParticle() {
+    fun theStopIsWrittenWithTheRightParticle() {
+        assertEquals("서울 신촌역을 경유지로", JoinRules.stopAsWaypoint(DemoData.seoul))
         assertEquals("서울 신촌역을 경유지로 넣었어요", JoinRules.stopAddedNote(DemoData.seoul))
         assertEquals("여주휴게소를 경유지로 넣었어요", JoinRules.stopAddedNote(DemoData.restStops[1]))
     }

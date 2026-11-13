@@ -39,8 +39,11 @@ object JoinRules {
             haversineKm(GeoPoint(it.lat, it.lng), GeoPoint(crewDestination.lat, crewDestination.lng)) < SAME_PLACE_KM
     }
 
+    /** The small part of the button: "서울 신촌역을 경유지로" (을 or 를 after the name). */
+    fun stopAsWaypoint(stop: Place): String = "${stop.name.particle("을", "를")} 경유지로"
+
     /** What the navigator says once that stop is the waypoint: "서울 신촌역을 경유지로 넣었어요". */
-    fun stopAddedNote(stop: Place): String = "${stop.name.particle("을", "를")} 경유지로 넣었어요"
+    fun stopAddedNote(stop: Place): String = "${stopAsWaypoint(stop)} 넣었어요"
 
     private const val SAME_PLACE_KM = 0.3
 

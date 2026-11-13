@@ -142,6 +142,8 @@ private fun ShoutContent(
             VoiceRow(exampleCar = exampleCar, enabled = !state.hearing, onListen = onListen)
         }
 
+        // Why the last message wasn't sent (e.g. "출발하면 드랍을 보낼 수 있어요"), right above the send button.
+        state.sendError?.let { ErrorText(it) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("받는 차 · $recipients", color = CdColors.Gray600, fontSize = 15.sp, modifier = Modifier.weight(1f))
             val chosen = state.chosenText

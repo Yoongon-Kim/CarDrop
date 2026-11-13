@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** State shared by boards 04, 05, 06 and 14. Services are supplied by AppContainer. */
 class DriveViewModel(
@@ -39,6 +40,9 @@ class DriveViewModel(
     val fuelWarningPending: StateFlow<Boolean> = _fuelWarningPending
     private val _action = MutableStateFlow(DriveActionState())
     val action: StateFlow<DriveActionState> = _action
+    private val _fuelPlan = MutableStateFlow<FuelPlan?>(null)
+    /** Board 05 step 2: the stations the AI picked, waiting for the driver's choice. Null while on step 1. */
+    val fuelPlan: StateFlow<FuelPlan?> = _fuelPlan
 
     val inputMode: StateFlow<DrivingInput> = combine(
         snapshot, liveNavigation?.state ?: MutableStateFlow(null),
@@ -54,6 +58,7 @@ class DriveViewModel(
                 if (key != crewKey) {
                     warnings.reset()
                     _fuelWarningPending.value = false
+                    _fuelPlan.value = null
                     crewKey = key
                 }
                 if (current != null && warnings.update(car.fuelPercent)) _fuelWarningPending.value = true
@@ -65,6 +70,13 @@ class DriveViewModel(
     override fun onCleared() { vehicle.stop() }
     fun acknowledgeFuelWarning() { _fuelWarningPending.value = false }
     fun clearError() { if (!_action.value.busy) _action.value = DriveActionState() }
+
+    /** Back to board 05 step 1, or a fresh start when the screen opens. */
+    fun cancelFuelPlan() {
+        if (_action.value.busy) return
+        _fuelPlan.value = null
+        _action.value = DriveActionState()
+    }
     fun skipped(dropId: String) = navigation.decisions.isSkipped(dropId)
 
     private fun crewKey() = crew.value?.let { "${it.code}:${it.hostCarId}" }
@@ -118,52 +130,74 @@ class DriveViewModel(
         return reachableFuelStops(DemoData.restStops, geometry, progress, range, if (shared) 25.0 else 0.5)
     }
 
-    private suspend fun recommendStations(shared: Boolean): List<Candidate> {
+    private suspend fun recommendStations(shared: Boolean): List<FuelStation> {
         val currentCrew = requireCrew()
         val pool = eligibleStations(shared)
         check(pool.isNotEmpty()) { "남은 주행 거리 안에 있는 전방 주유소를 찾지 못했어요" }
         val picks = ai.recommend(DropTopic.FUEL, TripContext(currentCrew, positions.value, snapshot.value, pool))
         val known = eligibleStations(shared).associateBy { it.id }
-        val result = mutableListOf<Pair<Candidate, Double?>>()
+        val result = mutableListOf<FuelStation>()
         for (pick in picks.distinctBy { it.place.id }) {
             val place = known[pick.place.id] ?: continue
             // Confirm the station's actual driving route, including its access ramp.
-            val drivingKm = liveNavigation?.fuelStopDistanceKm(place)
-            result += pick.copy(id = place.id, place = place) to drivingKm
+            val trip = liveNavigation?.fuelStopTrip(place)
+            result += FuelStation(pick.copy(id = place.id, place = place), trip?.km, trip?.minutes)
         }
-        // Fuel and position can change during AI/routing requests. Validate again before sending.
-        val stillAhead = eligibleStations(shared).map { it.id }.toSet()
-        val remaining = snapshot.value.rangeKm ?: 0f
-        val safe = result.filter { (candidate, km) -> candidate.place.id in stillAhead && (km == null || km + 5 <= remaining) }
+        // Fuel and position can change during AI/routing requests. Validate again before showing them.
+        val safe = stillReachable(result, shared)
         check(safe.isNotEmpty()) { "도달 가능한 주유소 후보가 없어요. 위치와 연료를 확인하고 다시 시도해 주세요" }
-        return safe.take(3).map { it.first }
+        return safe.take(3)
     }
 
-    fun alertCrewAboutFuel(onSent: (Drop) -> Unit) = perform("갈 수 있는 주유소를 찾고 있어요…") {
-        val key = crewKey()
-        val stations = recommendStations(shared = true)
-        ensureCrew(key)
-        val car = snapshot.value
-        val drop = crewRepo.sendDrop(DropDraft(
-            kind = DropKind.DECISION, topic = DropTopic.FUEL,
-            title = "연료가 부족해요 · 같이 주유할까요?",
-            message = "연료 ${car.fuelPercent ?: "—"}% · 주행 가능 ${car.rangeKm?.toInt() ?: "—"}km",
-            candidates = stations,
-        ))
-        ensureCrew(key)
-        acknowledgeFuelWarning()
-        onSent(drop)
+    /** Stations still ahead of this car and reachable with a 5 km reserve. */
+    private fun stillReachable(stations: List<FuelStation>, shared: Boolean): List<FuelStation> {
+        val ahead = eligibleStations(shared).map { it.id }.toSet()
+        val remaining = snapshot.value.rangeKm ?: 0f
+        return stations.filter { it.candidate.place.id in ahead && (it.drivingKm == null || it.drivingKm + 5 <= remaining) }
     }
 
-    fun goToStationAlone(onDone: () -> Unit = {}) = perform("우리 차가 갈 주유소를 찾고 있어요…") {
+    /** Board 05 step 1: the AI picks up to 3 stations. Nothing is sent or routed until the driver chooses one. */
+    fun planFuelStop(shared: Boolean) = perform("갈 수 있는 주유소를 찾고 있어요…") {
         val key = crewKey()
-        val best = recommendStations(shared = false).first()
+        val stations = recommendStations(shared)
         ensureCrew(key)
-        val destination = navigation.route.value.destination ?: requireCrew().destination
-        navigation.setRoute(destination, best.place, "우리 차만 ${best.place.name}에 들러요")
-        check(navigation.launch()) { navigation.route.value.lastAction ?: "길안내를 시작할 수 없어요" }
-        acknowledgeFuelWarning()
-        onDone()
+        _fuelPlan.value = FuelPlan(shared, stations)
+    }
+
+    /**
+     * Board 05 step 2. Shared ("여기로 정하고 일행에게 알리기"): the crew gets a fuel drop for the chosen
+     * station. Alone ("여기로 혼자 다녀오기"): only this car goes there.
+     */
+    fun confirmFuelStop(index: Int, onDone: () -> Unit = {}) {
+        val plan = _fuelPlan.value ?: return
+        perform(if (plan.shared) "일행에게 알리고 있어요…" else "주유소를 경유지로 넣고 있어요…") {
+            val key = crewKey()
+            val chosen = plan.stations.getOrNull(index) ?: error("주유소를 다시 골라 주세요")
+            val place = chosen.candidate.place
+            // The car kept driving while the driver chose: the station must still be ahead and reachable.
+            if (stillReachable(listOf(chosen), plan.shared).isEmpty()) {
+                _fuelPlan.value = plan.copy(stations = plan.stations - chosen).takeIf { it.stations.isNotEmpty() }
+                error("${place.name}에는 이제 갈 수 없어요. 다른 곳을 골라 주세요")
+            }
+            if (plan.shared) {
+                val car = snapshot.value
+                val distance = chosen.drivingKm?.let { " ${it.roundToInt()}km" }.orEmpty()
+                crewRepo.sendDrop(DropDraft(
+                    kind = DropKind.DECISION, topic = DropTopic.FUEL,
+                    title = "연료가 부족해요 · 같이 주유할까요?",
+                    message = "연료 ${car.fuelPercent ?: "—"}% · 주행 가능 ${car.rangeKm?.toInt() ?: "—"}km · ${place.name}$distance",
+                    candidates = listOf(chosen.candidate),
+                ))
+            } else {
+                val destination = navigation.route.value.destination ?: requireCrew().destination
+                navigation.setRoute(destination, place, "우리 차만 ${place.name}에 들러요")
+                check(navigation.launch()) { navigation.route.value.lastAction ?: "길안내를 시작할 수 없어요" }
+            }
+            ensureCrew(key)
+            _fuelPlan.value = null
+            acknowledgeFuelWarning()
+            onDone()
+        }
     }
 
     /** Vote only. TripCoordinator applies the final winner after the vote closes. */
@@ -202,3 +236,9 @@ class DriveViewModel(
 }
 
 data class DriveActionState(val busy: Boolean = false, val message: String? = null, val error: String? = null)
+
+/** A station the AI picked for board 05, with its real driving distance and time when the navigator knows them. */
+data class FuelStation(val candidate: Candidate, val drivingKm: Double? = null, val minutes: Int? = null)
+
+/** Board 05 step 2. [shared] = "응, 알려줘" (tell the crew); false = "아니, 혼자 갈게". */
+data class FuelPlan(val shared: Boolean, val stations: List<FuelStation>)

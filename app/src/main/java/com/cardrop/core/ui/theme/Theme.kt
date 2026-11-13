@@ -47,6 +47,9 @@ object CdColors {
     val TealLight = Color(0xFFE6F8F4)
     val TealDark = Color(0xFF0B7F6F)
     val Yellow = Color(0xFFFFB020)
+    /** Board 05: background and number circle of the chosen station. */
+    val YellowLight = Color(0xFFFFF7DD)
+    val Amber = Color(0xFFF0A30A)
 }
 
 fun CarColor.toColor(): Color = when (this) {

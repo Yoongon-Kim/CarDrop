@@ -14,9 +14,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** What the navigator is doing right now. */
 enum class NavStatus { WAITING_GPS, ROUTING, GUIDING, ERROR }
+
+/** Driving distance and time from here to a stop (board 05's station list). */
+data class StopTrip(val km: Double, val minutes: Int)
 
 data class NavigatorState(
     val status: NavStatus = NavStatus.WAITING_GPS,
@@ -108,12 +112,13 @@ class InAppNavigation(
         _state.value = NavigatorState(fix = _state.value.fix)
     }
 
-    /** Check actual driving distance to a station, including ramps and detours. */
-    suspend fun fuelStopDistanceKm(place: Place): Double {
+    /** Actual driving distance and time from here to a station, including ramps and detours. */
+    suspend fun fuelStopTrip(place: Place): StopTrip {
         val fix = _state.value.fix ?: error("GPS 위치를 기다리고 있어요")
         check(now() - fix.timeMillis in 0..10_000) { "GPS 위치를 다시 확인해 주세요" }
         val stationRoute = router.route(GeoPoint(fix.lat, fix.lng), fix.bearing, place, null)
-        return stationRoute.totalKm
+        val minutes = (stationRoute.secondsAt(stationRoute.totalKm) / 60).roundToInt().coerceAtLeast(1)
+        return StopTrip(stationRoute.totalKm, minutes)
     }
 
     /** Places from [pool] near the route and at least [marginKm] ahead, nearest first; null without a route. */

@@ -23,6 +23,8 @@ import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
 import com.cardrop.drive.TripCodeFile
+import com.cardrop.drive.PrefsQuickDropStore
+import com.cardrop.drive.QuickDrops
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.FallbackRouteProvider
@@ -149,6 +151,8 @@ class AppContainer(context: Context) {
     val placeSearch: PlaceSearch? = BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoPlaceSearch)
     /** Board 09's phrases, kept on this device. */
     val phrases: PhraseStore = PrefsPhraseStore(context)
+    /** Board 04's quick-drop slots (퀵 드랍 편집), kept on this device. */
+    val quickDrops = QuickDrops(PrefsQuickDropStore(context))
 
     /**
      * The open screen with its back stack, and which drops have already been opened. They live here, as long

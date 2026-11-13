@@ -17,6 +17,8 @@ object CdIcons {
     val Back = lineIcon("Back", strokeWidth = 2.4f, "m15 18-6-6 6-6")
     val Close = lineIcon("Close", strokeWidth = 2.4f, "M18 6 6 18M6 6l12 12")
     val Plus = lineIcon("Plus", strokeWidth = 2.6f, "M12 5v14M5 12h14")
+    /** A thinner "+": board 04's empty quick-drop slots (canvas `ICON.add`, 2.2 like the other quick-drop icons). */
+    val PlusThin = lineIcon("PlusThin", strokeWidth = 2.2f, "M12 5v14M5 12h14")
     val Pencil = lineIcon("Pencil", strokeWidth = 2.2f, "m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4")
     val Mic = lineIcon(
         "Mic",
@@ -56,14 +58,20 @@ object CdIcons {
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
     /** 목적지 변경 (a flag): board 08's tile, target line 657 (`dest`). */
     val Flag = lineIcon("Flag", strokeWidth = 2.2f, "M4 22V4M4 4h12l-2 4 2 4H4")
-    /** 노래 드랍 (a note): board 08's tile, target line 657 (`song`). */
+    /** 노래 드랍 (a note): board 08's tile, target line 657 (`song`), and 노래 in the quick-drop editor (cut, faded). */
     val Music = lineIcon(
         "Music",
         strokeWidth = 2.2f,
         "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
     )
-    /** 같이 켜기 (a power button): board 08's tile, target line 657 (`together`). */
+    /** 같이 켜기 (a power button): board 08's tile, target line 657 (`together`), and in the quick-drop editor. */
     val Power = lineIcon("Power", strokeWidth = 2.2f, "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04")
+    /** 운전 기록 (a trophy, the canvas's 기록): the safety race, cut, faded in the quick-drop editor (`score`). */
+    val Trophy = lineIcon(
+        "Trophy",
+        strokeWidth = 2.2f,
+        "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3",
+    )
     /**
      * A magnifier (board 02's search box, target line 156: 26 px, blue). The design's
      * `<circle cx="11" cy="11" r="7">` is written here as two half circles.

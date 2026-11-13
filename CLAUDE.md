@@ -78,6 +78,12 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
     is no longer offered on screen.
 - Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
+- Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
+  lines 302-344): four slots, all empty (dashed "추가") until the driver fills them. 편집 or an empty slot opens
+  퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in the order ticked; 노래, 같이 켜기
+  and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`, SharedPreferences). A tile
+  opens what it names (`QuickDrop.screen()`): 휴게소 / 식사 / 주유 board 10 for the whole crew (no pop-up), 한마디 09,
+  게임 초대 15, 편지함 07. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
 
 ## Design boards
 
@@ -86,8 +92,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   the board numbers match `Screen.kt`. It is the 2026-11-10 version of the 최종 UI, the same screens as the
   standalone export `CarDrop_최종UI.html` (chosen by the lead on 2026-11-13).
 - The live canvas (link above) has moved on since: empty quick-drop slots with 편집, a quick-drop pop-up with a
-  result notice, a feedback pill after sending, car nicknames, voice messages and shared `.cd-*` styles. We don't
-  build those. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
+  result notice, a feedback pill after sending, car nicknames, voice messages and shared `.cd-*` styles. We build
+  only the quick-drop slots with 편집 (see board 04's quick drops above), not the others. Read the canvas only for
+  reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
 - Week 1 cuts: song drop (12, 13), omok/chess (15), safety race (16, 17), ads and points (18, 19).
 

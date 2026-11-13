@@ -241,14 +241,25 @@ private fun InviteCodeCard(vm: CrewViewModel, crew: Crew?, onShare: () -> Unit, 
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Design lines 115-118: centred, 8 apart, 46 high, 15; light blue 800 and grey 700.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
             // Reads the code aloud, digit by digit ("사 팔 이, 구 일 칠").
             if (vm.canSpeak) {
-                CdChip("말로 읽어주기", onClick = vm::speakCode, style = ChipStyle.Blue, enabled = crew != null)
+                CdChip("말로 읽어주기", onClick = vm::speakCode, style = ChipStyle.Blue, enabled = crew != null, height = 46.dp, fontSize = 15.sp)
             }
-            CdChip("링크 문자로 보내기", onClick = onShare, enabled = crew != null)
+            CdChip(
+                "링크 문자로 보내기",
+                onClick = onShare,
+                enabled = crew != null,
+                height = 46.dp,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
-        shareStatus?.let { StatusText(it) }
+        shareStatus?.let { StatusText(it, Modifier.align(Alignment.CenterHorizontally)) }
     }
 }
 

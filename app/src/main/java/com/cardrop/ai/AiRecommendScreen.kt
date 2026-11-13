@@ -71,11 +71,7 @@ import com.cardrop.navi.KeyboardRoom
 import com.cardrop.navi.PlaceSuggestion
 import com.cardrop.navi.PlaceSuggestionList
 import com.cardrop.navi.PlaceSuggestions
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-
-/** No times at all: for the quick-drop pop-up, which nobody shows at the moment. */
-private val NoPlaceTimes: StateFlow<PlaceTimes> = MutableStateFlow(PlaceTimes())
 
 /**
  * Board 10 AI 추천 (휴게소 · 식사 · 주유) · Owner: lead.
@@ -107,11 +103,17 @@ fun AiRecommendScreen(
 
 /**
  * Board 10 as a pop-up over the current screen, for the quick drops on board 04 (design:
- * "퀵 드랍 · 보낼 곳을 골라요"). It always goes to the whole crew. Member B shows it from the drive
- * screen and closes it in [onSent]; the driver stays on 04.
+ * "퀵 드랍 · 보낼 곳을 골라요"). It always goes to the whole crew. CarDropApp shows it over the drive
+ * screen and closes it in [onSent]; the driver stays on 04. [placeTimes] as on the page.
  */
 @Composable
-fun QuickDropPicker(vm: AiViewModel, topic: DropTopic, onClose: () -> Unit, onSent: (Drop) -> Unit) {
+fun QuickDropPicker(
+    vm: AiViewModel,
+    topic: DropTopic,
+    placeTimes: StateFlow<PlaceTimes>,
+    onClose: () -> Unit,
+    onSent: (Drop) -> Unit,
+) {
     LaunchedEffect(topic) { vm.loadCandidates(topic) }
     BackHandler(onBack = onClose)
     PopupFrame {
@@ -123,6 +125,7 @@ fun QuickDropPicker(vm: AiViewModel, topic: DropTopic, onClose: () -> Unit, onSe
             onClose = onClose,
             onSent = onSent,
             modifier = Modifier,
+            placeTimes = placeTimes,
         )
     }
 }
@@ -137,7 +140,7 @@ private fun PlacePicker(
     onClose: () -> Unit,
     onSent: (Drop) -> Unit,
     modifier: Modifier,
-    placeTimes: StateFlow<PlaceTimes> = NoPlaceTimes,
+    placeTimes: StateFlow<PlaceTimes>,
 ) {
     val state by vm.picker.collectAsStateWithLifecycle()
     val suggest by vm.suggestions.collectAsStateWithLifecycle()

@@ -88,13 +88,19 @@ class QuickDropsTest {
 
     @Test
     fun eachTileOpensWhatItNames() {
-        assertEquals(Screen.AiRecommend(DropTopic.REST), REST.screen())
-        assertEquals(Screen.AiRecommend(DropTopic.FOOD), FOOD.screen())
-        assertEquals(Screen.AiRecommend(DropTopic.FUEL), FUEL.screen())
+        // 휴게소 / 식사 / 주유: board 10 as a pop-up over 04, not a screen of their own.
+        assertEquals(DropTopic.REST, REST.popupTopic())
+        assertEquals(DropTopic.FOOD, FOOD.popupTopic())
+        assertEquals(DropTopic.FUEL, FUEL.popupTopic())
+        listOf(REST, FOOD, FUEL).forEach { assertNull(it.screen()) }
         assertEquals(Screen.Shout(), SHOUT.screen())
         assertEquals(Screen.Games, GAME.screen())
         assertEquals(Screen.Inbox, INBOX.screen())
-        listOf(SONG, TOGETHER, SCORE).forEach { assertNull(it.screen()) }
+        listOf(SHOUT, GAME, INBOX).forEach { assertNull(it.popupTopic()) }
+        listOf(SONG, TOGETHER, SCORE).forEach {
+            assertNull(it.screen())
+            assertNull(it.popupTopic())
+        }
     }
 
     @Test

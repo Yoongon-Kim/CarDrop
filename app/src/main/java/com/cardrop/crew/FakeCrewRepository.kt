@@ -87,6 +87,10 @@ class FakeCrewRepository(
         _crew.update { it?.copy(destination = destination) }
     }
 
+    override suspend fun renameCrew(name: String) {
+        _crew.update { it?.copy(name = name) }
+    }
+
     override suspend fun sendDrop(draft: DropDraft): Drop {
         val drop = newDrop(fromCarId = myCarId, draft = draft)
         _drops.update { it + drop }

@@ -26,6 +26,7 @@ internal class TestCrew : CrewRepository {
     override suspend fun createCrew(name: String, destination: Place) = crew.value!!
     override suspend fun joinCrew(code: String) = crew.value
     override suspend fun setDestination(destination: Place) { crew.value = crew.value?.copy(destination = destination) }
+    override suspend fun renameCrew(name: String) { crew.value = crew.value?.copy(name = name) }
     override suspend fun sendDrop(draft: DropDraft): Drop {
         sends++
         val drop = Drop("sent-$sends", myCarId, draft.kind, draft.topic, draft.title, draft.message, draft.candidates,

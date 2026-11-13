@@ -65,6 +65,16 @@ class CrewViewModel(
         viewModelScope.launch { repo.setDestination(place) }
     }
 
+    /**
+     * Board 01's 바꾸기: gives the crew a new name, for every car in it. Spaces around the name are dropped;
+     * an empty name keeps the old one.
+     */
+    fun renameCrew(name: String) {
+        val clean = name.trim()
+        if (clean.isEmpty() || clean == crew.value?.name) return
+        viewModelScope.launch { repo.renameCrew(clean) }
+    }
+
     /** Board 02: the places that fit the destination being typed, like Kakao Map's list. */
     private val destinationSearch = PlaceSuggester(viewModelScope, placeSearch, DemoData.destinations, here)
     val destinationSuggestions: StateFlow<PlaceSuggestions> = destinationSearch.state

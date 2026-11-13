@@ -26,11 +26,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,6 +46,7 @@ import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
+import com.cardrop.core.ui.CdTextField
 import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.InfoRow
 import com.cardrop.core.ui.Pill
@@ -94,7 +98,7 @@ fun CreateCrewScreen(
         Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             // Left, a little wider (flex 1.05): the destination and the invite code, 14 apart.
             Column(modifier = Modifier.weight(1.05f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                DestinationCard(crew, trip, onSearchDestination)
+                DestinationCard(crew, trip, onSearchDestination, onRename = vm::renameCrew)
                 InviteCodeCard(vm, crew, onShare = {
                     val c = crew ?: return@InviteCodeCard
                     // Opens the messaging app with the invite text filled in.
@@ -116,7 +120,12 @@ fun CreateCrewScreen(
 
 /** The crew's destination (design lines 103-109): a label, then the place as a tile that opens board 02. */
 @Composable
-private fun DestinationCard(crew: Crew?, trip: DestinationTrip?, onSearchDestination: () -> Unit) {
+private fun DestinationCard(
+    crew: Crew?,
+    trip: DestinationTrip?,
+    onSearchDestination: () -> Unit,
+    onRename: (String) -> Unit,
+) {
     CdCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp), gap = 12.dp) {
         Text("목적지", color = CdColors.Gray600, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
         // The tile: a blue edge on light blue, the blue pin square, the place, and "검색" at the right.
@@ -163,15 +172,58 @@ private fun DestinationCard(crew: Crew?, trip: DestinationTrip?, onSearchDestina
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
         )
-        // The crew's name (design line 111, decision D6), e.g. "강릉 여행".
-        if (crew != null) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("일행 이름", color = CdColors.Gray600, fontSize = 15.sp)
-                Text(crew.name, color = CdColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+        if (crew != null) CrewNameRow(crew.name, onRename)
+    }
+}
+
+/**
+ * The crew's name (design line 111, decision D6): "일행 이름  강릉 여행  [바꾸기]". 바꾸기 turns the name into a
+ * text box with 저장 and 취소; 저장 (or the keyboard's enter) gives the crew the new name ([onRename]).
+ */
+@Composable
+private fun CrewNameRow(name: String, onRename: (String) -> Unit) {
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var draft by rememberSaveable { mutableStateOf("") }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("일행 이름", color = CdColors.Gray600, fontSize = 15.sp)
+        if (!editing) {
+            Text(name, color = CdColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+            // The board's small grey button: 34 high, padding 12, radius 10, 13 bold.
+            CdChip(
+                "바꾸기",
+                onClick = {
+                    draft = name
+                    editing = true
+                },
+                height = 34.dp,
+                radius = 10.dp,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            )
+        } else {
+            val save = {
+                onRename(draft)
+                editing = false
             }
+            val focus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { focus.requestFocus() } // the keyboard comes up for the new name
+            CdTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                placeholder = "일행 이름",
+                maxLength = CREW_NAME_MAX_LENGTH,
+                modifier = Modifier.weight(1f).focusRequester(focus),
+                onDone = save,
+            )
+            CdChip("저장", onClick = save, style = ChipStyle.Primary, enabled = draft.isNotBlank(), height = 54.dp)
+            CdChip("취소", onClick = { editing = false }, height = 54.dp)
         }
     }
 }
+
+/** A crew name longer than this is cut off. */
+private const val CREW_NAME_MAX_LENGTH = 20
 
 /** The join code, and two ways to tell it to the others: read aloud, or a text message ([onShare]). */
 @Composable

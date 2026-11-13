@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Place
@@ -89,7 +88,7 @@ fun DestinationSearchScreen(vm: CrewViewModel, onBack: () -> Unit, onPicked: () 
     // The title and box stay put; only the places scroll. Pleos's keyboard covers the lower third.
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onClick = onBack)
@@ -97,7 +96,6 @@ fun DestinationSearchScreen(vm: CrewViewModel, onBack: () -> Unit, onPicked: () 
                 "목적지를 검색해 주세요",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-0.02).em,
                 color = CdColors.Ink,
             )
         }
@@ -126,7 +124,7 @@ fun DestinationSearchScreen(vm: CrewViewModel, onBack: () -> Unit, onPicked: () 
         voice.status?.let { StatusText(it) }
         Column(
             modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (suggestions.shown) {
                 PlaceSuggestionList(suggestions, onPick = { pick(it.place) })

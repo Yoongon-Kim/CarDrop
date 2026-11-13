@@ -1,6 +1,8 @@
 *.iml
 .gradle/
 /local.properties
+# Firebase project settings, shared privately like local.properties
+/app/google-services.json
 /.idea/
 .DS_Store
 /build/

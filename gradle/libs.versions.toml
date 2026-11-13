@@ -18,6 +18,10 @@ pleosSpeech = "3.3.1"
 # Kakao Maps SDK v2 for the navigator map. Plain Java, no dependencies; engine only for ARM CPUs
 # (arm64-v8a, armeabi-v7a), which the Pleos emulator and cars are.
 kakaoMap = "2.15.2"
+# Firebase Realtime Database for the real CrewRepository (crew/FirebaseCrewRepository.kt). The plugin
+# reads app/google-services.json (Firebase project settings, not committed).
+firebaseBom = "35.2.0"
+googleServices = "4.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,8 +43,11 @@ anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthr
 pleos-tts = { module = "ai.pleos.playground:TextToSpeech", version.ref = "pleosSpeech" }
 pleos-stt = { module = "ai.pleos.playground:SpeechToText", version.ref = "pleosSpeech" }
 kakao-map = { module = "com.kakao.maps.open:android", version.ref = "kakaoMap" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-database = { group = "com.google.firebase", name = "firebase-database" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

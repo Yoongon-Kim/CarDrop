@@ -239,6 +239,13 @@ class AiViewModel(
         }
     }
 
+    /**
+     * The cars a drop to [toCarIds] is for, in crew order: this car and [toCarIds], or every car when it goes to
+     * the whole crew. The same cars vote on it (`Drop.voterIds`).
+     */
+    fun involvedCarIds(toCarIds: List<String>): List<String> =
+        crew.crew.value?.cars.orEmpty().map { it.id }.filter { toCarIds.isEmpty() || it == crew.myCarId || it in toCarIds }
+
     /** "크루 전체", or the names of [toCarIds], for the "받는 차" lines on boards 09 and 10. */
     fun recipientLabel(toCarIds: List<String>): String =
         crew.crew.value?.recipientLabel(toCarIds, crew.myCarId) ?: "크루 전체"
@@ -252,6 +259,7 @@ class AiViewModel(
         val chosen = pick.selected
         if (chosen.isEmpty() || sending) return
         sending = true // a second tap must not send a second vote
+        val added = chosen.count { pick.isAdded(it.id) }
         viewModelScope.launch {
             try {
                 val drop = crew.sendDrop(
@@ -259,7 +267,7 @@ class AiViewModel(
                         kind = DropKind.DECISION,
                         topic = topic,
                         title = topicTitle(topic),
-                        message = if (chosen.any { pick.isAdded(it.id) }) "후보 ${chosen.size}곳" else "AI가 고른 ${chosen.size}곳",
+                        message = voteReason(cars = involvedCarIds(toCarIds).size, aiPicks = chosen.size - added, added = added),
                         candidates = chosen,
                         toCarIds = toCarIds,
                     ),
@@ -489,6 +497,19 @@ class AiViewModel(
         DropTopic.CAFE -> "어느 카페에 들를까요?"
         DropTopic.CUSTOM -> "어디에 들를까요?"
     }
+}
+
+/**
+ * Board 11's grey line under the title: why these places are in the vote, e.g. "AI가 4대 모두 가기 좋은 곳으로
+ * 골랐어요" (target line 712). It travels in the vote drop's `message`. [cars] = how many cars take part in the
+ * vote; [aiPicks] and [added] = how many of its places the AI picked and how many the driver added on board 10.
+ * Internal (not private) only so VoteReasonTest can check it.
+ */
+internal fun voteReason(cars: Int, aiPicks: Int, added: Int): String = when {
+    added == 0 && cars >= 2 -> "AI가 ${cars}대 모두 가기 좋은 곳으로 골랐어요"
+    added == 0 -> "AI가 가기 좋은 곳으로 골랐어요"
+    aiPicks == 0 -> "직접 고른 ${added}곳 중에서 골라요"
+    else -> "AI가 고른 ${aiPicks}곳에 직접 고른 ${added}곳을 더했어요"
 }
 
 /** The town each rest stop on the demo trip is in (board 15's 지역 퀴즈). 덕평 is in 이천, 문막 in 원주. */

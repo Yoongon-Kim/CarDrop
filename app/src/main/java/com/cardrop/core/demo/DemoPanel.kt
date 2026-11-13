@@ -20,25 +20,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.BuildConfig
 import com.cardrop.core.AppContainer
 import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Gear
 import com.cardrop.core.model.Place
+import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
+import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.vehicle.FakeVehicleRepository
 import kotlin.math.roundToInt
 
 /**
  * Owner: lead. A small "DEMO" button (bottom right) that stages the 시연 moments on one emulator:
- * low fuel, P/D, and drops arriving from bot cars. It only acts on the fake implementations.
+ * low fuel, P/D, and drops arriving from bot cars. Those only act on the fake implementations.
+ * With the real crew it picks which car this device drives instead ("내 차", [DemoCar]).
  */
 @Composable
 fun DemoPanel(container: AppContainer) {
@@ -62,6 +67,11 @@ fun DemoPanel(container: AppContainer) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("시연 컨트롤", color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            if (BuildConfig.USE_REAL_CREW) {
+                MyCarPicker(current = container.myCar)
+            } else {
+                Text("봇 크루 · 내 차는 아빠 차 (차 고르기: cardrop.useRealCrew=true)", color = CdColors.Gray400, fontSize = 13.sp)
+            }
             if (vehicle != null) {
                 Text("연료 ${snapshot.fuelPercent ?: 0}%", color = CdColors.White, fontSize = 14.sp)
                 Slider(
@@ -149,6 +159,32 @@ private fun demoCandidates(container: AppContainer): List<Candidate> =
                 detourMinutes = 2 + i * 3,
             )
         }
+
+/** Real crew only: which car this device drives. Another car asks once, then restarts the app as it. */
+@Composable
+private fun MyCarPicker(current: String) {
+    val context = LocalContext.current
+    var pending by remember { mutableStateOf<String?>(null) }
+    Text("내 차", color = CdColors.White, fontSize = 14.sp)
+    DemoCar.KEYS.chunked(2).forEach { pair ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            pair.forEach { car ->
+                val name = carName(car)
+                DemoButton(if (car == current) "$name ✓" else name) { pending = car.takeIf { it != current } }
+            }
+        }
+    }
+    pending?.let { car ->
+        val then = if (car == DemoCar.HOST) "크루를 새로 만들어서, 다른 차는 다시 참여해야 해요." else "크루 코드로 다시 참여해 주세요."
+        Text("${carName(car).withRo()} 바꾸면 앱이 다시 시작돼요. $then", color = CdColors.White, fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DemoButton("바꾸기") { DemoCar.pickAndRestart(context, car) }
+            DemoButton("취소") { pending = null }
+        }
+    }
+}
+
+private fun carName(car: String): String = FirebaseCrewRepository.carFor(car).name
 
 @Composable
 private fun DemoButton(text: String, onClick: () -> Unit) {

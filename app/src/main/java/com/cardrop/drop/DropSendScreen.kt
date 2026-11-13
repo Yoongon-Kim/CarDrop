@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -143,9 +144,13 @@ fun DropSendScreen(
                 TopicTile("음성 메시지", "녹음해서", CdIcons.Mic, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
                     onShout(toCarIds)
                 }
-                TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f))
+                // Song drop and 같이 켜기 (points) are cut for now: shown as in the target, greyed out (D8).
+                TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f), enabled = false)
                 TopicTile("게임 초대", "정차 시 시작", CdIcons.Game, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onGames)
-                Spacer(Modifier.weight(1f)) // 같이 켜기 comes here
+                TopicTile(
+                    "같이 켜기", "P 정차 중 · 포인트", CdIcons.Power, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f),
+                    enabled = false, metaColor = CdColors.OrangeDark, metaWeight = FontWeight.ExtraBold,
+                )
             }
         }
     }
@@ -158,6 +163,7 @@ private val SongInk = Color(0xFFD6336C)
 /**
  * One tile: a 48 px icon square (corners 16, a 24 px icon in the tile's colours), the name (16 / 800) and a grey
  * line (12px), centred, 6 apart; the tile is white, 148 high with corners 22 (target lines 375-381, 658-659, 687).
+ * A tile that isn't built ([enabled] = false) is faded to 40%, like a greyed-out chip, and ignores taps.
  */
 @Composable
 private fun TopicTile(
@@ -167,15 +173,20 @@ private fun TopicTile(
     iconBackground: Color,
     iconColor: Color,
     modifier: Modifier,
+    enabled: Boolean = true,
+    /** 같이 켜기's line is orange 800 in the target ("P 정차 중 · 포인트"). */
+    metaColor: Color = CdColors.Gray600,
+    metaWeight: FontWeight = FontWeight.Normal,
     onClick: () -> Unit = {},
 ) {
     val shape = RoundedCornerShape(22.dp)
     Column(
         modifier = modifier
             .height(148.dp)
+            .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(CdColors.White)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
@@ -187,7 +198,7 @@ private fun TopicTile(
             Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(24.dp))
         }
         Text(name, color = CdColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(meta, color = CdColors.Gray600, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(meta, color = metaColor, fontSize = 12.sp, fontWeight = metaWeight, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

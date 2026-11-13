@@ -62,6 +62,8 @@ object CdIcons {
         strokeWidth = 2.2f,
         "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
     )
+    /** 같이 켜기 (a power button): board 08's tile, target line 657 (`together`). */
+    val Power = lineIcon("Power", strokeWidth = 2.2f, "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04")
     /**
      * A magnifier (board 02's search box, target line 156: 26 px, blue). The design's
      * `<circle cx="11" cy="11" r="7">` is written here as two half circles.

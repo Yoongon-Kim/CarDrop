@@ -141,14 +141,18 @@ fun CarDropApp(container: AppContainer) {
             is Screen.FuelThem -> driveScreen(
                 FuelInvite(screen.dropId, crewVm::carName, container.voice) { navigator.switchTab(Screen.Drive) },
             )
-            Screen.Inbox -> InboxScreen(crewVm) { drop ->
-                navigator.go(
-                    when {
-                        drop.isDecided -> Screen.Decided(drop.id)
-                        drop.kind == DropKind.DECISION -> Screen.Vote(drop.id)
-                        else -> Screen.Inbox
-                    },
-                )
+            // Board 07: a half sheet over board 04, so the drive screen stays behind it.
+            Screen.Inbox -> Box(modifier = Modifier.fillMaxSize()) {
+                driveScreen(null)
+                InboxScreen(crewVm, onClose = navigator::back) { drop ->
+                    navigator.go(
+                        when {
+                            drop.isDecided -> Screen.Decided(drop.id)
+                            drop.kind == DropKind.DECISION -> Screen.Vote(drop.id)
+                            else -> Screen.Inbox
+                        },
+                    )
+                }
             }
             Screen.DropSend -> DropSendScreen(
                 vm = crewVm,

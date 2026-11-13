@@ -108,7 +108,7 @@ private val railItems = listOf(
 )
 
 private fun Screen.railGroup(): Screen = when (this) {
-    Screen.Drive, Screen.FuelMe, is Screen.FuelThem, is Screen.Decided -> Screen.Drive
+    Screen.Drive, Screen.QuickDropEdit, Screen.FuelMe, is Screen.FuelThem, is Screen.Decided -> Screen.Drive
     Screen.DropSend, is Screen.Shout, is Screen.AiRecommend, is Screen.Vote -> Screen.DropSend
     Screen.CreateCrew, Screen.DestinationSearch, Screen.JoinCrew -> Screen.CreateCrew
     Screen.Games -> Screen.Games

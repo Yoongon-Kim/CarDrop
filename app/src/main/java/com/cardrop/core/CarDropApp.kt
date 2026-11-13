@@ -48,6 +48,7 @@ import com.cardrop.drive.DriveMainScreen
 import com.cardrop.drive.DriveViewModel
 import com.cardrop.drive.FuelMeScreen
 import com.cardrop.drive.FuelInvite
+import com.cardrop.drive.QuickDropEditScreen
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
 import com.cardrop.drop.InboxScreen
@@ -108,9 +109,12 @@ fun CarDropApp(container: AppContainer) {
     ) {
         // Board 04; with an invite it is board 06 (another car's fuel invitation as a banner on it).
         val driveScreen: @Composable (FuelInvite?) -> Unit = { invite ->
+            val quickDrops by container.quickDrops.chosen.collectAsStateWithLifecycle()
             DriveMainScreen(
                 vm = driveVm,
-                onQuickDrop = { topic -> navigator.go(Screen.AiRecommend(topic)) },
+                quickDrops = quickDrops,
+                onQuickDrop = { drop -> drop.screen()?.let(navigator::go) },
+                onEditQuickDrops = { navigator.go(Screen.QuickDropEdit) },
                 onOpenDropSend = { navigator.go(Screen.DropSend) },
                 onOpenInbox = { navigator.go(Screen.Inbox) },
                 onFuelWarning = { navigator.go(Screen.FuelMe) },
@@ -120,7 +124,6 @@ fun CarDropApp(container: AppContainer) {
                         onMessage = { text -> navigator.go(Screen.Shout(text)) },
                     )
                 },
-                onShout = { navigator.go(Screen.Shout()) },
                 invite = invite,
             )
         }
@@ -153,6 +156,15 @@ fun CarDropApp(container: AppContainer) {
                 navigator.switchTab(Screen.Drive)
             }
             Screen.Drive -> driveScreen(null)
+            // 04's 퀵 드랍 편집: 홈에 저장하기 keeps the new slots on this device, then back to 04.
+            Screen.QuickDropEdit -> QuickDropEditScreen(
+                saved = container.quickDrops.chosen.value,
+                onCancel = navigator::back,
+                onSave = { drops ->
+                    container.quickDrops.save(drops)
+                    navigator.back()
+                },
+            )
             Screen.FuelMe -> FuelMeScreen(driveVm, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)
             is Screen.FuelThem -> driveScreen(
                 FuelInvite(screen.dropId, crewVm::carName, container.voice) { navigator.switchTab(Screen.Drive) },

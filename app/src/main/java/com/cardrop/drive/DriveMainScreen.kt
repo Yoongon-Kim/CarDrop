@@ -15,37 +15,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
-import com.cardrop.core.model.DropTopic
 import com.cardrop.core.text.particle
+import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
+import com.cardrop.core.ui.ChipStyle
 import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
+import com.cardrop.core.ui.dashedBorder
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.core.ui.theme.TightLetterSpacing
 
 /**
- * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick drops and the
+ * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick-drop slots and the
  * big "드랍하기" button (its mic suggests a drop by voice). Owner: Member B (now the lead).
+ * The slots hold the driver's [quickDrops] in order (the live canvas's 퀵 드랍 with 편집); the rest are dashed
+ * "추가" slots. 편집 and an empty slot open the editor ([onEditQuickDrops]).
  * With an [invite] it is board 06: another car's fuel invitation shows as a banner under the road.
  */
 @Composable
 fun DriveMainScreen(
     vm: DriveViewModel,
-    onQuickDrop: (DropTopic) -> Unit,
+    quickDrops: List<QuickDrop>,
+    onQuickDrop: (QuickDrop) -> Unit,
+    onEditQuickDrops: () -> Unit,
     onOpenDropSend: () -> Unit,
     onOpenInbox: () -> Unit,
     onFuelWarning: () -> Unit,
     onSpeak: () -> Unit,
-    onShout: () -> Unit = {},
     invite: FuelInvite? = null,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
@@ -101,12 +106,33 @@ fun DriveMainScreen(
 
         // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+            // The label with the white 편집 button at the right (canvas line 303: 34 high, corners 10, 13/700).
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("퀵 드랍 · 누르면 바로 크루 전체에", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+                CdChip(
+                    "편집",
+                    onClick = onEditQuickDrops,
+                    style = ChipStyle.White,
+                    height = 34.dp,
+                    radius = 10.dp,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                QuickTile("휴게소", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.REST) }
-                QuickTile("식사", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FOOD) }
-                QuickTile("주유", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, hasCrew, Modifier.weight(1f)) { onQuickDrop(DropTopic.FUEL) }
-                QuickTile("한마디", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, hasCrew, Modifier.weight(1f), onShout)
+                repeat(QuickDropRules.SLOTS) { i ->
+                    val drop = quickDrops.getOrNull(i)
+                    if (drop != null) {
+                        QuickTile(drop, enabled = hasCrew, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
+                    } else {
+                        EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
+                    }
+                }
             }
         }
     }
@@ -165,17 +191,12 @@ private fun InboxButton(waiting: Int, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** One of the four quick drops: an icon in its colour and a label, on a white tile. */
+/**
+ * A slot with the driver's quick drop: its icon in its colour and its name, on a white tile 72 high with corners 20
+ * (canvas `.cd-quick`). Without a crew it fades and can't be tapped (there is no one to send to).
+ */
 @Composable
-private fun QuickTile(
-    label: String,
-    icon: ImageVector,
-    iconBackground: Color,
-    iconColor: Color,
-    enabled: Boolean,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
+private fun QuickTile(drop: QuickDrop, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Row(
         modifier = modifier
@@ -184,17 +205,37 @@ private fun QuickTile(
             .clip(shape)
             .background(CdColors.White)
             .border(2.dp, CdColors.White, shape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+    ) {
+        QuickDropIcon(drop, size = 38.dp, iconSize = 20.dp)
+        Text(drop.label, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/**
+ * An empty slot (canvas `.cd-quick.is-empty`): no fill, a 2 px dashed grey edge, a grey circle with "+" and
+ * "추가". It opens the editor, with or without a crew.
+ */
+@Composable
+private fun EmptyQuickSlot(modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier = modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .dashedBorder(CdColors.Gray400, radius = 20.dp, width = 2.dp, dash = 6.dp, gap = 4.dp)
+            .clickable(role = Role.Button, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
     ) {
         Box(
-            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(iconBackground),
+            modifier = Modifier.size(38.dp).clip(CircleShape).background(CdColors.Gray200),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+            Icon(CdIcons.Plus, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(20.dp))
         }
-        Text(label, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+        Text("추가", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
     }
 }
 

@@ -54,6 +54,20 @@ object CdIcons {
     )
     /** 한마디 (a speech bubble). */
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
+    /** 노래 (a note): the song drop, cut this week, greyed out in the quick-drop editor (canvas `song`). */
+    val Music = lineIcon(
+        "Music",
+        strokeWidth = 2.2f,
+        "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+    )
+    /** 같이 켜기 (a power button): cut this week, greyed out in the quick-drop editor (canvas `together`). */
+    val Power = lineIcon("Power", strokeWidth = 2.2f, "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04")
+    /** 운전 기록 (a trophy, the canvas's 기록): the safety race, cut, greyed out in the quick-drop editor (`score`). */
+    val Trophy = lineIcon(
+        "Trophy",
+        strokeWidth = 2.2f,
+        "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3",
+    )
     /**
      * A magnifier (board 02's search box, target line 156: 26 px, blue). The design's
      * `<circle cx="11" cy="11" r="7">` is written here as two half circles.

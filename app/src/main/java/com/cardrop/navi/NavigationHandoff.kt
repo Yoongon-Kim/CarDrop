@@ -2,6 +2,7 @@ package com.cardrop.navi
 
 import com.cardrop.core.model.NavRoute
 import com.cardrop.core.model.Place
+import com.cardrop.drive.TripDecisions
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -19,6 +20,11 @@ import kotlinx.coroutines.flow.StateFlow
  * - [launch] opens the map app. Call it only from a button the driver pressed.
  */
 interface NavigationHandoff {
+    val decisions: TripDecisions
+
+    /** End the current trip without opening another app. */
+    fun clear()
+
     /** The route the crew agreed on, and the last thing that happened to it. */
     val route: StateFlow<NavRoute>
 

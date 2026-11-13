@@ -35,7 +35,8 @@ class FakeVehicleRepository : VehicleRepository {
 
     fun setFuelPercent(percent: Int) {
         // Roughly 6.5 km per percent, so 12% shows about 85 km like board 05.
-        _snapshot.update { it.copy(fuelPercent = percent, rangeKm = percent * 6.5f) }
+        val value = percent.coerceIn(0, 100)
+        _snapshot.update { it.copy(fuelPercent = value, rangeKm = value * 6.5f) }
     }
 
     fun setGear(gear: Gear) {

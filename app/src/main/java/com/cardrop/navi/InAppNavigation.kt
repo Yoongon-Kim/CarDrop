@@ -5,6 +5,7 @@ import com.cardrop.core.model.NavRoute
 import com.cardrop.core.model.Place
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RoutePoint
+import com.cardrop.drive.TripDecisions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -49,6 +50,7 @@ class InAppNavigation(
     private val router: RouteProvider,
     private val now: () -> Long = System::currentTimeMillis,
 ) : NavigationHandoff {
+    override val decisions = TripDecisions()
 
     private val _route = MutableStateFlow(NavRoute())
     override val route: StateFlow<NavRoute> = _route
@@ -90,10 +92,28 @@ class InAppNavigation(
     }
 
     override fun launch(): Boolean {
+        if (_route.value.destination == null) return false
         // Already guiding (e.g. "지금 안내 시작" after a vote): keep the message about what changed.
         if (!_guiding.value) _route.update { it.copy(lastAction = "안내를 시작했어요") }
         _guiding.value = true
-        return _route.value.destination != null
+        return true
+    }
+
+    override fun clear() {
+        routing?.cancel()
+        routing = null
+        _route.value = NavRoute()
+        _guiding.value = false
+        tracker.reset()
+        _state.value = NavigatorState(fix = _state.value.fix)
+    }
+
+    /** Check actual driving distance to a station, including ramps and detours. */
+    suspend fun fuelStopDistanceKm(place: Place): Double {
+        val fix = _state.value.fix ?: error("GPS 위치를 기다리고 있어요")
+        check(now() - fix.timeMillis in 0..10_000) { "GPS 위치를 다시 확인해 주세요" }
+        val stationRoute = router.route(GeoPoint(fix.lat, fix.lng), fix.bearing, place, null)
+        return stationRoute.totalKm
     }
 
     /** Places from [pool] near the route and at least [marginKm] ahead, nearest first; null without a route. */
@@ -137,7 +157,9 @@ class InAppNavigation(
                 requestRoute()
             }
             justArrived -> _route.update { it.copy(lastAction = "목적지에 도착했어요") }
-            update.needsReroute && now() - lastRequestMillis > REROUTE_GAP_MILLIS -> requestRoute(isReroute = true)
+            routing?.isActive != true &&
+                ((update.needsReroute && now() - lastRequestMillis > REROUTE_GAP_MILLIS) ||
+                    (_state.value.status == NavStatus.ERROR && now() - lastRequestMillis > RETRY_MILLIS)) -> requestRoute(isReroute = true)
         }
     }
 

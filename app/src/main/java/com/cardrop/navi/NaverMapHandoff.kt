@@ -7,6 +7,7 @@ import android.net.Uri
 import android.util.Log
 import com.cardrop.core.model.NavRoute
 import com.cardrop.core.model.Place
+import com.cardrop.drive.TripDecisions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -25,6 +26,8 @@ import java.util.Locale
  * com.nhn.android.nmap and honours this deep link. Test on the emulator or a car before relying on it.
  */
 class NaverMapHandoff(private val context: Context) : NavigationHandoff {
+    override val decisions = TripDecisions()
+    override fun clear() { _route.value = NavRoute() }
 
     private val _route = MutableStateFlow(NavRoute())
     override val route: StateFlow<NavRoute> = _route
@@ -50,6 +53,10 @@ class NaverMapHandoff(private val context: Context) : NavigationHandoff {
         } catch (e: ActivityNotFoundException) {
             Log.w(TAG, "Naver Map is not installed", e)
             _route.update { it.copy(lastAction = "네이버 지도가 없어요 · Pleos 앱 마켓에서 설치해 주세요") }
+            false
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Navigation intent was rejected", e)
+            _route.update { it.copy(lastAction = "네이버 지도를 열 수 없어요 · 앱 권한을 확인해 주세요") }
             false
         }
     }

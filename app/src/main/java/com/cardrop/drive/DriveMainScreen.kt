@@ -257,7 +257,7 @@ private fun EmptyQuickSlot(modifier: Modifier, onClick: () -> Unit) {
             modifier = Modifier.size(38.dp).clip(CircleShape).background(CdColors.Gray200),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(CdIcons.Plus, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(20.dp))
+            Icon(CdIcons.PlusThin, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(20.dp))
         }
         Text("추가", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
     }

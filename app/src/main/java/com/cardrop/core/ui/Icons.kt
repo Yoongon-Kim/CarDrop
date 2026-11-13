@@ -17,6 +17,8 @@ object CdIcons {
     val Back = lineIcon("Back", strokeWidth = 2.4f, "m15 18-6-6 6-6")
     val Close = lineIcon("Close", strokeWidth = 2.4f, "M18 6 6 18M6 6l12 12")
     val Plus = lineIcon("Plus", strokeWidth = 2.6f, "M12 5v14M5 12h14")
+    /** A thinner "+": board 04's empty quick-drop slots (canvas `ICON.add`, 2.2 like the other quick-drop icons). */
+    val PlusThin = lineIcon("PlusThin", strokeWidth = 2.2f, "M12 5v14M5 12h14")
     val Pencil = lineIcon("Pencil", strokeWidth = 2.2f, "m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4")
     val Mic = lineIcon(
         "Mic",

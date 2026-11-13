@@ -309,8 +309,15 @@ internal fun FuelInviteBanner(vm: DriveViewModel, invite: FuelInvite, drop: Drop
                     if (it == DriveVoiceCommand.JOIN) join() else pass()
                 }
             }
-            PrimaryButton("가던 길 갈래요", pass, enabled = ready, containerColor = CdColors.White, contentColor = CdColors.Ink2)
-            PrimaryButton("같이 갈래요", join, enabled = ready, containerColor = CdColors.Orange)
+            // The design's buttons (249-250): 56 high, corners 16, sides 16 / 20, text 15 / 16 px.
+            PrimaryButton(
+                "가던 길 갈래요", pass, enabled = ready, containerColor = CdColors.White, contentColor = CdColors.Ink2,
+                height = 56.dp, radius = 16.dp, fontSize = 15.sp, horizontalPadding = 16.dp,
+            )
+            PrimaryButton(
+                "같이 갈래요", join, enabled = ready, containerColor = CdColors.Orange,
+                height = 56.dp, radius = 16.dp, fontSize = 16.sp, horizontalPadding = 20.dp,
+            )
         }
     }
 }

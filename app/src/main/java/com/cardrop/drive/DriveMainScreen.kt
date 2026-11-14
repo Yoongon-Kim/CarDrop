@@ -38,11 +38,11 @@ import com.cardrop.crew.JoinRules
 import kotlinx.coroutines.delay
 
 /**
- * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick-drop slots and the
+ * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, the quick drops and the
  * big "드랍하기" button (its mic suggests a drop by voice). Owner: Member B (now the lead).
- * The slots hold the driver's [quickDrops] in order (the live canvas's 퀵 드랍 with 편집); the rest are dashed
- * "추가" slots. 편집 and an empty slot open the editor ([onEditQuickDrops]). Under the four slots a second row
- * holds the fifth drop on and one more dashed "추가" slot, so the driver can keep more than four.
+ * The quick drops are the driver's [quickDrops] in order (the live canvas's 퀵 드랍 with 편집), two to a row so the
+ * names are big enough to read (Member A, 2026-11-15): a 2 x 2, the fifth drop on in rows under it, and one dashed
+ * "+ 추가" tile after the last drop while one is left to pick. 편집 and 추가 open the editor ([onEditQuickDrops]).
  * With an [invite] it is board 06: another car's fuel invitation shows as a banner under the road.
  */
 @Composable
@@ -140,34 +140,25 @@ fun DriveMainScreen(
                     "편집",
                     onClick = onEditQuickDrops,
                     style = ChipStyle.White,
-                    height = 34.dp,
-                    radius = 10.dp,
-                    fontSize = 13.sp,
+                    height = 40.dp,
+                    radius = 12.dp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                repeat(QuickDropRules.SLOTS) { i ->
-                    val drop = quickDrops.getOrNull(i)
-                    if (drop != null) {
-                        QuickTile(drop, enabled = canDrop, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
-                    } else {
-                        EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
-                    }
-                }
-            }
-            // Under the four: the driver's fifth drop on, then one dashed "+" slot to add another (it opens the
-            // editor). Each takes a quarter of the width, like the slots above; the rest of the row stays empty.
-            val more = QuickDropRules.secondRow(quickDrops)
-            val addSlot = QuickDropRules.showsAddSlot(quickDrops)
-            if (more.isNotEmpty() || addSlot) {
+            // Two tiles to a row, each half the width; null = the one "+ 추가" tile. A row with one tile keeps the
+            // other half empty, so every tile has the same size.
+            QuickDropRules.gridRows(quickDrops).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    more.forEach { drop ->
-                        QuickTile(drop, enabled = canDrop, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
+                    row.forEach { drop ->
+                        if (drop != null) {
+                            QuickTile(drop, enabled = canDrop, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
+                        } else {
+                            EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
+                        }
                     }
-                    if (addSlot) EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
-                    repeat(QuickDropRules.SLOTS - more.size - (if (addSlot) 1 else 0)) { Spacer(Modifier.weight(1f)) }
+                    repeat(QuickDropRules.COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -229,15 +220,15 @@ private fun InboxButton(waiting: Int, enabled: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * A slot with the driver's quick drop: its icon in its colour and its name, on a white tile 72 high with corners 20
- * (canvas `.cd-quick`). Like 드랍하기, it fades and can't be tapped until the trip starts (or without a crew).
+ * A slot with the driver's quick drop: its icon in its colour and its name, on a white tile with corners 20
+ * (canvas `.cd-quick`). Two to a row, so it is bigger than the canvas's 72: 88 high, a 46 px icon and 19 sp text ([QuickLabelSize]). Like 드랍하기, it fades and can't be tapped until the trip starts (or without a crew).
  */
 @Composable
 private fun QuickTile(drop: QuickDrop, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Row(
         modifier = modifier
-            .height(72.dp)
+            .height(QuickTileHeight)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(CdColors.White)
@@ -246,10 +237,27 @@ private fun QuickTile(drop: QuickDrop, enabled: Boolean, modifier: Modifier, onC
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
     ) {
-        QuickDropIcon(drop, size = 38.dp, iconSize = 20.dp)
-        Text(drop.label, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        QuickDropIcon(drop, size = 46.dp, iconSize = 24.dp)
+        Text(
+            drop.label,
+            fontSize = QuickLabelSize,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = TightLetterSpacing,
+            color = CdColors.Ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
+
+/** Board 04's quick-drop tiles, two to a row (the canvas's four to a row are 72 high). */
+private val QuickTileHeight = 88.dp
+
+/**
+ * Their names: bigger than the canvas's 16 so they can be read from the seat, but Bold (700) with the headers' tight
+ * spacing, so they sit with the rest of the screen (22 / 800 stood out next to the 28 / 800 title).
+ */
+private val QuickLabelSize = 19.sp
 
 /**
  * An empty slot (canvas `.cd-quick.is-empty`): no fill, a 2 px dashed grey edge, a grey circle with "+" and
@@ -259,7 +267,7 @@ private fun QuickTile(drop: QuickDrop, enabled: Boolean, modifier: Modifier, onC
 private fun EmptyQuickSlot(modifier: Modifier, onClick: () -> Unit) {
     Row(
         modifier = modifier
-            .height(72.dp)
+            .height(QuickTileHeight)
             .clip(RoundedCornerShape(20.dp))
             .dashedBorder(CdColors.Gray400, radius = 20.dp, width = 2.dp, dash = 6.dp, gap = 4.dp)
             .clickable(role = Role.Button, onClick = onClick),
@@ -267,12 +275,12 @@ private fun EmptyQuickSlot(modifier: Modifier, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
     ) {
         Box(
-            modifier = Modifier.size(38.dp).clip(CircleShape).background(CdColors.Gray200),
+            modifier = Modifier.size(46.dp).clip(CircleShape).background(CdColors.Gray200),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(CdIcons.PlusThin, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(20.dp))
+            Icon(CdIcons.PlusThin, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(24.dp))
         }
-        Text("추가", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+        Text("추가", fontSize = QuickLabelSize, fontWeight = FontWeight.Bold, letterSpacing = TightLetterSpacing, color = CdColors.Gray600)
     }
 }
 

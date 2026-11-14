@@ -79,9 +79,21 @@ class QuickDropsTest {
         val five = four + INBOX
         assertEquals(Pick.Changed(five), QuickDropRules.pick(four, INBOX))
         assertEquals(Pick.Changed(listOf(REST, FOOD, SHOUT)), QuickDropRules.pick(four, FUEL))
-        // Board 04: the first four in the slots, the fifth under them.
-        assertEquals(emptyList<QuickDrop>(), QuickDropRules.secondRow(four))
-        assertEquals(listOf(INBOX), QuickDropRules.secondRow(five))
+        // Board 04, two to a row: the first four in the 2 x 2, the fifth under it with 추가 (null) next to it.
+        assertEquals(listOf(listOf(REST, FOOD), listOf(FUEL, SHOUT), listOf(null)), QuickDropRules.gridRows(four))
+        assertEquals(listOf(listOf(REST, FOOD), listOf(FUEL, SHOUT), listOf(INBOX, null)), QuickDropRules.gridRows(five))
+    }
+
+    @Test
+    fun theDefaultsFillTheTwoByTwoWithOneAddTile() {
+        // 휴게소 · 주유 / 운전 기록 · 추가
+        assertEquals(listOf(listOf(REST, FUEL), listOf(SCORE, null)), QuickDropRules.gridRows(QuickDropRules.DEFAULTS))
+        // Only one 추가, however few drops: an emptied list shows just 추가.
+        assertEquals(listOf(listOf(REST, null)), QuickDropRules.gridRows(listOf(REST)))
+        assertEquals(listOf(listOf(null)), QuickDropRules.gridRows(emptyList()))
+        // Every drop picked: no 추가 at all.
+        val all = QuickDrop.entries.filter { it.available }
+        assertEquals(all.chunked(2), QuickDropRules.gridRows(all))
     }
 
     @Test

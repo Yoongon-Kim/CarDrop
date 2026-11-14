@@ -13,8 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -65,12 +63,12 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onWeek: () -> Unit
             }
         } else {
             SafetyRoad(ranked)
-            // The right column ends where the ranking card ends (Member A, 2026-11-15): it takes that card's height, and
-            // "이번 주 내 기록" fills what the AI card leaves.
-            var rankHeight by remember { mutableStateOf(0) }
-            val density = LocalDensity.current
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                CdCard(Modifier.weight(1.14f).onSizeChanged { rankHeight = it.height }, gap = 8.dp, contentPadding = PaddingValues(18.dp)) {
+            // The two columns end level (Member A, 2026-11-15): the row is as tall as the taller one (IntrinsicSize.Min),
+            // both fill it, and "이번 주 내 기록" fills what the AI card leaves. The ranking has a row per car, so with few
+            // cars the right column is the taller one; it used to take the ranking card's height then, which cut
+            // 이번 주 내 기록 short (lead, 2026-11-15).
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                CdCard(Modifier.weight(1.14f).fillMaxHeight(), gap = 8.dp, contentPadding = PaddingValues(18.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         SectionLabel("실시간 잠정 순위")
                         Text("${time(now)} · 매초 갱신", fontSize = 12.sp, color = CdColors.Gray500)
@@ -78,17 +76,14 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onWeek: () -> Unit
                     ranked.forEach { SafetyCarRow(it, now, safety.demo) }
                     Text("급가속 · 급정거 기준 · 동점은 공동 순위\n확정 순위는 도착 후 주행 1분 · 속도 측정 95% 기준을 적용해요", fontSize = 11.sp, color = CdColors.Gray500)
                 }
-                Column(
-                    Modifier.weight(1f).then(if (rankHeight > 0) Modifier.height(with(density) { rankHeight.toDp() }) else Modifier),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     SafetyEncouragementCard(safety)
                     WeekCard(
                         trips = weekTrips(history, safety.demo, now),
                         demo = safety.demo,
                         parked = parked,
                         onOpen = onWeek,
-                        modifier = Modifier.fillMaxWidth().then(if (rankHeight > 0) Modifier.weight(1f) else Modifier),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                     )
                 }
             }

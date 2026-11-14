@@ -42,6 +42,16 @@ sealed interface VotePick {
         Pass -> "이번엔 안 들러요" to "우리 차는 경로를 유지하고 결과만 알려드려요"
     }
 
+    /**
+     * What the voice says once 응답하기 sent this pick: board 11 then goes back to 홈 right away, so this tells the
+     * driver which answer went out, e.g. "강문 덴켄에 투표했어요".
+     */
+    fun answeredLine(candidates: List<Candidate>): String = when (this) {
+        is Place -> "${candidates.firstOrNull { it.id == candidateId }?.place?.name ?: "고른 곳"}에 투표했어요"
+        Anywhere -> "아무 데나 좋다고 답했어요"
+        Pass -> "이번엔 패스했어요. 우리 차는 가던 길로 가요"
+    }
+
     companion object {
         /** What the screen starts with: this car's vote if it sent one, otherwise place 1 (as the target does). */
         fun from(vote: String?, candidates: List<Candidate>): VotePick = when {

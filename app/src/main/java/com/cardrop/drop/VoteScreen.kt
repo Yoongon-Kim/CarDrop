@@ -76,14 +76,15 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Board 11 투표 (받는 차) · Owner: Member A.
- * This car picks a place, 아무 데나 좋아 or 난 패스 ([VotePick]), and 응답하기 sends it. When the vote ends, the app
- * moves to board 14 on its own (see DropRouting), except for a car that passed: its route doesn't change, so it
- * stays here, and the button becomes 결과 보기 ([onOpenResult], board 14).
+ * This car picks a place, 아무 데나 좋아 or 난 패스 ([VotePick]), and 응답하기 sends it and goes back to 홈 right away
+ * ([onClose]; the voice says what was sent, lead, 2026-11-15). When the vote ends, the app moves to board 14 on its own
+ * (see DropRouting), except for a car that passed: its route doesn't change. Opened again (from the inbox) after the
+ * vote ended, the button is 결과 보기 ([onOpenResult], board 14).
  * [placeTimes] (AppContainer.placeTimes) says how far each place is from this car and how long it takes.
  * [onPass] makes this car skip the stop, as board 14's "우리 차는 안 들르기" does: a pass keeps its route.
  *
- * A destination proposal (one place, 찬성 / 반대) has its own screen here: [ProposalVoteScreen]. [onOpenVote] opens
- * the counter-proposal it can send, [onClose] goes back to 홈 after a proposal was turned down.
+ * A destination proposal (one place, 찬성 / 반대) has its own screen here: [ProposalVoteScreen]. It goes back to 홈
+ * ([onClose]) after this car's answer, after the counter-proposal it can send, and with 닫기 after it was turned down.
  */
 @Composable
 fun VoteScreen(
@@ -92,7 +93,6 @@ fun VoteScreen(
     placeTimes: StateFlow<PlaceTimes>,
     onPass: (dropId: String) -> Unit,
     onOpenResult: (dropId: String) -> Unit,
-    onOpenVote: (dropId: String) -> Unit,
     onClose: () -> Unit,
 ) {
     val drops by vm.drops.collectAsStateWithLifecycle()
@@ -101,7 +101,7 @@ fun VoteScreen(
     val drop = drops.firstOrNull { it.id == dropId } ?: return
     if (VoteRules.isProposal(drop)) {
         // One new destination to say 찬성 or 반대 to, not places to choose between.
-        ProposalVoteScreen(vm, drop, onOpenResult = onOpenResult, onOpenVote = onOpenVote, onClose = onClose)
+        ProposalVoteScreen(vm, drop, onOpenResult = onOpenResult, onClose = onClose)
         return
     }
     val cars = crew?.cars.orEmpty()
@@ -149,7 +149,9 @@ fun VoteScreen(
                         // A pass skips the stop first, so the stop never reaches this car's route, even if this
                         // answer is the last one and ends the vote at once.
                         if (pick == VotePick.Pass) onPass(dropId)
-                        vm.vote(dropId, vote)
+                        vm.vote(dropId, vote, said = pick.answeredLine(drop.candidates))
+                        // Back to driving; board 14 opens over it once the vote ends (DropRouting).
+                        onClose()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

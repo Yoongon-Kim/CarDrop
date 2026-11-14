@@ -49,17 +49,17 @@ import kotlinx.coroutines.delay
  * Board 11 for a destination proposal ([VoteRules.isProposal]) · Owner: Member A.
  *
  * Another car asked "속초 해수욕장으로 목적지를 바꿀까요?". This car answers 찬성, 반대, or 다른 목적지 제안하기,
- * which says 반대 here and opens the same search the proposer used ([DestinationProposalPanel]); the new proposal
- * then opens with [onOpenVote]. One 반대 turns the proposal down at once and the destination stays. With no 반대
- * by the end, the crew's destination changes and board 14 opens on its own (DropRouting), as for any vote.
- * The car that sent it sees the same screen without the buttons: it said 찬성 by proposing.
+ * which says 반대 here and opens the same search the proposer used ([DestinationProposalPanel]). One 반대 turns the
+ * proposal down at once and the destination stays. With no 반대 by the end, the crew's destination changes and board
+ * 14 opens on its own (DropRouting), as for any vote. After this car's answer or its new proposal the screen goes back
+ * to 홈 right away ([onClose]; the voice says what went out, lead, 2026-11-15).
+ * The car that sent it sees the same screen without the buttons (from the inbox): it said 찬성 by proposing.
  */
 @Composable
 fun ProposalVoteScreen(
     vm: CrewViewModel,
     drop: Drop,
     onOpenResult: (dropId: String) -> Unit,
-    onOpenVote: (dropId: String) -> Unit,
     onClose: () -> Unit,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
@@ -89,7 +89,7 @@ fun ProposalVoteScreen(
             recipients = crew?.recipientLabel(toCarIds, me) ?: "크루 전체",
             onBack = { countering = false },
             onAskAi = null,
-            onSend = { other -> vm.proposeDestination(other, toCarIds, against = drop) { onOpenVote(it.id) } },
+            onSend = { other -> vm.proposeDestination(other, toCarIds, against = drop) { onClose() } },
             answering = place, // proposing the same place again would be no other destination
         )
         return
@@ -104,7 +104,10 @@ fun ProposalVoteScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     PrimaryButton(
                         "반대",
-                        onClick = { vm.vote(drop.id, VoteRules.NO) },
+                        onClick = {
+                            vm.vote(drop.id, VoteRules.NO, said = "반대했어요. 목적지는 그대로예요")
+                            onClose()
+                        },
                         modifier = Modifier.weight(1f),
                         containerColor = CdColors.RedLight,
                         contentColor = CdColors.Red,
@@ -114,7 +117,10 @@ fun ProposalVoteScreen(
                     )
                     PrimaryButton(
                         "찬성",
-                        onClick = { vm.vote(drop.id, drop.candidates.first().id) },
+                        onClick = {
+                            vm.vote(drop.id, drop.candidates.first().id, said = "찬성했어요")
+                            onClose()
+                        },
                         modifier = Modifier.weight(1f),
                         height = 72.dp,
                         radius = 22.dp,

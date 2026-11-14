@@ -11,7 +11,9 @@ import com.cardrop.core.text.withRo
 import com.cardrop.crew.CrewRepository
 import com.cardrop.drive.TripDecisions
 import com.cardrop.drop.VoteRules
+import com.cardrop.drop.voteTag
 import com.cardrop.voice.VoiceService
+import kotlinx.coroutines.delay
 
 /**
  * Owner: lead.
@@ -23,6 +25,8 @@ import com.cardrop.voice.VoiceService
  * - any other DECISION drop -> board 11 (vote), announced by voice
  * - a vote that just ended -> board 14 (decision), only if it changed this car's route ([DecidedScreenPicker])
  * - a destination proposal that was just turned down -> said aloud ("…로 바꾸자는 제안은 반대가 있어서…")
+ * - a vote this car hasn't answered, 30 s before it ends -> said aloud ([reminderLine]): no answer counts as place 1,
+ *   and its board 14 would otherwise come as a surprise (lead, 2026-11-15)
  *
  * [memory] says what was already opened. It comes from AppContainer, so when an activity restart starts
  * this effect again, old drops are not opened a second time or said aloud again.
@@ -62,7 +66,33 @@ fun DropRoutingEffect(
             }
         }
     }
+    // The reminders: the time left counts down without any new drop, so this looks every second.
+    LaunchedEffect(crew, memory) {
+        while (true) {
+            val now = System.currentTimeMillis()
+            for (drop in memory.dueReminders(crew.drops.value, now)) voice.speak(reminderLine(drop, now))
+            delay(1_000)
+        }
+    }
 }
+
+/**
+ * What the voice says when a vote this car hasn't answered is about to end: "카페 투표가 30초 남았어요. 답이 없으면 1번
+ * 강문 스타벅스에 투표한 걸로 봐요"; for a destination proposal "속초 해수욕장으로 바꾸자는 제안이 30초 남았어요. 답이 없으면
+ * 찬성으로 봐요". Pure Kotlin, unit tested (DropRoutingMemoryTest).
+ */
+internal fun reminderLine(drop: Drop, nowMillis: Long): String {
+    val seconds = ((drop.deadlineMillis - nowMillis + 999) / 1000).coerceAtLeast(1)
+    val first = drop.candidates.firstOrNull()?.place?.name.orEmpty()
+    return if (VoteRules.isProposal(drop)) {
+        "${first.withRo()} 바꾸자는 제안이 ${seconds}초 남았어요. 답이 없으면 찬성으로 봐요"
+    } else {
+        "${drop.topic.voteTag()} 투표가 ${seconds}초 남았어요. 답이 없으면 1번 ${first}에 투표한 걸로 봐요"
+    }
+}
+
+/** How long before a vote ends the voice reminds a car that hasn't answered it ([DropRoutingMemory.dueReminders]). */
+internal const val REMIND_BEFORE_MILLIS = 30_000L
 
 /**
  * The screen a drop opens from the inbox (board 07): the same screens as when it arrives.
@@ -116,6 +146,23 @@ class DropRoutingMemory(private val myCarId: () -> String, isSkipped: (dropId: S
         val rejected = proposals.filter { VoteRules.rejected(it) && openProposals.remove(it.id) && !VoteRules.saidNo(it, me) }
         proposals.filter { !it.isDecided }.forEach { openProposals += it.id }
         return rejected
+    }
+
+    /** Votes this car was already reminded of. */
+    private val reminded = mutableSetOf<String>()
+
+    /**
+     * The votes this car still has to answer that end within [REMIND_BEFORE_MILLIS], each once (the voice reminds the
+     * driver, [reminderLine]). Not a fuel invite (no answer there means not going along, and the car that sent it never
+     * votes) nor this car's own proposal (sending it said 찬성).
+     */
+    fun dueReminders(drops: List<Drop>, nowMillis: Long): List<Drop> {
+        val me = myCarId()
+        return drops.filter {
+            it.isFor(me) && it.kind == DropKind.DECISION && it.topic != DropTopic.FUEL && !it.isDecided &&
+                it.candidates.isNotEmpty() && me !in it.votes && !(VoteRules.isProposal(it) && it.fromCarId == me) &&
+                it.deadlineMillis - nowMillis in 1..REMIND_BEFORE_MILLIS && reminded.add(it.id)
+        }
     }
 }
 

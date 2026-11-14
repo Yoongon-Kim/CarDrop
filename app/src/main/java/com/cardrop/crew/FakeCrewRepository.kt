@@ -168,25 +168,29 @@ class FakeCrewRepository(
         )
     }
 
-    /** 삼촌 votes for #1 after 3 s, 민지 for #2 after 5 s, 이모 never answers (default #1). */
+    /**
+     * 삼촌 votes after 3 s, 민지 after 5 s and 이모 after 8 s, each for its place in [botChoice]. [except] = the bot that
+     * sent the drop: it doesn't vote. 이모 used to never answer, so every vote waited for its 2 minutes (lead, 2026-11-15).
+     */
     private fun botsVote(dropId: String, except: String? = null) {
         scope.launch {
             delay(3_000)
-            botVote(dropId, DemoData.uncle, rank = 0, except)
+            botVote(dropId, DemoData.uncle, except)
             delay(2_000)
-            botVote(dropId, DemoData.minji, rank = 1, except)
+            botVote(dropId, DemoData.minji, except)
+            delay(3_000)
+            botVote(dropId, DemoData.aunt, except)
         }
     }
 
-    private fun botVote(dropId: String, bot: Car, rank: Int, except: String?) {
+    private fun botVote(dropId: String, bot: Car, except: String?) {
         // A bot left out of the trip (it hadn't joined by 출발) doesn't vote.
         val inTrip = _crew.value?.cars?.any { it.id == bot.id } == true
         if (bot.id == except || !inTrip) return
         updateDrop(dropId) { drop ->
             // A bot only answers drops that were sent to it.
             if (drop.isDecided || !drop.isFor(bot.id)) return@updateDrop drop
-            val candidate: Candidate = drop.candidates.getOrNull(rank) ?: drop.candidates.firstOrNull()
-                ?: return@updateDrop drop
+            val candidate = botChoice(bot, drop.candidates) ?: return@updateDrop drop
             drop.copy(votes = drop.votes + (bot.id to candidate.id))
         }
         closeFinishedVotes()
@@ -221,6 +225,17 @@ class FakeCrewRepository(
     }
 
     companion object {
+        /**
+         * The place [bot] votes for: 삼촌 place 1, 민지 place 2 (place 1 when there is one place), 이모 the last place.
+         * With the AI's three places each has one vote, so this car's answer decides, and the vote ends as soon as it
+         * answers. On a proposal (one place) all three say 찬성. Unit tested (FakeCrewRepositoryTest).
+         */
+        internal fun botChoice(bot: Car, candidates: List<Candidate>): Candidate? = when (bot.id) {
+            DemoData.minji.id -> candidates.getOrNull(1) ?: candidates.firstOrNull()
+            DemoData.aunt.id -> candidates.lastOrNull()
+            else -> candidates.firstOrNull()
+        }
+
         /** Ready-made drafts for the demo panel. */
         fun demoFuelDraft(stations: List<Candidate>) = DropDraft(
             kind = DropKind.DECISION,

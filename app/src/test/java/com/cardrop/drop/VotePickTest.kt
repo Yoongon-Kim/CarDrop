@@ -23,6 +23,13 @@ class VotePickTest {
     }
 
     @Test
+    fun theVoiceSaysWhichAnswerWentOut() {
+        assertEquals("여주휴게소에 투표했어요", VotePick.Place("여주휴게소").answeredLine(stops))
+        assertEquals("아무 데나 좋다고 답했어요", VotePick.Anywhere.answeredLine(stops))
+        assertEquals("이번엔 패스했어요. 우리 차는 가던 길로 가요", VotePick.Pass.answeredLine(stops))
+    }
+
+    @Test
     fun aPlaceIsAVoteForThatPlace() {
         assertEquals("b", VotePick.Place("b").vote(candidates))
         assertEquals("b", VotePick.Place("b").countedId(candidates))

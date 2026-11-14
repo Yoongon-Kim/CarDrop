@@ -71,8 +71,7 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
     val crew by container.crew.crew.collectAsStateWithLifecycle()
 
     // Opens at the bottom left of the screen, next to its button in the rail. 460 wide, so the buttons sit two or
-    // three to a row and the whole panel fits on the screen without scrolling (the Pleos emulator has no mouse
-    // input device, so only a drag scrolls).
+    // three to a row and the whole panel fits on the screen without scrolling.
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomStart) {
         if (!open) return@Box
         Column(

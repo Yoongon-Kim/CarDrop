@@ -175,8 +175,8 @@ on `am start` skips it and uses the last answer.
 
 The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
 Use it to rehearse the 시연 on one emulator. Its panel fits on the screen (buttons side by side) and closes with the ✕
-at its top right or the DEMO button again. On the emulator, scroll by dragging: the Pleos image has no mouse input
-device (`adb shell getevent -pl` lists only touch screens and keys). Its **크루** switch flips this device between the bot crew and the real
+at its top right or the DEMO button again. On the emulator, a drag or a two-finger trackpad swipe scrolls the app's
+screens. Its **크루** switch flips this device between the bot crew and the real
 crew without a rebuild: the app restarts (without the start question), and the device keeps the pick until
 `cardrop.useRealCrew` changes (`core/demo/DemoCrew.kt`). With the real crew its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).

@@ -365,7 +365,10 @@ shares its position through Firebase about once a second, so each one draws the 
   replace the card for 10 s ("…에 도착했어요 · 크루에게 알렸어요").
 - Waypoint done: **도착** = within 300 m and under 20 km/h for 10 s; **지나침** = came within 600 m, then
   more than 800 m away without stopping (the motorway passes rest stops 70-100 m from their map point, so
-  distance alone can't tell them apart). Either one takes the stop off the route, shows the CarDrop toast,
+  distance alone can't tell them apart). Also **지나침** (Member A, 2026-11-15): came within 3 km, then 1 km further away
+  than its closest, e.g. a stop whose map point is far from the road, or one the car was already past when the vote
+  ended; before, such a stop stayed the waypoint and every reroute sent the car back (and its distance to the
+  destination, which board 04 ranks the cars by, included the way back). Either one takes the stop off the route, shows the CarDrop toast,
   and `drive/TripCoordinator.kt` says it aloud and sends the crew a SOCIAL drop ("…에 도착했어요" /
   "…를 지나쳤어요"). Board 14 "도착 예정" (`drive/Arrivals.kt`) reads those crew messages back
   (`drive/StopNews.kt`) for 도착했어요 / 지나쳤어요; without one, a car within 0.3 km shows "곧 도착해요" and one

@@ -82,6 +82,8 @@ import kotlinx.coroutines.flow.StateFlow
  * vote ended, the button is 결과 보기 ([onOpenResult], board 14).
  * [placeTimes] (AppContainer.placeTimes) says how far each place is from this car and how long it takes.
  * [onPass] makes this car skip the stop, as board 14's "우리 차는 안 들르기" does: a pass keeps its route.
+ * This car's own quick drop (04's pop-up, `Drop.senderVotes` = false; lead, 2026-11-15) opens here only from the inbox,
+ * and only shows how the other cars answered: this car doesn't vote on it.
  *
  * A destination proposal (one place, 찬성 / 반대) has its own screen here: [ProposalVoteScreen]. It goes back to 홈
  * ([onClose]) after this car's answer, after the counter-proposal it can send, and with 닫기 after it was turned down.
@@ -105,8 +107,10 @@ fun VoteScreen(
         return
     }
     val cars = crew?.cars.orEmpty()
-    // Only the sender and the cars it was sent to answer this vote.
-    val carCount = drop.voterIds(cars.map { it.id }).size
+    // Only the sender and the cars it was sent to answer this vote; a quick drop's sender doesn't (Drop.voterIds).
+    val voterIds = drop.voterIds(cars.map { it.id })
+    // This car's own quick drop (opened from the inbox): the other cars decide, so this car only sees their answers.
+    val canVote = drop.isVoter(vm.myCarId)
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(dropId) {
@@ -117,10 +121,10 @@ fun VoteScreen(
     }
     val secondsLeft = ((drop.deadlineMillis - now) / 1000).coerceAtLeast(0)
     var pick by remember(dropId) { mutableStateOf(VotePick.from(drop.votes[vm.myCarId], drop.candidates)) }
-    // The place this car's vote counts for (place 1 for 아무 데나); null for a pass.
-    val counted = pick.countedId(drop.candidates)
-    // Answered, or the vote is over: the pick can't change any more.
-    val locked = vm.myCarId in drop.votes || drop.isDecided
+    // The place this car's vote counts for (place 1 for 아무 데나); null for a pass, or when this car doesn't vote.
+    val counted = pick.countedId(drop.candidates).takeIf { canVote }
+    // Answered, the vote is over, or this car doesn't vote on it: the pick can't change.
+    val locked = !canVote || vm.myCarId in drop.votes || drop.isDecided
     // 돌림판 is a small extra: only before answering, and only when there is something to choose between.
     val canSpin = !locked && drop.candidates.size >= 2
     var wheelOpen by remember(dropId) { mutableStateOf(false) }
@@ -138,6 +142,7 @@ fun VoteScreen(
             PrimaryButton(
                 text = when {
                     drop.isDecided -> "결과 보기"
+                    !canVote -> "다른 차들이 고르고 있어요"
                     locked -> "응답했어요"
                     else -> "응답하기"
                 },
@@ -222,7 +227,7 @@ fun VoteScreen(
                                 candidate = candidate,
                                 trip = times.trip(candidate.place),
                                 voters = voters,
-                                picked = pick == VotePick.Place(candidate.id),
+                                picked = canVote && pick == VotePick.Place(candidate.id),
                                 counted = counted == candidate.id,
                                 onClick = if (locked) null else ({ pick = VotePick.Place(candidate.id) }),
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -233,30 +238,35 @@ fun VoteScreen(
                 }
             }
             // 아무 데나 좋아 and 난 패스 at the left; what the driver can say and how many cars answered at the right
-            // (target lines 460-465, 722). Voting by voice isn't built yet; the hint is the design's.
+            // (target lines 460-465, 722). Voting by voice isn't built yet; the hint is the design's. This car's own
+            // quick drop has only the count: it doesn't answer.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChoiceButton(
-                    "아무 데나 좋아",
-                    on = pick == VotePick.Anywhere,
-                    onBackground = CdColors.BlueLight,
-                    onText = CdColors.BlueDark,
-                    onEdge = CdColors.Blue,
-                    enabled = !locked,
-                ) { pick = VotePick.Anywhere }
-                if (canPass) {
+                if (canVote) {
                     ChoiceButton(
-                        "난 패스, 먼저 갈게",
-                        on = pick == VotePick.Pass,
-                        onBackground = CdColors.RedLight,
-                        onText = CdColors.Red,
-                        onEdge = CdColors.Alert,
+                        "아무 데나 좋아",
+                        on = pick == VotePick.Anywhere,
+                        onBackground = CdColors.BlueLight,
+                        onText = CdColors.BlueDark,
+                        onEdge = CdColors.Blue,
                         enabled = !locked,
-                    ) { pick = VotePick.Pass }
+                    ) { pick = VotePick.Anywhere }
+                    if (canPass) {
+                        ChoiceButton(
+                            "난 패스, 먼저 갈게",
+                            on = pick == VotePick.Pass,
+                            onBackground = CdColors.RedLight,
+                            onText = CdColors.Red,
+                            onEdge = CdColors.Alert,
+                            enabled = !locked,
+                        ) { pick = VotePick.Pass }
+                    }
                 }
                 Spacer(Modifier.weight(1f))
-                Text(if (canPass) "“1번”, “아무 데나”, “패스”" else "“1번”, “아무 데나”", color = CdColors.Gray600, fontSize = 14.sp)
+                if (canVote) {
+                    Text(if (canPass) "“1번”, “아무 데나”, “패스”" else "“1번”, “아무 데나”", color = CdColors.Gray600, fontSize = 14.sp)
+                }
                 Pill(
-                    "${drop.votes.size}/$carCount 응답",
+                    "${voterIds.count { it in drop.votes }}/${voterIds.size} 응답",
                     background = CdColors.White,
                     color = CdColors.Ink,
                     padding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
@@ -264,7 +274,8 @@ fun VoteScreen(
             }
             // What this car's answer means, said by the AI: "**{1번}에 1표** · “1번”, “첫 번째”도 같은 표예요" (target
             // lines 466, 724). White, corners 18, padding 14 x 16, the small AI tag 12 to the left of the 15px text.
-            val (meaning, aside) = pick.explain(drop.candidates)
+            // This car's own quick drop: why there's nothing to answer.
+            val (meaning, aside) = if (canVote) pick.explain(drop.candidates) else QUICK_DROP_SENDER_NOTE
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -414,6 +425,9 @@ private fun CandidateCard(
         }
     }
 }
+
+/** The AI card on this car's own quick drop, which the other cars decide without it (`Drop.senderVotes`). */
+private val QUICK_DROP_SENDER_NOTE = "우리 차는 이 투표에 답하지 않아요" to "퀵 드랍은 다른 차들의 답으로 정해요"
 
 /** The place's number: an orange ring, or filled blue once this car's vote goes there (target line 721). */
 @Composable

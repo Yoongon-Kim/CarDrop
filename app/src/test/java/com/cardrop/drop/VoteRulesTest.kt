@@ -81,6 +81,32 @@ class VoteRulesTest {
         assertEquals(0, VoteRules.agreeing(d, cars))
     }
 
+    // ---- quick drops (board 04's pop-up): the sender doesn't vote ----
+
+    @Test
+    fun `a quick drop goes to its sender too, who only doesn't vote on it`() {
+        val quick = drop(emptyMap()).copy(senderVotes = false)
+        assertTrue(quick.isFor("me")) // the decided stop still goes into the sender's route
+        assertFalse(quick.isVoter("me"))
+        assertTrue(quick.isVoter("uncle"))
+        assertEquals(listOf("uncle", "minji", "aunt"), quick.voterIds(cars))
+    }
+
+    @Test
+    fun `the other cars alone end a quick drop and decide it`() {
+        // uncle and aunt b, minji a.
+        val votes = mapOf("uncle" to "b", "minji" to "a", "aunt" to "b")
+        val quick = drop(votes).copy(senderVotes = false)
+        val voters = quick.voterIds(cars)
+        assertTrue(VoteRules.isOver(quick, voters, nowMillis = 5_000)) // long before the deadline
+        assertEquals("b", VoteRules.winner(quick, voters))
+        assertEquals(2, VoteRules.agreeing(quick, voters))
+        // The same answers when the sender votes: the vote waits for "me", whose silence counts for a and ties it.
+        val usual = drop(votes)
+        assertFalse(VoteRules.isOver(usual, usual.voterIds(cars), nowMillis = 5_000))
+        assertEquals("a", VoteRules.winner(usual, usual.voterIds(cars)))
+    }
+
     // ---- destination proposals: one place, 찬성 or 반대 ----
 
     private fun proposal(votes: Map<String, String>, deadline: Long = 10_000) = drop(votes, deadline).copy(

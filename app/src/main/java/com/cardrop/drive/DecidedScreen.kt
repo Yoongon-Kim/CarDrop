@@ -212,14 +212,16 @@ private fun ArrivalRow(arrival: Arrival) {
 /**
  * Board 14's first line: whose vote ended, about what, and how many cars agreed, e.g. "삼촌 차의 휴게소 투표가
  * 끝났어요 · 4대 중 3대 동의". This car's own vote says "우리 차", as board 11's tag does; a car no longer in the crew
- * is "일행". Only the cars the vote was for are counted. The design says just "투표가 끝났어요 · 4대 중 3대 동의",
- * which made another car's result look like this car's own (lead, 2026-11-15). Pure Kotlin, unit tested
+ * is "일행". Only the cars the vote was for are counted, without a quick drop's sender (it doesn't vote); a quick drop
+ * with no other car to vote (this car alone in the crew) has no count. The design says just "투표가 끝났어요 · 4대 중
+ * 3대 동의", which made another car's result look like this car's own (lead, 2026-11-15). Pure Kotlin, unit tested
  * (VoteEndedTextTest).
  */
 internal fun voteEndedText(drop: Drop, cars: List<Car>, myCarId: String): String {
     val sender = if (drop.fromCarId == myCarId) "우리 차" else cars.firstOrNull { it.id == drop.fromCarId }?.name ?: "일행"
     val ids = drop.voterIds(cars.map { it.id })
-    return "${sender}의 ${drop.topic.voteTag()} 투표가 끝났어요 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의"
+    val ended = "${sender}의 ${drop.topic.voteTag()} 투표가 끝났어요"
+    return if (ids.isEmpty()) ended else "$ended · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의"
 }
 
 private const val COUNTDOWN_MILLIS = 3_000

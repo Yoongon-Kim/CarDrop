@@ -105,6 +105,7 @@ fun AiRecommendScreen(
  * Board 10 as a pop-up over the current screen, for the quick drops on board 04 (design:
  * "퀵 드랍 · 보낼 곳을 골라요"). It always goes to the whole crew. CarDropApp shows it over the drive
  * screen and closes it in [onSent]; the driver stays on 04. [placeTimes] as on the page.
+ * This car doesn't vote on a quick drop: the other cars decide (`Drop.senderVotes`; lead, 2026-11-15).
  */
 @Composable
 fun QuickDropPicker(
@@ -180,7 +181,8 @@ private fun PlacePicker(
         onListen = vm::listenForPlace,
         onConfirmHeard = vm::confirmHeardPlace,
         onRetry = { vm.loadCandidates(topic, toCarIds) },
-        onSend = { vm.sendVote(topic, toCarIds, onSent) },
+        // The pop-up is the quick drop: its sender doesn't vote. The page's sender answers on board 11 like the others.
+        onSend = { vm.sendVote(topic, toCarIds, onSent, senderVotes = !popup) },
     )
 }
 

@@ -83,4 +83,6 @@ data class DropDraft(
     val voteSeconds: Int = 60,
     /** The cars to send it to besides this one (board 08 "받는 차"). Empty = the whole crew. */
     val toCarIds: List<String> = emptyList(),
+    /** False for a quick drop (board 04): this car doesn't vote, the other cars decide (`Drop.senderVotes`). */
+    val senderVotes: Boolean = true,
 )

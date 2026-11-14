@@ -13,6 +13,8 @@ import com.cardrop.core.model.DropTopic
  *   vote counts for no place. It keeps its own route and only hears the result.
  * - A destination proposal ([isProposal]) is one place to say 찬성 or 반대 to, not a choice between places: one 반대
  *   turns it down at once ([REJECTED]); a car that says nothing counts as 찬성, like candidate 1 above.
+ * - A quick drop's sender (board 04's pop-up) doesn't vote (lead, 2026-11-15): the callers pass `Drop.voterIds`, which
+ *   leaves it out, so the vote ends once the other cars have answered and only their answers count.
  *
  * Pure functions with no Android code, so they are easy to unit test (see VoteRulesTest).
  */

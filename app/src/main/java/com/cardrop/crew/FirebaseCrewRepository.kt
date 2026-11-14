@@ -169,6 +169,7 @@ class FirebaseCrewRepository(
             createdAtMillis = created,
             deadlineMillis = created + draft.voteSeconds * 1_000L,
             toCarIds = draft.toCarIds,
+            senderVotes = draft.senderVotes,
         )
         ref.child("drops").child(drop.id).setValue(dropToMap(drop)).await()
         return drop
@@ -330,6 +331,8 @@ class FirebaseCrewRepository(
             deadlineMillis = s.child("deadlineMillis").number()?.toLong() ?: 0L,
             decidedCandidateId = s.child("decidedCandidateId").getValue(String::class.java),
             toCarIds = s.child("toCarIds").children.mapNotNull { it.getValue(String::class.java) },
+            // Missing on drops written before quick drops left their sender out: then the sender votes.
+            senderVotes = s.child("senderVotes").getValue(Boolean::class.java) ?: true,
         )
     }.onFailure { Log.w(TAG, "Skipped a drop it could not read (${s.key}): $it") }.getOrNull()
 
@@ -361,6 +364,7 @@ class FirebaseCrewRepository(
         "createdAtMillis" to d.createdAtMillis,
         "deadlineMillis" to d.deadlineMillis,
         "toCarIds" to d.toCarIds,
+        "senderVotes" to d.senderVotes,
     )
 
     companion object {

@@ -42,4 +42,34 @@ class CrewStripTest {
         assertEquals("2.1km 뒤", gapText(100f, 102.1f))
         assertEquals("12km 뒤", gapText(100f, 112.2f))
     }
+
+    @Test fun adjacentGapsUseRouteDistanceAndSkipCarsWithoutAPosition() {
+        val positions = mapOf(
+            at(100f, 60, DemoData.me.id), at(100.8f, 61, DemoData.uncle.id),
+            at(103f, 63, DemoData.aunt.id),
+        )
+        val gaps = crewGaps(crewStrip(cars.reversed(), positions), positions)
+        assertEquals(listOf(DemoData.me.id, DemoData.uncle.id), gaps.map { it.ahead.id })
+        assertEquals(listOf(DemoData.uncle.id, DemoData.aunt.id), gaps.map { it.behind.id })
+        assertEquals(0.8f, gaps[0].distanceKm, 0.001f)
+        assertEquals(2.2f, gaps[1].distanceKm, 0.001f)
+        assertEquals("800m", gapDistanceText(gaps[0].distanceKm))
+        assertEquals("2.2km", gapDistanceText(gaps[1].distanceKm))
+    }
+
+    @Test fun evenlySpreadMarkersAtTheSamePositionStillShowZeroMeters() {
+        val positions = mapOf(at(50f, 30, DemoData.me.id), at(50f, 30, DemoData.uncle.id))
+        val strip = crewStrip(cars, positions)
+        assertTrue(strip[0].along != strip[1].along)
+        assertEquals("0m", gapDistanceText(crewGaps(strip, positions).single().distanceKm))
+    }
+
+    @Test fun fewerThanTwoLocatedCarsHaveNoGapAndMeterRoundingUsesTheRightUnit() {
+        assertTrue(crewGaps(crewStrip(cars, emptyMap()), emptyMap()).isEmpty())
+        val positions = mapOf(at(50f, 30, DemoData.me.id))
+        assertTrue(crewGaps(crewStrip(cars, positions), positions).isEmpty())
+        assertEquals("50m", gapDistanceText(0.05f))
+        assertEquals("1.0km", gapDistanceText(0.9999f))
+        assertEquals("확인 중", gapDistanceText(Float.NaN))
+    }
 }

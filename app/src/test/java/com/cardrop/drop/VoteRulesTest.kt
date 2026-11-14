@@ -58,6 +58,16 @@ class VoteRulesTest {
     }
 
     @Test
+    fun `a car that went offline isn't waited for`() {
+        // 이모 차's app closed: FirebaseCrewRepository counts only the connected cars, so a pass and two votes end it.
+        val d = drop(mapOf("me" to "b", "uncle" to VoteRules.PASS, "minji" to "c"))
+        assertFalse(VoteRules.isOver(d, cars, nowMillis = 0))
+        val connected = listOf("me", "uncle", "minji")
+        assertTrue(VoteRules.isOver(d, connected, nowMillis = 0))
+        assertEquals("b", VoteRules.winner(d, connected))
+    }
+
+    @Test
     fun `a pass counts for no place, not for candidate 1`() {
         // If the three cars that passed counted as silent, a would win 3 to 1.
         val d = drop(mapOf("me" to "b", "uncle" to VoteRules.PASS, "minji" to VoteRules.PASS, "aunt" to VoteRules.PASS))

@@ -233,7 +233,9 @@ class FirebaseCrewRepository(
      */
     private fun closeFinishedVotes() {
         val ref = crewRef ?: return
-        val carIds = _crew.value?.cars?.map { it.id } ?: return
+        // Only the cars connected now: a car whose app closed or went offline can't answer, so the vote doesn't
+        // wait for it and its silence counts for no place (Member A, 2026-11-15).
+        val carIds = _crew.value?.cars?.filter { it.connected }?.map { it.id } ?: return
         val time = now()
         for (drop in _drops.value) {
             if (drop.kind != DropKind.DECISION || drop.isDecided || drop.candidates.isEmpty()) continue

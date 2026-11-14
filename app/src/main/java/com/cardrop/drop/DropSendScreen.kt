@@ -1,5 +1,6 @@
 package com.cardrop.drop
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,21 +13,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -38,20 +45,22 @@ import com.cardrop.core.model.Car
 import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.recipientLabel
-import com.cardrop.core.ui.CarBadge
-import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.ScreenColumn
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.CrewViewModel
+import kotlinx.coroutines.launch
 
 /**
- * Board 08 드랍 보내기 · Owner: Member A.
- * Choose who gets it (크루 전체, one car alone, or a 조합 of cars), then what to send: a decision topic
- * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates), 한마디 and 음성 메시지 open board 09, 노래 드랍 board 12 ([onSong]).
- * Both get the chosen cars (empty = whole crew). 게임 초대 opens board 15 ([onGames]), where the driver picks
- * the game and who to play. The ✕ at the top right ([onClose]) goes back to 홈 (board 04).
+ * Board 08 드랍 보내기 · Owner: Member A. The recipients and the decision row's second page are the live canvas's
+ * (lead, 2026-11-15; they replace D13's 조합 만들기 and bring back what D11 took off).
+ * Choose who gets it (크루 전체, or any cars ticked one by one), then what to send: a decision topic
+ * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates). The arrow at the row's end (or a swipe) turns it to
+ * 카페 (board 10 with the AI's cafés) and 직접 추가 (board 10 without AI picks: the driver adds the places).
+ * 한마디 and 음성 메시지 open board 09, 노래 드랍 board 12 ([onSong]). They all get the chosen cars (empty = whole
+ * crew). 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play. The ✕ at the top
+ * right ([onClose]) goes back to 홈 (board 04).
  *
  * 목적지 변경 is different: a driver who wants another destination knows where, so the tile opens
  * "어디로 제안할까요?" ([DestinationProposalPanel]) on this screen: search the place, confirm, and it goes out as a
@@ -69,10 +78,9 @@ fun DropSendScreen(
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
-    var sendTo by remember { mutableStateOf<SendTo>(SendTo.Crew) }
-    // The cars ticked under 조합 만들기. Kept while another button is picked, so the combination comes back.
-    var mixIds by remember { mutableStateOf(emptySet<String>()) }
-    val toCarIds = sendTo.toCarIds(others, mixIds)
+    // The cars ticked one by one. None of them (or all of them) = 크루 전체.
+    var picked by remember { mutableStateOf(emptySet<String>()) }
+    val toCarIds = Recipients.toCarIds(others, picked)
     // True after 목적지 변경 was tapped: the proposal's search takes this screen's place until it is sent or closed.
     var proposing by remember { mutableStateOf(false) }
 
@@ -93,38 +101,25 @@ fun DropSendScreen(
         ScreenHeader(eyebrow = null, title = "누구에게 보낼까요?", gap = 0.dp, verticalAlignment = Alignment.CenterVertically) {
             CloseButton(onClick = onClose)
         }
-        // Four buttons, one of them picked (D13, target lines 368-369 and 681): 크루 전체, the first two other
-        // cars alone, and 조합 만들기 (the target doesn't draw what it opens: the app shows the per-car cards).
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            val singles = others.take(2)
-            RecipientButton("크루 전체", crewMeta(others), sendTo == SendTo.Crew, Modifier.weight(1f)) { sendTo = SendTo.Crew }
-            singles.forEach { car ->
-                val one = SendTo.OneCar(car.id)
-                RecipientButton("${car.name}만", "1대", sendTo == one, Modifier.weight(1f)) { sendTo = one }
-            }
-            repeat(2 - singles.size) { Spacer(Modifier.weight(1f)) } // keeps the four columns
-            RecipientButton("조합 만들기", "차를 골라 묶기", sendTo == SendTo.Combination, Modifier.weight(1f)) {
-                sendTo = SendTo.Combination
-            }
-        }
-        if (sendTo == SendTo.Combination) {
-            // Any cars, ticked one by one (today's cards). None or all of them = the whole crew.
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                others.forEach { car ->
-                    CdCard(
-                        modifier = Modifier.weight(1f),
-                        selected = car.id in mixIds,
-                        onClick = { mixIds = if (car.id in mixIds) mixIds - car.id else mixIds + car.id },
-                    ) {
-                        CarBadge(car, size = 36)
-                        Text(car.name, style = MaterialTheme.typography.titleMedium)
+        // 크루 전체, then every other car, 4 to a row (live canvas). Any cars can be ticked together; ticking 크루 전체,
+        // or the last car left, sends to the whole crew again.
+        val wholeCrew = toCarIds.isEmpty()
+        (listOf<Car?>(null) + others).chunked(4).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { car ->
+                    if (car == null) {
+                        RecipientButton("크루 전체", crewMeta(others), wholeCrew, CircleShape, Modifier.weight(1f)) {
+                            picked = emptySet()
+                        }
+                    } else {
+                        val on = car.id in toCarIds
+                        RecipientButton(car.name, if (on) "선택됨" else "누르면 추가", on, RoundedCornerShape(8.dp), Modifier.weight(1f)) {
+                            picked = Recipients.toggle(picked, car.id, others)
+                        }
                     }
                 }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) } // keeps the four columns
             }
-            Text(
-                "받는 차 · ${crew?.recipientLabel(toCarIds, vm.myCarId) ?: "크루 전체"} · 여러 대를 고를 수 있어요",
-                style = MaterialTheme.typography.labelMedium,
-            )
         }
 
         // The heading with its hint at the right, on the same baseline, 6 px further down (target line 371).
@@ -138,23 +133,12 @@ fun DropSendScreen(
             )
             Text("누르면 바로 다음 단계로 넘어가요", color = CdColors.Gray600, fontSize = 14.sp, modifier = Modifier.alignByBaseline())
         }
-        // Decision tiles 4 to a row, social tiles 5, 10 apart (target lines 683-687).
+        // Decision tiles 4 to a row (in two pages), social tiles 5, 10 apart (target lines 683-687).
         TopicGroup("결정 드랍 · 음성으로 묻고 투표해요", CdColors.BlueDark, CdColors.BlueLight) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                TopicTile("휴게소", "AI 3곳 추천", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, Modifier.weight(1f)) {
-                    onPickTopic(DropTopic.REST, toCarIds)
-                }
-                TopicTile("식사", "AI 음식점 추천", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, Modifier.weight(1f)) {
-                    onPickTopic(DropTopic.FOOD, toCarIds)
-                }
-                TopicTile("주유 · 충전", "잔량 기준 추천", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f)) {
-                    onPickTopic(DropTopic.FUEL, toCarIds)
-                }
-                // A new crew destination: the driver searches for it and proposes it (찬성 / 반대).
-                TopicTile("목적지 변경", "직접 골라 제안", CdIcons.Flag, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f)) {
-                    proposing = true
-                }
-            }
+            DecisionPages(
+                onTopic = { topic -> onPickTopic(topic, toCarIds) },
+                onDestination = { proposing = true },
+            )
         }
         TopicGroup("소셜 드랍 · 화면에만 조용히", CdColors.VioletDark, CdColors.VioletLight) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -175,6 +159,65 @@ fun DropSendScreen(
                     enabled = false, metaColor = CdColors.OrangeDark, metaWeight = FontWeight.ExtraBold,
                 )
             }
+        }
+    }
+}
+
+/**
+ * The decision row in two pages, as on the live canvas (its `morePlaces`): 휴게소 / 식사 / 주유 · 충전 / 목적지 변경,
+ * then 카페 and 직접 추가. The arrow at the right end (44 wide, as high as the tiles, light blue with corners 16)
+ * turns the page, › forward and ‹ back; a swipe on the tiles turns it too.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DecisionPages(onTopic: (DropTopic) -> Unit, onDestination: () -> Unit) {
+    val pages = rememberPagerState(pageCount = { 2 })
+    val scope = rememberCoroutineScope()
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        HorizontalPager(state = pages, modifier = Modifier.weight(1f), pageSpacing = 10.dp) { page ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                if (page == 0) {
+                    TopicTile("휴게소", "AI 3곳 추천", CdIcons.Rest, CdColors.BlueLight, CdColors.BlueDark, Modifier.weight(1f)) {
+                        onTopic(DropTopic.REST)
+                    }
+                    TopicTile("식사", "AI 음식점 추천", CdIcons.Food, CdColors.OrangeLight, CdColors.OrangeDeep, Modifier.weight(1f)) {
+                        onTopic(DropTopic.FOOD)
+                    }
+                    TopicTile("주유 · 충전", "잔량 기준 추천", CdIcons.Fuel, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f)) {
+                        onTopic(DropTopic.FUEL)
+                    }
+                    // A new crew destination: the driver searches for it and proposes it (찬성 / 반대).
+                    TopicTile("목적지 변경", "직접 골라 제안", CdIcons.Flag, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onDestination)
+                } else {
+                    // The canvas's second page: 카페 has the 휴게소 cup in the 식사 colours, 직접 추가 a plus in blue.
+                    TopicTile("카페", "커피 · 드라이브 스루", CdIcons.Rest, CdColors.OrangeLight, CdColors.OrangeDeep, Modifier.weight(1f)) {
+                        onTopic(DropTopic.CAFE)
+                    }
+                    TopicTile("직접 추가", "원하는 곳 입력", CdIcons.Plus, CdColors.BlueLight, CdColors.BlueDark, Modifier.weight(1f)) {
+                        onTopic(DropTopic.CUSTOM)
+                    }
+                }
+            }
+        }
+        val more = pages.currentPage == 1
+        Box(
+            modifier = Modifier
+                .width(44.dp)
+                .height(148.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(CdColors.BlueLight)
+                .clickable(onClickLabel = if (more) "이전 장소 유형" else "다른 장소 유형", role = Role.Button) {
+                    scope.launch { pages.animateScrollToPage(if (more) 0 else 1) }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            // The canvas draws the text ‹ / ›; the back button's chevron (turned round for ›) reads better on the car screen.
+            Icon(
+                CdIcons.Back,
+                contentDescription = null,
+                tint = CdColors.BlueDark,
+                modifier = Modifier.size(26.dp).rotate(if (more) 0f else 180f),
+            )
         }
     }
 }
@@ -247,26 +290,22 @@ private fun TopicGroup(tag: String, color: Color, background: Color, tiles: @Com
 }
 
 /**
- * Who a drop goes to (board 08, D13): the whole crew, one car alone ("삼촌 차만"), or a 조합 (combination) of
- * cars ticked one by one.
+ * Who a drop goes to (board 08, as on the live canvas): 크루 전체, or any of the other cars ticked one by one.
+ * [picked] = the ticked cars; none of them, or all of them, is the whole crew. Internal (not private) only so
+ * RecipientsTest can check it.
  */
-internal sealed interface SendTo {
-    data object Crew : SendTo
-    data class OneCar(val carId: String) : SendTo
-    data object Combination : SendTo
-}
+internal object Recipients {
+    /** The cars to send to, for `Drop.toCarIds`, in crew order; empty = the whole crew. Cars that left are dropped. */
+    fun toCarIds(others: List<Car>, picked: Set<String>): List<String> {
+        val ids = others.map { it.id }.filter { it in picked }
+        return if (ids.size == others.size) emptyList() else ids
+    }
 
-/**
- * The cars to send to, for `Drop.toCarIds`, in crew order; empty = the whole crew. [others] = the crew's other
- * cars, [mixIds] = the cars ticked under 조합 만들기: none or all of them is the whole crew, as before.
- * Internal (not private) only so SendToTest can check it.
- */
-internal fun SendTo.toCarIds(others: List<Car>, mixIds: Set<String>): List<String> {
-    val ids = others.map { it.id }
-    return when (this) {
-        SendTo.Crew -> emptyList()
-        is SendTo.OneCar -> ids.filter { it == carId } // a car that left the crew: the whole crew
-        SendTo.Combination -> ids.filter { it in mixIds }.takeIf { it.size < ids.size }.orEmpty()
+    /** Ticks or unticks [carId]. Ticking the last car that wasn't ticked means every car: 크루 전체 (empty) again. */
+    fun toggle(picked: Set<String>, carId: String, others: List<Car>): Set<String> {
+        val ticked = toCarIds(others, picked).toSet()
+        val next = if (carId in ticked) ticked - carId else ticked + carId
+        return if (toCarIds(others, next).isEmpty()) emptySet() else next
     }
 }
 
@@ -275,24 +314,37 @@ internal fun crewMeta(others: List<Car>): String =
     if (others.isEmpty()) "아직 혼자예요" else others.joinToString(" · ") { it.name.removeSuffix(" 차") }
 
 /**
- * One of the four recipient buttons: 74 high, corners 20, the name (17 / 800) over a grey line (12px), left-aligned.
- * The picked one is light blue with a blue edge, the others white (target line 681).
+ * One recipient button (live canvas): 74 high, corners 20, a 26 px tick box ([boxShape]: round for 크루 전체,
+ * corners 8 for a car) 12 left of the name (17 / 800) over a grey line (12px). Ticked = light blue with a blue
+ * edge and a blue box with a white tick; otherwise white, with an empty grey box.
  */
 @Composable
-private fun RecipientButton(name: String, meta: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun RecipientButton(name: String, meta: String, selected: Boolean, boxShape: Shape, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
-    Column(
+    Row(
         modifier = modifier
             .height(74.dp)
             .clip(shape)
             .background(if (selected) CdColors.BlueLight else CdColors.White)
             .border(2.dp, if (selected) CdColors.Blue else CdColors.White, shape)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(name, color = CdColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(meta, color = CdColors.Gray600, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(boxShape)
+                .then(if (selected) Modifier.background(CdColors.Blue) else Modifier.border(2.dp, CdColors.Gray300, boxShape)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (selected) Icon(CdIcons.Check, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(15.dp))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(name, color = CdColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(meta, color = CdColors.Gray600, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

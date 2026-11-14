@@ -104,6 +104,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
   vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+  More than four (Member A, 2026-11-14; not on the canvas): under the four slots a second row holds the fifth drop on
+  and one dashed "추가" slot while a drop is left to pick (`QuickDropRules.secondRow`, `showsAddSlot`, `MAX_SLOTS` = 8;
+  the editor counts "2 / 6" of the drops that aren't cut).
 - Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
   another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
   `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks

@@ -76,19 +76,20 @@ fun QuickDropEditScreen(saved: List<QuickDrop>, onCancel: () -> Unit, onSave: (L
             PrimaryButton("홈에 저장하기", onClick = { onSave(draft) }, modifier = Modifier.weight(2f), height = 68.dp, fontSize = 18.sp)
         }
     }) {
-        // The back button, the title (30/800) with its grey line, and "2 / 4" at the right, all centred, 12 apart.
+        // The back button, the title (30/800) with its grey line, and "2 / 6" (of the drops that can be picked) at
+        // the right, all centred, 12 apart.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onClick = onCancel)
             ScreenHeader(
                 eyebrow = null,
                 title = "퀵 드랍 편집",
-                subtitle = "홈에 둘 드랍을 최대 ${QuickDropRules.SLOTS}개 골라요 · 고른 순서대로 놓여요",
+                subtitle = "홈에 둘 드랍을 골라요 · 고른 순서대로 놓이고, 5번째부터는 아랫줄에 놓여요",
                 gap = 0.dp,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f),
             ) {
                 Pill(
-                    "${draft.size} / ${QuickDropRules.SLOTS}",
+                    "${draft.size} / ${QuickDropRules.pickable}",
                     fontSize = 15.sp,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )

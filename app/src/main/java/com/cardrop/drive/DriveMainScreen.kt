@@ -221,7 +221,7 @@ private fun InboxButton(waiting: Int, enabled: Boolean, onClick: () -> Unit) {
 
 /**
  * A slot with the driver's quick drop: its icon in its colour and its name, on a white tile with corners 20
- * (canvas `.cd-quick`). Two to a row, so it is bigger than the canvas's 72: 88 high, a 50 px icon and 22 sp text. Like 드랍하기, it fades and can't be tapped until the trip starts (or without a crew).
+ * (canvas `.cd-quick`). Two to a row, so it is bigger than the canvas's 72: 88 high, a 46 px icon and 19 sp text ([QuickLabelSize]). Like 드랍하기, it fades and can't be tapped until the trip starts (or without a crew).
  */
 @Composable
 private fun QuickTile(drop: QuickDrop, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
@@ -237,13 +237,27 @@ private fun QuickTile(drop: QuickDrop, enabled: Boolean, modifier: Modifier, onC
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
     ) {
-        QuickDropIcon(drop, size = 50.dp, iconSize = 26.dp)
-        Text(drop.label, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        QuickDropIcon(drop, size = 46.dp, iconSize = 24.dp)
+        Text(
+            drop.label,
+            fontSize = QuickLabelSize,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = TightLetterSpacing,
+            color = CdColors.Ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
 /** Board 04's quick-drop tiles, two to a row (the canvas's four to a row are 72 high). */
 private val QuickTileHeight = 88.dp
+
+/**
+ * Their names: bigger than the canvas's 16 so they can be read from the seat, but Bold (700) with the headers' tight
+ * spacing, so they sit with the rest of the screen (22 / 800 stood out next to the 28 / 800 title).
+ */
+private val QuickLabelSize = 19.sp
 
 /**
  * An empty slot (canvas `.cd-quick.is-empty`): no fill, a 2 px dashed grey edge, a grey circle with "+" and
@@ -261,12 +275,12 @@ private fun EmptyQuickSlot(modifier: Modifier, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
     ) {
         Box(
-            modifier = Modifier.size(50.dp).clip(CircleShape).background(CdColors.Gray200),
+            modifier = Modifier.size(46.dp).clip(CircleShape).background(CdColors.Gray200),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(CdIcons.PlusThin, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(26.dp))
+            Icon(CdIcons.PlusThin, contentDescription = null, tint = CdColors.Gray600, modifier = Modifier.size(24.dp))
         }
-        Text("추가", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Gray600)
+        Text("추가", fontSize = QuickLabelSize, fontWeight = FontWeight.Bold, letterSpacing = TightLetterSpacing, color = CdColors.Gray600)
     }
 }
 

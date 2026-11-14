@@ -117,7 +117,7 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
   Two to a row (Member A, 2026-11-15; in four to a row the names were too small to read): the drops in their order in
-  a 2 x 2 of bigger tiles (88 high, 22 sp), the fifth drop on in rows under it, and one dashed "+ 추가" after the last
+  a 2 x 2 of bigger tiles (88 high, 19 sp Bold), the fifth drop on in rows under it, and one dashed "+ 추가" after the last
   drop while one is left to pick (`QuickDropRules.gridRows`, `showsAddSlot`, `MAX_SLOTS` = 8;
   the editor counts the saved drops out of 8 available drops, including 노래 and 운전 기록).
 - Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,

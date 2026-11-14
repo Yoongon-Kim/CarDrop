@@ -43,7 +43,7 @@ import kotlin.coroutines.resumeWithException
  * Data in the database (one crew = one branch under its 6-digit code):
  * ```
  * crews/482917/info    name, hostCarId, destination {id, name, lat, lng, detail},
- *                      createdAt (server time; the others can join for 2 minutes), startedAt (missing = not started)
+ *                      createdAt (server time; the others can join for 1 minute), startedAt (missing = not started)
  * crews/482917/cars    car-dad: {connected: true}, car-uncle: {...}, ...; out: true = left out at the start
  * crews/482917/drops   <dropId>: {fromCarId, kind, topic, title, ..., votes: {carId: candidateId}}
  * ```
@@ -121,7 +121,7 @@ class FirebaseCrewRepository(
         val ref = db.getReference("crews").child(digits)
         val info = ref.child("info").get().await()
         if (!info.exists()) return null
-        // Left out at the start (not there within 2 minutes): the crew went without this car.
+        // Left out at the start (not there within 1 minute): the crew went without this car.
         val mine = ref.child("cars").child(myCarId).get().await()
         if (mine.child("out").value == true && mine.child("connected").value != true) throw CrewClosedException()
         ref.child("cars").child(myCarId).child("connected").setValue(true).await()

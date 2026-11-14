@@ -26,7 +26,7 @@ interface CrewRepository {
     /** All drops in the crew, oldest first. Votes and decisions update in place. */
     val drops: StateFlow<List<Drop>>
 
-    /** Board 01: a new crew with this car as its host. The other cars have 2 minutes to join (`Crew.joinDeadlineMillis`). */
+    /** Board 01: a new crew with this car as its host. The other cars have 1 minute to join (`Crew.joinDeadlineMillis`). */
     suspend fun createCrew(name: String, destination: Place): Crew
 
     /**
@@ -60,7 +60,7 @@ interface CrewRepository {
     fun leaveCrew()
 }
 
-/** [CrewRepository.joinCrew]: the crew set off without this car, which didn't join within 2 minutes. */
+/** [CrewRepository.joinCrew]: the crew set off without this car, which didn't join within 1 minute. */
 class CrewClosedException : Exception("이미 출발한 크루예요")
 
 /**
@@ -76,8 +76,11 @@ data class DropDraft(
     val title: String,
     val message: String = "",
     val candidates: List<Candidate> = emptyList(),
-    /** Design board 11 shows a 2-minute vote. */
-    val voteSeconds: Int = 120,
+    /**
+     * How long the receivers have to answer. Design board 11 shows 2 minutes; 1 minute since 2026-11-15 (Member A:
+     * the waits felt too long in the demo).
+     */
+    val voteSeconds: Int = 60,
     /** The cars to send it to besides this one (board 08 "받는 차"). Empty = the whole crew. */
     val toCarIds: List<String> = emptyList(),
 )

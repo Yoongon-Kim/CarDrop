@@ -54,7 +54,7 @@ class CrewViewModel(
         /** [routeBefore]: where this car's navigator was heading before it joined (null = no route). */
         data class Found(val crew: Crew, val routeBefore: Place? = null) : JoinState
         data object NotFound : JoinState
-        /** The crew's trip started without this car: it didn't join within 2 minutes. */
+        /** The crew's trip started without this car: it didn't join within 1 minute. */
         data object Closed : JoinState
     }
 

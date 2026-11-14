@@ -271,7 +271,7 @@ private fun ConfirmCard(
             ErrorText(whyNot)
         } else {
             Text(
-                "받는 차가 찬성 · 반대로 답해요. 한 대라도 반대하면 목적지는 그대로예요 · 2분 안에 답이 없으면 찬성으로 봐요",
+                "받는 차가 찬성 · 반대로 답해요. 한 대라도 반대하면 목적지는 그대로예요 · 1분 안에 답이 없으면 찬성으로 봐요",
                 color = CdColors.Gray600,
                 fontSize = 14.sp,
             )

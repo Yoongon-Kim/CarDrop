@@ -30,8 +30,8 @@ import kotlinx.coroutines.launch
  * Runs for the whole app, whatever screen is open:
  * - the crew destination changes -> record it as the route (the driver opens the map app)
  * - the crew forms -> start moving the cars on the route
- * - every car has joined, or the 2 minutes for joining are over, and the host hasn't pressed 출발 -> the host's
- *   car starts the trip ([CrewRepository.startTrip]; after the 2 minutes the cars still missing are left out)
+ * - every car has joined, or the minute for joining is over, and the host hasn't pressed 출발 -> the host's
+ *   car starts the trip ([CrewRepository.startTrip]; after the minute the cars still missing are left out)
  * - the trip starts (`Crew.startedAtMillis`) -> every car's guidance starts, also on the cars that waited
  * - a vote ends -> record the winner as the waypoint and say it aloud
  * - this car gets to the waypoint -> show it ([notice]); it stops there or drives past it -> say it aloud,
@@ -110,7 +110,7 @@ class TripCoordinator(
 
     /**
      * The host's car starts the trip by itself when the host hasn't pressed 출발: at once when every car of the
-     * crew has joined, else when the 2 minutes for joining are over (`Crew.joinDeadlineMillis`), without the cars
+     * crew has joined, else when the minute for joining is over (`Crew.joinDeadlineMillis`), without the cars
      * still missing. Only the host's device does it, so the crew starts once.
      */
     private suspend fun startByItself() {

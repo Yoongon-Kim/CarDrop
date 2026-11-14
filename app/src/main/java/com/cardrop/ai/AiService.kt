@@ -83,7 +83,7 @@ class FakeAiService(
             DropTopic.CAFE -> listOf("목적지에서 1.5km", "강문해변 바로 앞", "안목 커피거리에 있어요")
             else -> listOf("4대 모두 지나가는 길", "도착 시간 차이 5분", "넓은 주차장")
         }
-        // Stops on the way: only those every car still has ahead (a 2-minute vote must end before
+        // Stops on the way: only those every car still has ahead (a 1-minute vote must end before
         // anyone passes them). Destinations and cafés are near the end of the trip: all of them.
         val ahead = if (topic.isNearDestination() || context.poolIsFinal) {
             context.pool

@@ -3,7 +3,7 @@ package com.cardrop.ai.game
 const val OMOK_SIZE = 13
 const val OMOK_CELLS = OMOK_SIZE * OMOK_SIZE
 const val OMOK_PRESENCE_MS = 6_000L
-const val OMOK_INVITE_MS = 120_000L
+const val OMOK_INVITE_MS = 60_000L // an invitation waits 1 minute for an answer (2 until 2026-11-15)
 
 enum class OmokPhase { INVITED, PLAYING, FINISHED, DECLINED, CANCELLED, EXPIRED }
 

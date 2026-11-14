@@ -69,7 +69,7 @@ fun reachableFuelStops(pool: List<Place>, geometry: RouteGeometry, progressKm: D
 
 /**
  * Board 05's stations on the route ([reachableFuelStops], nearest first): at least [preferredAheadKm] ahead when
- * some are (a crew vote lasts 2 minutes and the 6x demo can drive 20 km meanwhile), else any that are ahead.
+ * some are (a crew vote lasts 1 minute and the 6x demo can drive 10 km meanwhile), else any that are ahead.
  * Before, a crew vote with no station 25 km ahead found none at all, e.g. on the last stretch of the trip.
  */
 fun routeFuelStops(pool: List<Place>, geometry: RouteGeometry, progressKm: Double, rangeKm: Float?, preferredAheadKm: Double): List<Place> =

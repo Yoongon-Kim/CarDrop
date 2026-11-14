@@ -40,19 +40,54 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
+import androidx.compose.runtime.mutableLongStateOf
+import com.cardrop.drive.gamesOpen
+import com.cardrop.navi.GpsFix
+import kotlinx.coroutines.delay
 
+/**
+ * Board 15. While the car is driving ([gamesOpen]: not in P, or the GPS says it is moving) nothing of the games
+ * shows, only a card that says so: no board, no quiz, no 도전장. [fix] = this car's latest GPS reading.
+ * A game in progress is paused meanwhile (the board counts as not visible) and comes back at the next stop.
+ */
 @Composable
-fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: List<Drop>) {
+fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: List<Drop>, fix: GpsFix?) {
     var tab by rememberSaveable { mutableStateOf("omok") }
     val openRequests by omok.openRequests.collectAsStateWithLifecycle()
     LaunchedEffect(openRequests) { if (openRequests > 0) tab = "omok" }
-    DisposableEffect(omok, tab) {
+    val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
+    // A clock that ticks every second while this screen is open, so an old GPS reading stops counting.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    val open = gamesOpen(snapshot.gear, fix, now)
+    DisposableEffect(omok, tab, open) {
         val owner = Any()
-        omok.onGameVisible(owner, tab == "omok")
+        omok.onGameVisible(owner, open && tab == "omok")
         onDispose { omok.onGameVisible(owner, false) }
+    }
+    if (!open) {
+        GamesClosed()
+        return
     }
     if (tab == "omok") OmokScreen(omok, stop, drops) { kind -> vm.chooseQuiz(kind); tab = "quiz" }
     else QuizScreen(vm, stop, drops, onOmok = { tab = "omok" })
+}
+
+/** What board 15 shows while driving: the title, the "P" pill and one card. No game can be seen or started. */
+@Composable
+private fun GamesClosed() {
+    Column(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        ScreenHeader("주행 중", "게임은 정차 중에만 열려요") { Pill("P · 정차 중에만 열려요") }
+        CdCard(Modifier.fillMaxWidth()) {
+            Text("주행 중에는 게임을 열 수 없어요", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+            Text("안전한 곳에 세우고 P로 바꾸면 열려요 · 하던 게임은 그대로 이어서 해요", fontSize = 15.sp, color = CdColors.Gray600)
+        }
+    }
 }
 
 @Composable

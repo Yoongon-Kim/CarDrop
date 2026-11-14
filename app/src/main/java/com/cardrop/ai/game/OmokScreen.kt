@@ -106,7 +106,6 @@ private fun OmokScreen(omok: OmokCoordinator, stop: Place?, drops: List<Drop>, o
     val crew by omok.currentCrew.collectAsStateWithLifecycle()
     val pending by omok.pending.collectAsStateWithLifecycle()
     val error by omok.error.collectAsStateWithLifecycle()
-    val recoveryError by omok.recoveryError.collectAsStateWithLifecycle()
     val localReady by omok.localReady.collectAsStateWithLifecycle()
     val connected by omok.transport.connected.collectAsStateWithLifecycle()
     val mine = games.values.filter { omok.myCarId in it.players }
@@ -166,7 +165,7 @@ private fun OmokScreen(omok: OmokCoordinator, stop: Place?, drops: List<Drop>, o
                     if (game != null) Pill("${game.moves.size}수")
                 }
                 val status = when {
-                    crew == null -> "크루에 참여하거나 이전 대국을 복구하고 있어요"
+                    crew == null -> "크루에 먼저 참여해 주세요"
                     !crew!!.isStarted -> "크루가 출발하면 게임을 초대할 수 있어요"
                     !connected -> "연결이 끊겼어요 · 연결되면 현재 보드를 확인해요"
                     !localReady -> "P로 정차하고 게임 화면을 열어 주세요"
@@ -182,10 +181,6 @@ private fun OmokScreen(omok: OmokCoordinator, stop: Place?, drops: List<Drop>, o
                     else -> "상대 차례예요"
                 }
                 Text(status, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark)
-                if (recoveryError != null) {
-                    Text(recoveryError!!, fontSize = 14.sp, color = CdColors.Red)
-                    CdChip("이전 대국 다시 연결", omok::retryRecovery, style = ChipStyle.Blue)
-                }
                 if (error != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(error!!, Modifier.weight(1f), fontSize = 14.sp, color = CdColors.Red)
                     CdChip("확인", omok::clearError, height = 34.dp)
@@ -286,13 +281,11 @@ fun OmokInviteNotice(omok: OmokCoordinator, onOpen: () -> Unit) {
     val games by omok.games.collectAsStateWithLifecycle()
     val now by omok.clock.collectAsStateWithLifecycle()
     val crew by omok.currentCrew.collectAsStateWithLifecycle()
-    val recoveryError by omok.recoveryError.collectAsStateWithLifecycle()
-    val incoming = games.values.firstOrNull { it.whiteId == omok.myCarId && it.invited(now) }
-    if (incoming == null && recoveryError == null) return
-    val sender = crew?.cars?.firstOrNull { it.id == incoming?.blackId }?.name ?: "일행 차"
+    val incoming = games.values.firstOrNull { it.whiteId == omok.myCarId && it.invited(now) } ?: return
+    val sender = crew?.cars?.firstOrNull { it.id == incoming.blackId }?.name ?: "일행 차"
     Box(Modifier.fillMaxWidth().padding(top = 90.dp, end = 28.dp), contentAlignment = Alignment.TopEnd) {
         CdCard(Modifier.widthIn(max = 430.dp), radius = 20.dp, contentPadding = PaddingValues(16.dp)) {
-            Text(if (recoveryError != null) "이전 오목 대국에 다시 연결해 주세요" else "${sender.particle("이", "가")} 오목 도전장을 보냈어요", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink)
+            Text("${sender.particle("이", "가")} 오목 도전장을 보냈어요", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink)
             CdChip("게임에서 확인", { omok.openGame(); onOpen() }, style = ChipStyle.Blue)
         }
     }

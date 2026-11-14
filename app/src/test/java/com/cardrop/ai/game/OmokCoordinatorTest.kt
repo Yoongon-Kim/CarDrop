@@ -15,11 +15,6 @@ class OmokCoordinatorTest {
         override fun read(key: String) = data[key]
         override fun write(key: String, value: String) { data[key] = value }
     }
-    private val recovery = object : OmokRecoveryStore {
-        override fun read(car: String, real: Boolean, now: Long): OmokResume? = null
-        override fun save(crew: Crew, car: String, real: Boolean) = Unit
-        override fun clear() = Unit
-    }
     private fun fixture(scope: CoroutineScope): Pair<OmokCoordinator, LocalOmokTransport> {
         val crew = object : CrewRepository by FakeCrewRepository(scope) {
             override val myCarId = "a"
@@ -28,7 +23,7 @@ class OmokCoordinatorTest {
         }
         val vehicle = FakeVehicleRepository().apply { setGear(Gear.PARK) }
         val transport = LocalOmokTransport(Store()) { 10_000 }
-        return OmokCoordinator(scope, crew, vehicle, transport, recovery, false) { 1_000 } to transport
+        return OmokCoordinator(scope, crew, vehicle, transport, false) { 1_000 } to transport
     }
     @Test fun disposingOldActivityAfterNewActivityStartsDoesNotPauseItsGame() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)

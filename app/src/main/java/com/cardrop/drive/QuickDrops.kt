@@ -57,12 +57,15 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
 
 /** The quick-drop rules. Plain Kotlin, so QuickDropsTest covers them. */
 object QuickDropRules {
-    /** Board 04's first row has four slots. */
-    const val SLOTS = 4
+    /**
+     * Board 04 shows the quick drops two to a row (Member A, 2026-11-15: in four to a row the names were too small
+     * to read). The first two rows are the 2 x 2 under the crew cards; the fifth drop on goes in the rows under it.
+     */
+    const val COLUMNS = 2
 
     /**
-     * The most quick drops a driver can keep: the four slots and a second row under them (Member A, 2026-11-14;
-     * the canvas stops at four). The second row holds the fifth drop on, and one dashed "+" slot to add another.
+     * The most quick drops a driver can keep (Member A, 2026-11-14; the canvas stops at four): the 2 x 2 and two
+     * rows under it.
      */
     const val MAX_SLOTS = 8
 
@@ -72,14 +75,19 @@ object QuickDropRules {
     /** How many drops the driver can pick at all: the ones that aren't cut, at most [MAX_SLOTS]. */
     val pickable: Int get() = minOf(MAX_SLOTS, QuickDrop.entries.count { it.available })
 
-    /** The drops under the first row: the fifth one on. */
-    fun secondRow(chosen: List<QuickDrop>): List<QuickDrop> = chosen.drop(SLOTS)
-
     /**
-     * True when board 04 shows the dashed "+" slot under the four: while the driver can still add a drop
-     * (there is one left to pick). It opens the editor, like the empty slots of the first row.
+     * True when board 04 shows the one dashed "+ 추가" tile: while the driver can still add a drop (there is one
+     * left to pick). It opens the editor.
      */
     fun showsAddSlot(chosen: List<QuickDrop>): Boolean = chosen.size < pickable
+
+    /**
+     * Board 04's tiles, [COLUMNS] to a row: the driver's drops in their order, then one "+ 추가" (null) while
+     * [showsAddSlot]. The defaults (휴게소, 주유, 운전 기록) fill the 2 x 2 with 추가 as the fourth tile; with four drops
+     * 추가 starts the row under the 2 x 2. A last row with one tile leaves the other half empty.
+     */
+    fun gridRows(chosen: List<QuickDrop>): List<List<QuickDrop?>> =
+        (chosen + if (showsAddSlot(chosen)) listOf(null) else emptyList()).chunked(COLUMNS)
 
     /**
      * Slots before the driver saves a custom list. Explicitly saved and empty lists are preserved.
@@ -108,7 +116,7 @@ object QuickDropRules {
 
     /**
      * Taps [drop] in the editor: a picked drop comes off (the ones after it move up), a new one goes in the next
-     * free slot (the fifth one starts the second row). A cut drop changes nothing. [max] = how many fit.
+     * free slot (the fifth one goes under the 2 x 2). A cut drop changes nothing. [max] = how many fit.
      */
     fun pick(draft: List<QuickDrop>, drop: QuickDrop, max: Int = MAX_SLOTS): Pick = when {
         drop in draft -> Pick.Changed(draft - drop)

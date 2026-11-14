@@ -73,10 +73,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   - Board 10 "다른 곳을 직접 입력": the suggestions replace the list until the box is empty; tapping one (or 추가 =
     the top one) puts it in the list, ticked. 말해서 추가 takes the top result for what was heard. Known places
     here: rest stops, cafés, destinations. A searched place that is an AI pick under a longer name
-    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). Board 08 has no 카페 or 직접 추가 tile (D11):
-    any place is added here, and 카페 comes up by voice ("커피"). `DropTopic.CUSTOM` (board 10 with no AI picks)
-    is no longer offered on screen.
-- Board 08 "받는 차": a drop goes to the whole crew (`Drop.toCarIds` empty) or to chosen cars. Cars it
+    ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). Board 08's decision row turns, as on the live
+    canvas (lead, 2026-11-15; this undoes D11), with the arrow at its end or a swipe to a second page: 카페 (board 10
+    with the AI's cafés; 카페 also comes up by voice, "커피") and 직접 추가 (`DropTopic.CUSTOM`: board 10 with no AI
+    picks, the driver adds the places here).
+- Board 08 "받는 차" (live canvas, lead, 2026-11-15; replaces D13's 조합 만들기): 크루 전체, then a tick box per car;
+  any cars can be ticked together, and none or all of them is 크루 전체 (`Recipients` in `drop/DropSendScreen.kt`,
+  unit tested). A drop goes to the whole crew (`Drop.toCarIds` empty) or to the ticked cars. Cars it
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 - 목적지 변경 is a proposal, not an AI vote (Member A, 2026-11-14; not on the design board): board 08's tile opens
   "어디로 제안할까요?" on the same screen (`drop/DestinationProposal.kt`, board 02's place search), then "여기로 제안을
@@ -121,6 +124,12 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   it (a crew just made or joined). Bot crew: 삼촌 48%, 이모 55%, 민지 23%; a bot that sent a fuel warning (the DEMO
   panel's 민지 차) shows 12% · 85km, as on board 05. Under 20% a card turns orange ("연료 경고" + range); only this
   car's opens board 05, once the trip has started.
+- Board 05's stations (`DriveViewModel.stationPool`, rules in `drive/DriveRules.kt`, unit tested; lead, 2026-11-15):
+  rest stops with a 주유소 on the route ahead, reachable with a 5 km reserve; for 응, 알려줘 25 km ahead first (the vote
+  ends before the car passes it), else any ahead. When none will do (past the last rest stop, near the destination),
+  Kakao's 주유소 within 20 km of the car (`AppContainer.nearbyStations`, needs `cardrop.kakaoRestKey`), not the ones
+  passed on the road. Before, the end of the trip or a little fuel gave "…주유소를 찾지 못했어요" without asking the AI.
+  The AI picks among that list as it is (`TripContext.poolIsFinal`), it doesn't narrow it to stops 25 km ahead.
 
 ## Design boards
 
@@ -164,7 +173,9 @@ When CarDrop starts, this demo version first asks how the device runs (not in th
 on `am start` skips it and uses the last answer.
 
 The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
-Use it to rehearse the 시연 on one emulator. Its **크루** switch flips this device between the bot crew and the real
+Use it to rehearse the 시연 on one emulator. Its panel fits on the screen (buttons side by side) and closes with the ✕
+at its top right or the DEMO button again. On the emulator, scroll by dragging: the Pleos image has no mouse input
+device (`adb shell getevent -pl` lists only touch screens and keys). Its **크루** switch flips this device between the bot crew and the real
 crew without a rebuild: the app restarts (without the start question), and the device keeps the pick until
 `cardrop.useRealCrew` changes (`core/demo/DemoCrew.kt`). With the real crew its **내 차** picks
 which car this device drives: the device remembers it and the app restarts as that car (`core/demo/DemoCar.kt`).

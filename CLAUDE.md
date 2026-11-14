@@ -252,7 +252,10 @@ GPS position, live routes, rerouting, turn guidance. Only the GPS input is simul
 **Run the demo car:** start the emulator and the app, then
 `python3 tools/drive_gps.py` (drives the 영동고속도로 from km 40 at 6x speed, 1 GPS fix per second via
 `adb emu geo fix`; `--speed 1` for real time, `--start-km`, `--gpx` for Extended controls,
-`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). The emulator's
+`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). While CarDrop's gear is P
+(the DEMO panel's P) the script holds the car still at 0 km/h and drives on after D: the app writes its gear to
+`files/gear.txt` (`drive/GearFile.kt`), read each second like the crew code. Ctrl+C or arriving ends with a 0 km/h fix
+(the emulator keeps repeating the last one). The emulator's
 own route player can't make Korean routes (Google has no driving directions in Korea). Grant location
 when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permission.ACCESS_FINE_LOCATION`).
 

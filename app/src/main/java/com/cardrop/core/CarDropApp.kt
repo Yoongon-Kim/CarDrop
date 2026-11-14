@@ -69,6 +69,7 @@ import com.cardrop.drop.VoteScreen
 import com.cardrop.navi.InAppNavigatorPanel
 import com.cardrop.safety.SafetyScoreScreen
 import com.cardrop.safety.SafetyResultScreen
+import com.cardrop.safety.SafetyWeekScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -245,7 +246,10 @@ fun CarDropApp(container: AppContainer) {
                 navigator.switchTab(Screen.Drive)
             }
             Screen.Drive -> driveScreen(null)
-            is Screen.Safety -> SafetyScoreScreen(container.safety, crewNow) { navigator.go(Screen.SafetyResult(it)) }
+            is Screen.Safety -> SafetyScoreScreen(container.safety, crewNow, onWeek = { navigator.go(Screen.SafetyWeek) }) {
+                navigator.go(Screen.SafetyResult(it))
+            }
+            Screen.SafetyWeek -> SafetyWeekScreen(container.safety, onBack = navigator::back) { navigator.go(Screen.SafetyResult(it)) }
             is Screen.SafetyResult -> SafetyResultScreen(container.safety, screen.recordId, crewNow) { navigator.switchTab(Screen.Safety()) }
             // 04's 퀵 드랍 편집: 홈에 저장하기 keeps the new slots on this device, then back to 04.
             Screen.QuickDropEdit -> QuickDropEditScreen(

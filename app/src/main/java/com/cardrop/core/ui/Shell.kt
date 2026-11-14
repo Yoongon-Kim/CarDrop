@@ -118,7 +118,7 @@ private fun Screen.railGroup(): Screen = when (this) {
     Screen.CreateCrew, Screen.DestinationSearch, Screen.JoinCrew -> Screen.CreateCrew
     Screen.Games -> Screen.Games
     Screen.Inbox -> Screen.Inbox
-    is Screen.Safety, is Screen.SafetyResult -> Screen.Safety()
+    is Screen.Safety, is Screen.SafetyResult, Screen.SafetyWeek -> Screen.Safety()
 }
 
 /**

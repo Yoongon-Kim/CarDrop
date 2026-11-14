@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -26,14 +28,13 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /** Boards 16 and 17. All numbers come from the trip journal, including the demo cars. */
 @Composable
-fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String) -> Unit) {
+fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onWeek: () -> Unit = {}, onResult: (String) -> Unit) {
     val record by safety.current.collectAsStateWithLifecycle()
     val peers by safety.peers.collectAsStateWithLifecycle()
     val history by safety.history.collectAsStateWithLifecycle()
@@ -64,8 +65,12 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
             }
         } else {
             SafetyRoad(ranked)
+            // The right column ends where the ranking card ends (Member A, 2026-11-15): it takes that card's height, and
+            // "이번 주 내 기록" fills what the AI card leaves.
+            var rankHeight by remember { mutableStateOf(0) }
+            val density = LocalDensity.current
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                CdCard(Modifier.weight(1.14f), gap = 8.dp, contentPadding = PaddingValues(18.dp)) {
+                CdCard(Modifier.weight(1.14f).onSizeChanged { rankHeight = it.height }, gap = 8.dp, contentPadding = PaddingValues(18.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         SectionLabel("실시간 잠정 순위")
                         Text("${time(now)} · 매초 갱신", fontSize = 12.sp, color = CdColors.Gray500)
@@ -73,17 +78,18 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
                     ranked.forEach { SafetyCarRow(it, now, safety.demo) }
                     Text("급가속 · 급정거 기준 · 동점은 공동 순위\n확정 순위는 도착 후 주행 1분 · 속도 측정 95% 기준을 적용해요", fontSize = 11.sp, color = CdColors.Gray500)
                 }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(
+                    Modifier.weight(1f).then(if (rankHeight > 0) Modifier.height(with(density) { rankHeight.toDp() }) else Modifier),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
                     SafetyEncouragementCard(safety)
-                    CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp), gap = 8.dp) {
-                        SectionLabel("이번 주 내 기록")
-                        val week = startOfWeek(now)
-                        val weekly = history.filter { it.demo == safety.demo && it.startedAtMillis >= week && it.status != SafetyTripStatus.RECORDING }
-                        val full = weekly.filter { it.status == SafetyTripStatus.COMPLETED && it.rankEligible }
-                        Text(if (full.isEmpty()) "완료된 주행 기록이 아직 없어요" else "${full.size}회 완주 · 평균 ${full.map { it.score }.average().roundToInt()}점",
-                            fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink2)
-                        Text("저장된 내 차 기록 ${weekly.size}개 · ${if (safety.demo) "모의 기록" else "실제 주행"}", fontSize = 13.sp, color = CdColors.Gray500)
-                    }
+                    WeekCard(
+                        trips = weekTrips(history, safety.demo, now),
+                        demo = safety.demo,
+                        parked = parked,
+                        onOpen = onWeek,
+                        modifier = Modifier.fillMaxWidth().then(if (rankHeight > 0) Modifier.weight(1f) else Modifier),
+                    )
                 }
             }
             CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp), gap = 12.dp) {
@@ -293,6 +299,78 @@ private fun SafetyPodium(rows: List<RankedSafetyCar>) {
     }
 }
 
+/**
+ * 이번 주 내 기록 (Member A, 2026-11-15): the week's finished trips and their average, and "저장된 내 차 기록 n개 보기 ›".
+ * A tap on the card opens [SafetyWeekScreen] with all of this week's trips ([onOpen]), only once the car has stopped
+ * ([parked]); while driving it can't be tapped and says so, like 지난 내 차 기록.
+ */
+@Composable
+private fun WeekCard(trips: List<SafetyRecord>, demo: Boolean, parked: Boolean, onOpen: () -> Unit, modifier: Modifier) {
+    val full = trips.filter { it.status == SafetyTripStatus.COMPLETED && it.rankEligible }
+    CdCard(modifier, onClick = if (trips.isNotEmpty() && parked) onOpen else null, contentPadding = PaddingValues(18.dp), gap = 8.dp) {
+        SectionLabel("이번 주 내 기록")
+        Text(if (full.isEmpty()) "완료된 주행 기록이 아직 없어요" else "${full.size}회 완주 · 평균 ${full.map { it.score }.average().roundToInt()}점",
+            fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink2)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("저장된 내 차 기록 ${trips.size}개 · ${if (demo) "모의 기록" else "실제 주행"}",
+                fontSize = 13.sp, color = CdColors.Gray600, modifier = Modifier.weight(1f))
+            if (trips.isNotEmpty() && parked) Text("보기 ›", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark)
+        }
+        if (trips.isNotEmpty() && !parked) Text("주행 중에는 볼 수 없어요 · 정차 후 열 수 있어요", color = CdColors.Gray500, fontSize = 12.sp)
+    }
+}
+
+/** This week's trips of this car (demo or real, like board 16), newest first. */
+private fun weekTrips(history: List<SafetyRecord>, demo: Boolean, now: Long): List<SafetyRecord> {
+    val week = startOfWeek(now)
+    return history.filter { it.demo == demo && it.startedAtMillis >= week && it.status != SafetyTripStatus.RECORDING }
+}
+
+/**
+ * 이번 주 내 기록, opened from board 16's card (Member A, 2026-11-15): the week's summary and every trip of it. A trip
+ * opens board 17 for it ([onOpen]). Only once the car has stopped: while driving it shows a note instead of the trips,
+ * like board 17. [onBack] goes back to board 16.
+ */
+@Composable
+fun SafetyWeekScreen(safety: SafetyCoordinator, onBack: () -> Unit, onOpen: (String) -> Unit) {
+    val history by safety.history.collectAsStateWithLifecycle()
+    val parked by safety.canFinish.collectAsStateWithLifecycle()
+    val now by safety.clock.collectAsStateWithLifecycle()
+    val trips = weekTrips(history, safety.demo, now)
+    val full = trips.filter { it.status == SafetyTripStatus.COMPLETED && it.rankEligible }
+    ScreenColumn(gap = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BackButton(onBack)
+            ScreenHeader(eyebrow = "안전운전 대결 · ${if (safety.demo) "DEMO · 모의 기록" else "실제 주행"}", title = "이번 주 내 기록", titleSize = 28.sp)
+        }
+        CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(22.dp), gap = 6.dp) {
+            SectionLabel(if (full.isEmpty()) "완료된 주행 기록이 아직 없어요" else "${full.size}회 완주")
+            if (full.isNotEmpty()) Text("평균 ${full.map { it.score }.average().roundToInt()}점", color = CdColors.BlueDark, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
+            Text("저장된 내 차 기록 ${trips.size}개 · 완주한 기록만 평균에 들어가요", fontSize = 13.sp, color = CdColors.Gray500)
+        }
+        // Started driving with this screen open: the list waits for the car to stop, like board 17.
+        if (!parked) {
+            CdCard(Modifier.fillMaxWidth()) {
+                SectionLabel("정차 후 이번 주 기록을 볼 수 있어요")
+                Text("주행 중에는 기록 화면의 요약을 확인해 주세요.", color = CdColors.Gray600)
+            }
+        } else CdCard(Modifier.fillMaxWidth(), gap = 10.dp, contentPadding = PaddingValues(18.dp)) {
+            if (trips.isEmpty()) Text("이번 주에 저장된 기록이 없어요", color = CdColors.Gray500, fontSize = 14.sp)
+            trips.forEach { record ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = parked) { onOpen(record.id) }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(record.destination, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("${shortDate(record.startedAtMillis)} · ${when (record.status) { SafetyTripStatus.COMPLETED -> "도착 완료"; SafetyTripStatus.STOPPED -> "중도 종료"; else -> "중단된 주행" }} · 급가속 ${record.count(SafetyEventType.ACCELERATION)} · 급정거 ${record.count(SafetyEventType.BRAKING)}",
+                            fontSize = 12.sp, color = CdColors.Gray500)
+                    }
+                    Text("${record.score}점  ›", color = CdColors.BlueDark, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun HistoryCard(records: List<SafetyRecord>, parked: Boolean, onOpen: (String) -> Unit) {
     CdCard(Modifier.fillMaxWidth(), gap = 10.dp, contentPadding = PaddingValues(18.dp)) {
@@ -322,9 +400,7 @@ private fun sourceLabel(source: SafetySourceState, record: SafetyRecord): String
     else -> "급가속 · 급정거 평가 중"
 }
 private fun date(millis: Long): String = SimpleDateFormat("MM.dd HH:mm", Locale.KOREA).format(Date(millis))
+private fun shortDate(millis: Long): String = SimpleDateFormat("M.d (E)", Locale.KOREA).format(Date(millis))
 private fun time(millis: Long): String = SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(Date(millis))
 private fun Car.safetyName(): String = name + if (isMe && "(나)" !in name) " (나)" else ""
-private fun startOfWeek(now: Long): Long = Calendar.getInstance().apply {
-    timeInMillis = now; firstDayOfWeek = Calendar.MONDAY; set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-}.timeInMillis
+

@@ -23,6 +23,10 @@ class SafetyStore(context: Context) : SQLiteOpenHelper(context.applicationContex
         } finally { writableDatabase.endTransaction() }
     }
 
+    @Synchronized fun delete(id: String) {
+        writableDatabase.delete("records", "id = ?", arrayOf(id))
+    }
+
     @Synchronized fun load(): List<SafetyRecord> = readableDatabase.query("records", arrayOf("data"), null, null, null, null, "updated DESC", "100").use { cursor ->
         buildList { while (cursor.moveToNext()) runCatching { safetyRecordFromJson(JSONObject(cursor.getString(0))) }.getOrNull()?.let(::add) }
     }

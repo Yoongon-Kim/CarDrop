@@ -57,7 +57,8 @@ class SafetyCoordinator(
     private val prefs = context.getSharedPreferences("safety-settings", Context.MODE_PRIVATE)
     val cheerEnabled = MutableStateFlow(prefs.getBoolean("cheer", true))
     private val store = SafetyStore(context)
-    private val writes = Channel<SafetyRecord>(Channel.UNLIMITED)
+    /** Store work, one at a time and in order: a save, or the removal of a record whose trip got its real id. */
+    private val writes = Channel<(SafetyStore) -> Unit>(Channel.UNLIMITED)
     private val native = if (demo) null else runCatching { AaosSafetyTelemetry(context, scope) }.getOrNull()
     val demoTelemetry = if (demo) DemoSafetyTelemetry(scope) { vehicle.snapshot.value.gear } else null
     private val sync = if (realCrew) SafetySync() else null
@@ -79,7 +80,7 @@ class SafetyCoordinator(
 
     init {
         scope.launch(Dispatchers.IO) {
-            for (record in writes) try { store.save(record) } catch (e: Exception) { Log.e("CarDropSafety", "Could not save safety record", e) }
+            for (write in writes) try { write(store) } catch (e: Exception) { Log.e("CarDropSafety", "Could not save safety record", e) }
         }
         scope.launch {
             val stored = withContext(Dispatchers.IO) { store.load() }
@@ -92,6 +93,24 @@ class SafetyCoordinator(
                 val started = group?.startedAtMillis
                 val nextKey = if (group != null && started != null) "${group.code}-$started" else null
                 if (nextKey == key) return@collectLatest
+                // The host's own 출발 arrives twice: first with Firebase's local guess of the server time, then with
+                // the server's own `startedAt`, a few ms apart; the other cars only ever see the second. That is the
+                // same trip: keep recording under the server's time (the id every car shares) instead of ending the
+                // trip and starting a new one, which stopped the foreground service a moment after starting it and
+                // crashed the host's app (ForegroundServiceDidNotStartInTimeException; Member A, 2026-11-15).
+                val running = engine
+                if (group != null && started != null && nextKey != null && running != null &&
+                    sameTripRestamped(key, group.code, running.record.startedAtMillis, started)) {
+                    val oldId = running.record.id
+                    running.retag(nextKey, started)
+                    key = nextKey
+                    history.value = history.value.filterNot { it.id == oldId }
+                    writes.trySend { it.delete(oldId) }
+                    sync?.follow(nextKey, group.cars, group.hostCarId == crew.myCarId)
+                    savedRevision = -1; sharedRevision = -1
+                    publish(true)
+                    return@collectLatest
+                }
                 engine?.let { old ->
                     if (old.record.status == SafetyTripStatus.RECORDING) old.finish(System.currentTimeMillis(), false)
                     save(old.record)
@@ -186,7 +205,7 @@ class SafetyCoordinator(
     }
 
     private fun save(record: SafetyRecord) {
-        writes.trySend(record)
+        writes.trySend { it.save(record) }
         history.value = (listOf(record) + history.value.filterNot { it.id == record.id }).sortedByDescending { it.updatedAtMillis }.take(100)
     }
 

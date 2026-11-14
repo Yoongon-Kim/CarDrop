@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 /**
  * Owner: Member B. Crew positions.
  *
- * This car = its GPS and live route ([InAppNavigation]).
+ * This car = Pleos FusedLocation measurements, with GPS as a fallback, and the live route ([InAppNavigation]).
  * - Real crew ([shared] set): the other cars are where their own devices say they are
  *   (drive/FirebaseTrip.kt). A car with no device (or a closed app) is not drawn.
  * - Bot crew: the bots follow this car's GPS trail [BOT_GAPS_KM] behind, so they stay with the
@@ -29,6 +29,8 @@ class GpsCrewPositions(
     private val myCarId: () -> String,
     /** The other cars' shared positions (real crew); null = the bot crew. */
     private val shared: StateFlow<Map<String, CarPosition>>? = null,
+    private val preferredLocation: LocationSource? = null,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : RouteSimulator {
 
     private val carIds = MutableStateFlow<List<String>>(emptyList())
@@ -37,26 +39,37 @@ class GpsCrewPositions(
     private val trail = ArrayList<GeoPoint>()
 
     override val positions: StateFlow<Map<String, CarPosition>> =
-        combine(navigation.state, carIds, shared ?: flowOf(emptyMap())) { state, ids, others -> build(state, ids, others) }
+        combine(navigation.state, carIds, shared ?: flowOf(emptyMap()), preferredLocation?.fix ?: flowOf(null)) {
+            state, ids, others, sdkFix -> build(state, ids, others, sdkFix)
+        }
             .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     override fun start(carIds: List<String>, destination: Place) {
         this.carIds.value = carIds
+        preferredLocation?.start()
     }
 
     override fun stop() {
+        preferredLocation?.stop()
         carIds.value = emptyList()
         trail.clear()
     }
 
-    private fun build(state: NavigatorState, ids: List<String>, others: Map<String, CarPosition>): Map<String, CarPosition> {
+    private fun build(state: NavigatorState, ids: List<String>, others: Map<String, CarPosition>, sdkFix: GpsFix?): Map<String, CarPosition> {
         val me = myCarId()
         if (me !in ids) return emptyMap()
-        val fix = state.fix
-        val here = fix?.let { f -> state.snapped?.let { GeoPoint(it.lat, it.lng) } ?: GeoPoint(f.lat, f.lng) }
+        val fix = crewLocationFix(sdkFix, state.fix, now())
+        val fromSdk = fix != null && fix === sdkFix
+        val here = fix?.let { f ->
+            if (!fromSdk && state.snapped != null) GeoPoint(state.snapped.lat, state.snapped.lng)
+            else GeoPoint(f.lat, f.lng)
+        }
         val route = state.route
-        val myKmLeft = route?.let { (it.totalKm - state.progressKm).coerceAtLeast(0.0) } ?: 0.0
-        val myMinutes = route?.let { it.secondsBetween(state.progressKm, it.totalKm) / 60 } ?: 0.0
+        val progressKm = if (fromSdk && here != null && route != null) {
+            route.geometry.locate(here.lat, here.lng).km
+        } else state.progressKm
+        val myKmLeft = route?.let { (it.totalKm - progressKm).coerceAtLeast(0.0) } ?: 0.0
+        val myMinutes = route?.let { it.secondsBetween(progressKm, it.totalKm) / 60 } ?: 0.0
         val mine = here?.let { CarPosition(me, it.lat, it.lng, myKmLeft.toFloat(), myMinutes.toInt()) }
         if (shared != null) return withSharedCars(me, mine, ids, others)
 

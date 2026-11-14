@@ -2,6 +2,7 @@ package com.cardrop
 
 import android.Manifest
 import android.app.Application
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,6 +15,7 @@ import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.demo.StartMode
 import com.cardrop.core.demo.StartModeScreen
 import com.cardrop.core.ui.theme.CarDropTheme
+import com.cardrop.navi.PleosFusedLocationSource
 
 class CarDropApplication : Application() {
     /**
@@ -31,9 +33,14 @@ class MainActivity : ComponentActivity() {
 
     private val app get() = application as CarDropApplication
 
-    /** The in-app navigator needs GPS; ask once, then start it. */
-    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) app.container?.inAppNavigation?.onLocationPermissionGranted()
+    /** GPS drives the map; Pleos vehicle location drives the crew diagram when available. */
+    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            app.container?.inAppNavigation?.onLocationPermissionGranted()
+        }
+        if (grants[PleosFusedLocationSource.PERMISSION] == true) {
+            app.container?.onFusedLocationPermissionGranted()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,13 +68,36 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun show(container: AppContainer) {
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            askLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        val missingPermissions = buildList {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                add(Manifest.permission.ACCESS_COARSE_LOCATION)
+                add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+            if (container.supportsFusedLocation &&
+                checkSelfPermission(PleosFusedLocationSource.PERMISSION) != PackageManager.PERMISSION_GRANTED
+            ) add(PleosFusedLocationSource.PERMISSION)
         }
         setContent {
             CarDropTheme {
                 CarDropApp(container)
             }
         }
+        if (PleosFusedLocationSource.PERMISSION in missingPermissions) {
+            // Some Pleos images do not label the custom permission in the system dialog.
+            AlertDialog.Builder(this)
+                .setTitle("차량 위치 사용")
+                .setMessage("크루 차량의 위치 도식에 내 위치를 표시하기 위해 차량 위치 접근 권한을 요청해요. GPS로 계속 사용할 수도 있어요.")
+                .setPositiveButton("계속") { _, _ -> askLocation.launch(missingPermissions.toTypedArray()) }
+                .setNegativeButton("GPS로 사용") { _, _ -> requestGpsOnly(missingPermissions) }
+                .setOnCancelListener { requestGpsOnly(missingPermissions) }
+                .show()
+        } else if (missingPermissions.isNotEmpty()) {
+            askLocation.launch(missingPermissions.toTypedArray())
+        }
+    }
+
+    private fun requestGpsOnly(permissions: List<String>) {
+        val gpsPermissions = permissions.filter { it != PleosFusedLocationSource.PERMISSION }
+        if (gpsPermissions.isNotEmpty()) askLocation.launch(gpsPermissions.toTypedArray())
     }
 }

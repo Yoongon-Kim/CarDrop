@@ -21,11 +21,11 @@ data class GpsFix(
     val timeMillis: Long,
 )
 
-/** Where this car is, from the GPS. */
+/** A stream of this car's measured positions (Android GPS or a vehicle location SDK). */
 interface LocationSource {
     val fix: StateFlow<GpsFix?>
 
-    /** Starts GPS updates (once a second). Returns false while the location permission is missing. */
+    /** Starts position updates. Returns false while the source is unavailable or lacks permission. */
     fun start(): Boolean
 
     fun stop()
@@ -34,7 +34,7 @@ interface LocationSource {
 /**
  * Owner: Member B.
  *
- * Android's GPS, the same source the built-in navigation uses. On the emulator the GPS is fed by
+ * Android's GPS provider. On the emulator GPS is fed by
  * `tools/drive_gps.py` (or Extended controls > Location), which is how the demo car "drives".
  */
 class AndroidLocationSource(private val context: Context) : LocationSource {

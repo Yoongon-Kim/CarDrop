@@ -37,7 +37,7 @@ Rules:
 Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
                                        CrewRepository      FakeCrewRepository (bots) -> FirebaseCrewRepository
                                        VehicleRepository   FakeVehicleRepository     -> PleosVehicleRepository
-                                       RouteSimulator      GpsCrewPositions (GPS; tools/drive_gps.py on the emulator)
+                                       RouteSimulator      GpsCrewPositions (Pleos FusedLocation, GPS fallback)
                                        NavigationHandoff   InAppNavigation (GPS + Kakao/OSRM)
                                        AiService           FakeAiService             -> Claude API
                                        VoiceService        FakeVoiceService          -> Android TTS/STT
@@ -208,7 +208,7 @@ landed on `main`.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
   If gear stays `UNKNOWN`, the game (board 15) stays closed: it opens only in P (`ai/QuizScreen.kt`).
-- The SDK has no vehicle speed or location API. Car positions come from GPS (`navi/GpsCrewPositions.kt`).
+- The SDK has no vehicle speed or location API. Crew positions come from Pleos FusedLocation with a GPS fallback (`navi/GpsCrewPositions.kt`).
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 
 ## Voice notes (Pleos speech SDKs 3.3.1, checked on the emulator 2026-11-13)
@@ -278,9 +278,18 @@ shares its position through Firebase about once a second, so each one draws the 
 - Routing: `navi/KakaoDirections.kt` (Kakao Mobility, Korean data + traffic + Korean turn texts; key
   `cardrop.kakaoRestKey`, free for non-commercial use up to 10,000 requests/day), then
   `navi/OsrmDirections.kt` (public OSRM server, no key, no traffic, no uptime promise) as backup.
-- `navi/GpsCrewPositions.kt` - crew positions: this car from GPS. Real crew: the other cars where their own
+- `navi/GpsCrewPositions.kt` - crew diagram positions: this car from Pleos FusedLocation when usable, else GPS. Real crew: the other cars where their own
   devices say (`drive/FirebaseTrip.kt`, `trips/<code>/positions` in Firebase); a car without a connected device
   is not drawn. Bot crew: the bots follow this car's GPS trail 0.8 / 1.8 / 3 km behind.
+- `navi/PleosFusedLocationSource.kt` subscribes to the Pleos vehicle-location service (SDK 1.1.3) while
+  in a crew, and unsubscribes/releases it on leaving. It preserves `LocationData.timestampMillis`;
+  a newly received cache reply is not a new measurement. A watchdog clears an expired fix even when
+  callbacks stop, allowing `GpsCrewPositions` to switch to GPS. `navi/CrewLocation.kt` rejects invalid,
+  future or over-5-second-old SDK measurements, and positions over 1 km from the last known GPS fix.
+  Distance/ETA come from projecting the chosen position onto CarDrop's route. Firebase shares that
+  position with the other cars. `MainActivity` explains and requests `pleos.car.permission.FUSED_LOCATION`
+  on supported devices and starts a waiting subscription after a grant; unsupported/denied devices use GPS.
+  The in-app navigator still uses Android GPS. Logs: `adb logcat -s CarDropFused`.
 - Board 01's destination card adds the road distance and drive time ("약 62km · 1시간 5분") from the live
   route (`navi/DestinationTrip.kt`, `AppContainer.destinationTrip`). Nothing shows until the route is there,
   or while the route still ends at the old destination after a change.

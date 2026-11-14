@@ -120,6 +120,7 @@ fun CarDropApp(container: AppContainer) {
         DriveViewModel(
             container.vehicle, container.route, container.navigation, container.crew, container.ai,
             crewFuel = container.crewFuel,
+            nearbyStations = container.nearbyStations,
         )
     }
     val aiVm: AiViewModel = viewModel {

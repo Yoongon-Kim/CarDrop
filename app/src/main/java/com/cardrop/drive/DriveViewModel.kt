@@ -28,6 +28,11 @@ class DriveViewModel(
     private val ai: AiService,
     workScope: CoroutineScope? = null,
     crewFuel: CrewFuel = CrewFuel.None,
+    /**
+     * The 주유소 around a point, nearest first ([AppContainer.nearbyStations]: Kakao's place search; null without
+     * a Kakao key). Board 05 asks it only when no rest stop on the route will do.
+     */
+    private val nearbyStations: (suspend (GeoPoint) -> List<Place>)? = null,
 ) : ViewModel() {
     private val scope = workScope ?: viewModelScope
     val snapshot = vehicle.snapshot
@@ -131,52 +136,103 @@ class DriveViewModel(
 
     private fun ensureCrew(key: String?) { check(key != null && key == crewKey()) { "크루가 변경됐어요. 다시 시도해 주세요" } }
 
-    private fun eligibleStations(shared: Boolean): List<Place> {
-        val range = snapshot.value.rangeKm
-        check(range != null && range.isFinite() && range > 5) { "주행 가능 거리를 확인할 수 없어요. 연료와 차량 연결을 확인해 주세요" }
-        val geometry: RouteGeometry
-        val progress: Double
+    /** Where this car is ([here]) and, while it is on a route, how far along it ([geometry], [progressKm]). */
+    private class CarSpot(val here: GeoPoint, val geometry: RouteGeometry?, val progressKm: Double)
+
+    /**
+     * This car's spot: the navigator's fresh GPS fix on its live route, or (without the in-app navigator, in tests)
+     * its position on the baked demo route. Off the route, or with no route yet, [CarSpot.geometry] is null.
+     */
+    private fun carSpot(): CarSpot {
         if (liveNavigation != null) {
             val state = liveNavigation.state.value
             val fix = state.fix ?: error("GPS 위치를 기다리고 있어요")
             check(System.currentTimeMillis() - fix.timeMillis in 0..10_000) { "GPS 위치를 다시 확인해 주세요" }
-            geometry = state.route?.geometry ?: error("경로를 찾은 후 다시 시도해 주세요")
-            val here = geometry.locate(fix.lat, fix.lng)
-            check(here.offMeters <= 1_500) { "현재 경로를 다시 찾은 후 시도해 주세요" }
-            progress = here.km
-        } else {
-            val here = positions.value[myCarId] ?: error("차량 위치를 기다리고 있어요")
-            geometry = RouteGeometry(DemoRoute.points)
-            progress = geometry.locate(here.lat, here.lng).km
+            val here = GeoPoint(fix.lat, fix.lng)
+            val geometry = state.route?.geometry
+            val located = geometry?.locate(fix.lat, fix.lng)
+            return if (geometry != null && located != null && located.offMeters <= 1_500) {
+                CarSpot(here, geometry, located.km)
+            } else {
+                CarSpot(here, null, 0.0)
+            }
         }
-        // The shared vote lasts 2 minutes; the 6x demo can travel 20 km during it.
-        return reachableFuelStops(DemoData.restStops, geometry, progress, range, if (shared) 25.0 else 0.5)
+        val position = positions.value[myCarId] ?: error("차량 위치를 기다리고 있어요")
+        val geometry = RouteGeometry(DemoRoute.points)
+        return CarSpot(GeoPoint(position.lat, position.lng), geometry, geometry.locate(position.lat, position.lng).km)
+    }
+
+    /** The car's range, which must be known; with 5 km or less no station is reachable with the 5 km reserve. */
+    private fun knownRange(): Float {
+        val range = snapshot.value.rangeKm
+        check(range != null && range.isFinite()) { "주행 가능 거리를 확인할 수 없어요. 연료와 차량 연결을 확인해 주세요" }
+        check(range > 5) { "연료가 거의 없어요 (주행 가능 ${range.roundToInt()}km). 가까운 주유소에 바로 들러 주세요" }
+        return range
+    }
+
+    /**
+     * Board 05: the stations the AI may choose from, nearest first. Rest stops with a 주유소 on the route ahead
+     * ([routeFuelStops]: 25 km ahead first for a crew vote, else any ahead); when none will do (past the last one,
+     * near the destination), the 주유소 the place search finds around the car ([nearbyFuelStops]). All of them
+     * reachable with a 5 km reserve. Empty = none at all.
+     */
+    private suspend fun stationPool(shared: Boolean): List<Place> {
+        val range = knownRange()
+        val spot = carSpot()
+        val onRoute = spot.geometry?.let {
+            routeFuelStops(DemoData.restStops, it, spot.progressKm, range, preferredAheadKm = if (shared) 25.0 else 0.5)
+        }.orEmpty()
+        if (onRoute.isNotEmpty()) return onRoute
+        val found = try {
+            nearbyStations?.invoke(spot.here).orEmpty()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList() // no internet or no Kakao answer: as if it found none
+        }
+        return nearbyFuelStops(found, spot.geometry, spot.progressKm, spot.here, range)
     }
 
     private suspend fun recommendStations(shared: Boolean): List<FuelStation> {
         val currentCrew = requireCrew()
-        val pool = eligibleStations(shared)
-        check(pool.isNotEmpty()) { "남은 주행 거리 안에 있는 전방 주유소를 찾지 못했어요" }
-        val picks = ai.recommend(DropTopic.FUEL, TripContext(currentCrew, positions.value, snapshot.value, pool))
-        val known = eligibleStations(shared).associateBy { it.id }
+        val pool = stationPool(shared)
+        check(pool.isNotEmpty()) { "남은 주행 거리 안에서 갈 수 있는 주유소를 찾지 못했어요" }
+        // The pool is already what fits: the AI only picks and explains, it doesn't narrow it to stops 25 km ahead.
+        val picks = ai.recommend(DropTopic.FUEL, TripContext(currentCrew, positions.value, snapshot.value, pool, poolIsFinal = true))
+        val known = pool.associateBy { it.id }
         val result = mutableListOf<FuelStation>()
         for (pick in picks.distinctBy { it.place.id }) {
             val place = known[pick.place.id] ?: continue
-            // Confirm the station's actual driving route, including its access ramp.
-            val trip = liveNavigation?.fuelStopTrip(place)
+            // Confirm the station's actual driving route, including its access ramp. Without it (the routing
+            // service failed) the station still shows, checked by straight-line distance.
+            val trip = try {
+                liveNavigation?.fuelStopTrip(place)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
             result += FuelStation(pick.copy(id = place.id, place = place), trip?.km, trip?.minutes)
         }
         // Fuel and position can change during AI/routing requests. Validate again before showing them.
-        val safe = stillReachable(result, shared)
+        val safe = stillReachable(result)
         check(safe.isNotEmpty()) { "도달 가능한 주유소 후보가 없어요. 위치와 연료를 확인하고 다시 시도해 주세요" }
         return safe.take(3)
     }
 
-    /** Stations still ahead of this car and reachable with a 5 km reserve. */
-    private fun stillReachable(stations: List<FuelStation>, shared: Boolean): List<FuelStation> {
-        val ahead = eligibleStations(shared).map { it.id }.toSet()
-        val remaining = snapshot.value.rangeKm ?: 0f
-        return stations.filter { it.candidate.place.id in ahead && (it.drivingKm == null || it.drivingKm + 5 <= remaining) }
+    /**
+     * [stations] this car can still get to: not passed on the road ([passedFuelStop]) and reachable with a 5 km
+     * reserve, by the driving distance when known, else in a straight line.
+     */
+    private fun stillReachable(stations: List<FuelStation>): List<FuelStation> {
+        val range = snapshot.value.rangeKm?.takeIf { it.isFinite() } ?: return emptyList()
+        val spot = carSpot()
+        return stations.filter { station ->
+            val place = station.candidate.place
+            val passed = spot.geometry?.let { passedFuelStop(it.locate(place.lat, place.lng), spot.progressKm) } == true
+            val km = station.drivingKm ?: haversineKm(spot.here, GeoPoint(place.lat, place.lng))
+            !passed && km + 5 <= range
+        }
     }
 
     /** Board 05 step 1: the AI picks up to 3 stations. Nothing is sent or routed until the driver chooses one. */
@@ -198,7 +254,7 @@ class DriveViewModel(
             val chosen = plan.stations.getOrNull(index) ?: error("주유소를 다시 골라 주세요")
             val place = chosen.candidate.place
             // The car kept driving while the driver chose: the station must still be ahead and reachable.
-            if (stillReachable(listOf(chosen), plan.shared).isEmpty()) {
+            if (stillReachable(listOf(chosen)).isEmpty()) {
                 _fuelPlan.value = plan.copy(stations = plan.stations - chosen).takeIf { it.stations.isNotEmpty() }
                 error("${place.name}에는 이제 갈 수 없어요. 다른 곳을 골라 주세요")
             }

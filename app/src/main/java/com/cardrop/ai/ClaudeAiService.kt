@@ -50,7 +50,7 @@ class ClaudeAiService(
         parseIntent(askFast(INTENT_PROMPT, utterance, intentSchema), utterance)
 
     override suspend fun recommend(topic: DropTopic, context: TripContext): List<Candidate> {
-        val places = if (topic.isNearDestination()) {
+        val places = if (topic.isNearDestination() || context.poolIsFinal) {
             context.pool
         } else {
             stopsAhead(context.pool).ifEmpty { context.pool.takeLast(3) }

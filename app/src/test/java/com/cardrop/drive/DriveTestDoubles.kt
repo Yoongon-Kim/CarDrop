@@ -89,8 +89,10 @@ internal class TestAi : AiService {
     var gate: CompletableDeferred<Unit>? = null
     var fail = false
     var empty = false
+    var lastContext: TripContext? = null
     override suspend fun recommend(topic: DropTopic, context: TripContext): List<Candidate> {
         requests++
+        lastContext = context
         gate?.await()
         check(!fail) { "추천 서비스 연결 실패" }
         if (empty) return emptyList()

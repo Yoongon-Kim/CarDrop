@@ -40,6 +40,11 @@ data class TripContext(
     val myVehicle: VehicleSnapshot,
     /** Places the AI may choose from. It must not invent places. */
     val pool: List<Place> = DemoData.restStops,
+    /**
+     * True when the caller already kept only the places that fit (board 05: stations the car can reach, maybe in
+     * town and not on the route): the AI picks among all of them instead of narrowing them to stops 25 km ahead.
+     */
+    val poolIsFinal: Boolean = false,
 )
 
 /**
@@ -80,7 +85,7 @@ class FakeAiService(
         }
         // Stops on the way: only those every car still has ahead (a 2-minute vote must end before
         // anyone passes them). Destinations and cafés are near the end of the trip: all of them.
-        val ahead = if (topic.isNearDestination()) {
+        val ahead = if (topic.isNearDestination() || context.poolIsFinal) {
             context.pool
         } else {
             stopsAhead(context.pool).ifEmpty { context.pool.takeLast(3) }

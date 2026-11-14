@@ -67,6 +67,36 @@ fun reachableFuelStops(pool: List<Place>, geometry: RouteGeometry, progressKm: D
     }.sortedBy { it.second }.map { it.first }
 }
 
+/**
+ * Board 05's stations on the route ([reachableFuelStops], nearest first): at least [preferredAheadKm] ahead when
+ * some are (a crew vote lasts 2 minutes and the 6x demo can drive 20 km meanwhile), else any that are ahead.
+ * Before, a crew vote with no station 25 km ahead found none at all, e.g. on the last stretch of the trip.
+ */
+fun routeFuelStops(pool: List<Place>, geometry: RouteGeometry, progressKm: Double, rangeKm: Float?, preferredAheadKm: Double): List<Place> =
+    reachableFuelStops(pool, geometry, progressKm, rangeKm, preferredAheadKm)
+        .ifEmpty { reachableFuelStops(pool, geometry, progressKm, rangeKm) }
+
+/**
+ * A station by the road (within 300 m of it) that the car has passed, or is less than 0.5 km from (too late to
+ * pull in). Stations away from the road, e.g. in town, never count as passed.
+ */
+fun passedFuelStop(located: Located, progressKm: Double): Boolean = located.offMeters <= 300 && located.km <= progressKm + 0.5
+
+/**
+ * Board 05's last resort when no rest stop on the route will do (past the last one, near the destination, or off
+ * the route): [found] = the 주유소 a place search found around the car ([here]). Not the ones it has passed on
+ * the road ([passedFuelStop]; null [geometry] = no route), only those within [rangeKm] in a straight line with
+ * a 5 km reserve. Nearest first, at most 3.
+ */
+fun nearbyFuelStops(found: List<Place>, geometry: RouteGeometry?, progressKm: Double, here: GeoPoint, rangeKm: Float?): List<Place> {
+    if (rangeKm == null || !rangeKm.isFinite() || rangeKm <= 5f) return emptyList()
+    return found.mapNotNull { place ->
+        val passed = geometry?.let { passedFuelStop(it.locate(place.lat, place.lng), progressKm) } == true
+        val km = haversineKm(here, GeoPoint(place.lat, place.lng))
+        if (!passed && km + 5 <= rangeKm) place to km else null
+    }.sortedBy { it.second }.take(3).map { it.first }
+}
+
 enum class DriveVoiceCommand { SHARE_FUEL, ALONE, JOIN, PASS, START, SKIP }
 
 /** Ambiguous recognition must never send a drop or change a route. */

@@ -29,6 +29,21 @@ class KakaoPlaceSearch(private val restApiKey: String) : PlaceSearch {
         return parseKakaoPlaces(httpGet(url, mapOf("Authorization" to "KakaoAK $restApiKey")))
     }
 
+    /**
+     * Places named [query] within [radiusMetres] of [near] (Kakao allows up to 20 km), nearest first: board 05's
+     * "주유소" around the car when no rest stop on the route will do.
+     */
+    suspend fun nearby(query: String, near: GeoPoint, radiusMetres: Int = 20_000): List<PlaceSuggestion> {
+        if (restApiKey.isBlank()) throw IOException("no Kakao REST API key (cardrop.kakaoRestKey)")
+        val url = buildString {
+            append("https://dapi.kakao.com/v2/local/search/keyword.json?size=").append(RESULTS)
+            append("&query=").append(URLEncoder.encode(query, "UTF-8").replace("+", "%20"))
+            append(String.format(Locale.US, "&x=%.6f&y=%.6f", near.lng, near.lat))
+            append("&radius=").append(radiusMetres.coerceIn(0, 20_000)).append("&sort=distance")
+        }
+        return parseKakaoPlaces(httpGet(url, mapOf("Authorization" to "KakaoAK $restApiKey")))
+    }
+
     private companion object {
         /** Kakao allows 1-15. Ten fill the list without scrolling far. */
         const val RESULTS = 10

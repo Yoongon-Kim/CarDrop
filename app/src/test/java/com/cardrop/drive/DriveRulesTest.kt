@@ -49,6 +49,36 @@ class DriveRulesTest {
         assertTrue(reachableFuelStops(pool, road, 2.0, null).isEmpty())
         assertTrue(reachableFuelStops(pool, road, 2.0, Float.NaN).isEmpty())
     }
+    @Test fun aCrewVoteTakesANearerStationWhenNoneIsFarEnoughAhead() {
+        val road = RouteGeometry(listOf(GeoPoint(37.5, 127.0), GeoPoint(37.5, 127.2)))
+        val near = road.pointAt(4.0).let { Place("near", "near", it.lat, it.lng, "주유소") }
+        val far = road.pointAt(10.0).let { Place("far", "far", it.lat, it.lng, "주유소") }
+        assertEquals(listOf(far), routeFuelStops(listOf(near, far), road, 2.0, 20f, preferredAheadKm = 5.0))
+        // Nothing 25 km ahead: any station ahead, nearest first, rather than none.
+        assertEquals(listOf(near, far), routeFuelStops(listOf(near, far), road, 2.0, 20f, preferredAheadKm = 25.0))
+        assertTrue(routeFuelStops(listOf(near, far), road, 12.0, 20f, preferredAheadKm = 25.0).isEmpty())
+    }
+    @Test fun aStationByTheRoadIsPassedFromHalfAKmBeforeIt() {
+        assertTrue(passedFuelStop(Located(km = 9.0, offMeters = 80.0), progressKm = 10.0))
+        assertTrue(passedFuelStop(Located(km = 10.4, offMeters = 80.0), progressKm = 10.0))
+        assertFalse(passedFuelStop(Located(km = 10.6, offMeters = 80.0), progressKm = 10.0))
+        // Away from the road (in town): never passed.
+        assertFalse(passedFuelStop(Located(km = 9.0, offMeters = 2_000.0), progressKm = 10.0))
+    }
+    @Test fun stationsAroundTheCarLeaveOutThePassedAndTheUnreachableOnes() {
+        val road = RouteGeometry(listOf(GeoPoint(37.5, 127.0), GeoPoint(37.5, 127.2)))
+        val here = road.pointAt(8.0).let { GeoPoint(it.lat, it.lng) }
+        val town = Place("town", "town", here.lat + 0.02, here.lng, "") // 2.2 km away, off the road
+        val passed = road.pointAt(5.0).let { Place("passed", "passed", it.lat, it.lng, "") } // 3 km back on the road
+        val ahead = road.pointAt(12.0).let { Place("ahead", "ahead", it.lat, it.lng, "") } // 4 km on
+        val far = Place("far", "far", here.lat + 0.5, here.lng, "") // 56 km away
+        val found = listOf(far, ahead, passed, town)
+        assertEquals(listOf(town, ahead), nearbyFuelStops(found, road, 8.0, here, 30f))
+        // Without a route nothing counts as passed.
+        assertEquals(listOf(town, passed, ahead), nearbyFuelStops(found, null, 0.0, here, 30f))
+        assertTrue(nearbyFuelStops(found, road, 8.0, here, 5f).isEmpty())
+        assertTrue(nearbyFuelStops(found, road, 8.0, here, null).isEmpty())
+    }
     @Test fun ambiguousOrNegativeVoiceRepliesDoNotTriggerAnAction() {
         assertEquals(DriveVoiceCommand.SHARE_FUEL, driveVoiceCommand("응, 알려줘"))
         assertEquals(DriveVoiceCommand.JOIN, driveVoiceCommand("같이 갈래요!"))

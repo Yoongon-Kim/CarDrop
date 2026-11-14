@@ -1,6 +1,8 @@
 package com.cardrop.drive
 
+import com.cardrop.core.model.CarPosition
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.model.Place
 import com.cardrop.core.demo.DemoData
 import com.cardrop.vehicle.FakeVehicleRepository
 import kotlinx.coroutines.*
@@ -32,7 +34,73 @@ class DriveViewModelTest {
         assertTrue(vm.fuelWarningPending.value)
     }
 
+    /** Like [runScenario], with this car [km] along the demo route and [nearby] as the place search for 주유소. */
+    private fun runAt(km: Double, nearby: (suspend (GeoPoint) -> List<Place>)?, block: suspend (DriveViewModel, TestAi, FakeVehicleRepository) -> Unit) = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val route = TestRoute()
+        val here = DemoRoute.pointAt(km)
+        route.positions.value = mapOf(DemoData.me.id to CarPosition(DemoData.me.id, here.lat, here.lng, (DemoRoute.totalKm - km).toFloat(), 10))
+        val ai = TestAi()
+        val vehicle = FakeVehicleRepository()
+        val vm = DriveViewModel(vehicle, route, TestNavigation(), TestCrew(), ai, scope, nearbyStations = nearby)
+        try { block(vm, ai, vehicle) } finally { scope.cancel() }
+    }
+
+    private val roadToKm = RouteGeometry(DemoRoute.points)
+    private fun routeKm(place: Place) = roadToKm.locate(place.lat, place.lng).km
+
     // Board 05: step 1 asks the AI, step 2 sends or routes only the station the driver picked.
+
+    @Test fun pastTheLastRestStopTheStationsAroundTheCarAreOffered() {
+        val lastStop = DemoData.restStops.maxOf { routeKm(it) }
+        var searchedNear: GeoPoint? = null
+        val onTheWay = DemoRoute.pointAt(lastStop + 6)
+        runAt(lastStop + 3, nearby = { here ->
+            searchedNear = here
+            // One by the road 3 km on, one 100 km away (out of range).
+            listOf(Place("kakao-far", "먼 주유소", here.lat + 0.9, here.lng, ""), Place("kakao-1", "경포 주유소", onTheWay.lat, onTheWay.lng, ""))
+        }) { vm, ai, vehicle ->
+            vehicle.setFuelPercent(12) // 78 km
+            vm.planFuelStop(shared = true)
+            yield()
+            val plan = vm.fuelPlan.value
+            assertNotNull(vm.action.value.error ?: "", plan)
+            assertEquals(listOf("kakao-1"), plan!!.stations.map { it.candidate.place.id })
+            assertNotNull(searchedNear)
+            // The AI picks among what fits; it doesn't narrow it to stops 25 km ahead.
+            assertTrue(ai.lastContext!!.poolIsFinal)
+        }
+    }
+    @Test fun pastTheLastRestStopWithoutASearchItSaysThereIsNone() {
+        val lastStop = DemoData.restStops.maxOf { routeKm(it) }
+        runAt(lastStop + 3, nearby = null) { vm, ai, vehicle ->
+            vehicle.setFuelPercent(12)
+            vm.planFuelStop(shared = true)
+            yield()
+            assertNull(vm.fuelPlan.value)
+            assertNotNull(vm.action.value.error)
+            assertEquals(0, ai.requests)
+        }
+    }
+    @Test fun aFailedSearchCountsAsNoStationsFound() {
+        val lastStop = DemoData.restStops.maxOf { routeKm(it) }
+        runAt(lastStop + 3, nearby = { throw java.io.IOException("offline") }) { vm, _, vehicle ->
+            vehicle.setFuelPercent(12)
+            vm.planFuelStop(shared = false)
+            yield()
+            assertNull(vm.fuelPlan.value)
+            assertEquals("남은 주행 거리 안에서 갈 수 있는 주유소를 찾지 못했어요", vm.action.value.error)
+        }
+    }
+    @Test fun aCrewVoteTakesTheNextStationWhenNoneIs25KmAhead() {
+        val deokpyeong = DemoData.restStops.first { it.id == "deokpyeong" }
+        runAt(routeKm(deokpyeong) - 10, nearby = null) { vm, _, vehicle ->
+            vehicle.setFuelPercent(4) // 26 km: 덕평 (10 km on) only
+            vm.planFuelStop(shared = true)
+            yield()
+            assertEquals(listOf("deokpyeong"), vm.fuelPlan.value?.stations?.map { it.candidate.place.id })
+        }
+    }
 
     @Test fun doubleTapAsksTheAiOnceAndNothingIsSentBeforeTheDriverChooses() = runScenario { vm, crew, _, ai, vehicle ->
         vehicle.setFuelPercent(30)

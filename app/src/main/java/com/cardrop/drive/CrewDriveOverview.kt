@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.model.Car
@@ -69,6 +71,25 @@ fun crewStrip(cars: List<Car>, positions: Map<String, CarPosition>): List<StripC
  */
 fun drawingOrder(strip: List<StripCar>): List<StripCar> = strip.sortedByDescending { it.rank }
 
+/** The distance along the shared route between two neighbouring cars, from front to back. */
+data class CrewGap(val ahead: Car, val behind: Car, val distanceKm: Float)
+
+fun crewGaps(strip: List<StripCar>, positions: Map<String, CarPosition>): List<CrewGap> =
+    strip.zipWithNext { ahead, behind ->
+        CrewGap(
+            ahead.car,
+            behind.car,
+            (positions.getValue(behind.car.id).kmToDestination - positions.getValue(ahead.car.id).kmToDestination).coerceAtLeast(0f),
+        )
+    }
+
+/** Coincident cars keep a zero gap even when the diagram spreads their markers out for readability. */
+fun gapDistanceText(distanceKm: Float): String {
+    if (!distanceKm.isFinite()) return "확인 중"
+    val meters = (distanceKm.coerceAtLeast(0f) * 1_000).roundToInt()
+    return if (meters < 1_000) "${meters}m" else String.format(Locale.US, "%.1fkm", distanceKm)
+}
+
 /** "선두" for the leading car, otherwise how far behind it, e.g. "2.1km 뒤". */
 fun gapText(leaderKmToDestination: Float, kmToDestination: Float): String {
     val behind = kmToDestination - leaderKmToDestination
@@ -82,21 +103,25 @@ fun gapText(leaderKmToDestination: Float, kmToDestination: Float): String {
 /**
  * Board 04 "크루 위치": the design's road through green scenery, lane dashes moving as if the crew drives,
  * a finish line, and every car on the road with its rank and minutes to go (this car's pill is blue).
+ * The bottom row gives the real route distance between adjacent cars, in the same left-to-right order.
  */
 @Composable
 internal fun CrewRoad(cars: List<Car>, positions: Map<String, CarPosition>, myCarId: String, destinationName: String?) {
     val strip = crewStrip(cars, positions)
+    val gaps = crewGaps(strip, positions).asReversed()
+    val roadHeight = 200.dp
+    val footerHeight = if (gaps.isEmpty()) 0.dp else 48.dp
     val dashPhase by rememberInfiniteTransition(label = "lanes").animateFloat(
         initialValue = 0f,
         targetValue = 38f,
         animationSpec = infiniteRepeatable(tween(2_000, easing = LinearEasing)),
         label = "dashPhase",
     )
-    BoxWithConstraints(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(24.dp)).background(GRASS)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(roadHeight + footerHeight).clip(RoundedCornerShape(24.dp)).background(GRASS)) {
         val widthPx = constraints.maxWidth.toFloat()
-        val heightPx = constraints.maxHeight.toFloat()
+        val heightPx = with(LocalDensity.current) { roadHeight.toPx() }
         // dashPhase is read while drawing, so the moving lanes redraw only the canvas.
-        Canvas(Modifier.fillMaxSize()) { drawScenery(dashPhase) }
+        Canvas(Modifier.fillMaxWidth().height(roadHeight)) { drawScenery(dashPhase) }
         StripLabel("크루 위치", CdColors.Ink, 14, Modifier.align(Alignment.TopStart))
         destinationName?.let { StripLabel("$it 방면 →", CdColors.Green, 13, Modifier.align(Alignment.TopEnd)) }
         if (strip.isEmpty()) StatusText("차량 위치를 기다리고 있어요", Modifier.align(Alignment.Center))
@@ -115,6 +140,29 @@ internal fun CrewRoad(cars: List<Car>, positions: Map<String, CarPosition>, myCa
                     }
                 },
             )
+        }
+        if (gaps.isNotEmpty()) {
+            Row(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                gaps.forEach { gap ->
+                    Row(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                            .background(CdColors.White.copy(alpha = 0.92f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${gap.behind.name} ↔ ${gap.ahead.name}",
+                            modifier = Modifier.weight(1f),
+                            color = CdColors.Gray600, fontSize = 12.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(gapDistanceText(gap.distanceKm), color = CdColors.BlueDark, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+            }
         }
     }
 }

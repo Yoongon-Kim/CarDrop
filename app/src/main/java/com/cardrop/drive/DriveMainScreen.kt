@@ -64,6 +64,7 @@ fun DriveMainScreen(
     val fuel by vm.fuelByCar.collectAsStateWithLifecycle()
     val navRoute by vm.navRoute.collectAsStateWithLifecycle()
     val input by vm.inputMode.collectAsStateWithLifecycle()
+    val gamesOpen by vm.gamesOpen.collectAsStateWithLifecycle()
     val warning by vm.fuelWarningPending.collectAsStateWithLifecycle()
     val waitingFor by vm.waitingForHost.collectAsStateWithLifecycle()
     val hasCrew = crew != null
@@ -153,7 +154,10 @@ fun DriveMainScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     row.forEach { drop ->
                         if (drop != null) {
-                            QuickTile(drop, enabled = canDrop, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
+                            // 게임 초대 also waits for the car to stop (P): while driving it is greyed out and can't be
+                            // tapped, rather than opening board 15's "주행 중에는 게임을 열 수 없어요".
+                            val enabled = canDrop && (drop != QuickDrop.GAME || gamesOpen)
+                            QuickTile(drop, enabled = enabled, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
                         } else {
                             EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
                         }

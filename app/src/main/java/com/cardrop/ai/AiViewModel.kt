@@ -130,12 +130,16 @@ class AiViewModel(
     private var loadJob: Job? = null
     private var listenJob: Job? = null
     private var sending = false
+    /** True for a quick drop (04's pop-up): one place at a time ([PlacePick.single]). Set by [loadCandidates]. */
+    private var single = false
 
     /**
      * Board 10: ask the AI for candidates. They all start ticked. The AI plans for the cars that
-     * take part: this car and [toCarIds] (all cars when it goes to the whole crew).
+     * take part: this car and [toCarIds] (all cars when it goes to the whole crew). [single] = a quick drop: only the
+     * AI's best pick is ticked, 다른 곳 추천 ([nextPick]) shows the next one, and a place the driver adds replaces it.
      */
-    fun loadCandidates(topic: DropTopic, toCarIds: List<String> = emptyList()) {
+    fun loadCandidates(topic: DropTopic, toCarIds: List<String> = emptyList(), single: Boolean = false) {
+        this.single = single
         loadJob?.cancel()
         listenJob?.cancel()
         suggester.clear()
@@ -163,7 +167,7 @@ class AiViewModel(
                     currentCrew.copy(cars = currentCrew.cars.filter { it.id == crew.myCarId || it.id in toCarIds })
                 }
                 val picks = ai.recommend(topic, TripContext(involved, route.positions.value, vehicle.snapshot.value, pool))
-                PickerState(pick = PlacePick.fromAi(picks))
+                PickerState(pick = PlacePick.fromAi(picks).let { if (single) it.single() else it })
             } catch (e: CancellationException) {
                 throw e // the screen asked again; that newer request wins
             } catch (e: Exception) {
@@ -175,6 +179,11 @@ class AiViewModel(
     /** Board 10: tick or untick a place. */
     fun togglePlace(id: String) {
         _picker.update { it.copy(pick = it.pick.toggle(id)) }
+    }
+
+    /** The quick drop's 다른 곳 추천: the AI's next pick instead of the one shown. */
+    fun nextPick() {
+        _picker.update { it.copy(pick = it.pick.nextAi()) }
     }
 
     /** Board 10: the driver typed [text] in the box. After a short pause the places that fit replace the list. */
@@ -208,8 +217,11 @@ class AiViewModel(
 
     private fun addPlace(place: Place) {
         suggester.clear()
-        _picker.update { it.copy(pick = it.pick.add(place), heard = null, status = null, inputError = null) }
+        _picker.update { it.copy(pick = it.pick.addPlace(place), heard = null, status = null, inputError = null) }
     }
+
+    /** Adds [place] ticked; a quick drop then sends only it. */
+    private fun PlacePick.addPlace(place: Place): PlacePick = if (single) addOnly(place) else add(place)
 
     /** Board 10 "말해서 추가": listen for a place name, then show "'…' 후보에 넣기". */
     fun listenForPlace() {
@@ -240,7 +252,7 @@ class AiViewModel(
     fun confirmHeardPlace() {
         _picker.update { state ->
             val place = state.heard ?: return@update state
-            state.copy(pick = state.pick.add(place), heard = null, status = null, inputError = null)
+            state.copy(pick = state.pick.addPlace(place), heard = null, status = null, inputError = null)
         }
     }
 

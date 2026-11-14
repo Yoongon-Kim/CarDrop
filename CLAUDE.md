@@ -152,6 +152,11 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   vote) closes it. The car that sends a quick drop doesn't vote on it (lead, 2026-11-15; `Drop.senderVotes` = false,
   `Drop.isVoter` / `voterIds`): the vote ends once the other cars have answered (or the minute is up) and only their answers
   decide; the decided stop still goes into the sender's route and board 14 counts only the others ("3대 중 1대 동의").
+  The pop-up sends one place (Member A, 2026-11-15): the AI's best pick, "다른 곳 추천 · 1/3" for the AI's next one
+  (`PlacePick.single` / `nextAi`), or a place the driver searched or said, which replaces it (`addOnly`). The others answer
+  board 11 with only 예, 같이 들를게 / 아니요, 난 안 들를게 (`VoteRules.isYesNo`; 아니요 is `VoteRules.PASS`): the place
+  always wins, the cars that said 아니요 keep their route, and silent cars stop there. A 주유 quick drop's receivers get
+  board 06 as before (같이 갈래요 / 가던 길 갈래요).
   Opened from the inbox, its board 11 only shows their answers ("다른 차들이 고르고 있어요"). 한마디 09, 게임 초대 15, 편지함 07
   (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time. 게임 초대 also waits for the car to

@@ -45,6 +45,13 @@ object VoteRules {
     fun isProposal(drop: Drop): Boolean = drop.topic == DropTopic.DESTINATION && drop.candidates.size == 1
 
     /** True when [carId] said 반대 to this proposal. */
+    /**
+     * A quick drop with one place (04's pop-up; Member A, 2026-11-15): the other cars answer only 예 (a vote for it) or
+     * 아니요 ([PASS]: that car doesn't stop there). It always ends on its place, so the cars that said 예, the silent
+     * ones and the sender stop there, and the cars that said 아니요 keep their route.
+     */
+    fun isYesNo(drop: Drop): Boolean = !drop.senderVotes && drop.candidates.size == 1 && !isProposal(drop)
+
     fun saidNo(drop: Drop, carId: String): Boolean = drop.votes[carId] == NO
 
     /** True when this proposal is over and was turned down. */

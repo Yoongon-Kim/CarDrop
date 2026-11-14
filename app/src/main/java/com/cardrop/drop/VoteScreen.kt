@@ -130,6 +130,8 @@ fun VoteScreen(
     var wheelOpen by remember(dropId) { mutableStateOf(false) }
     // A pass keeps this car's route. A new destination is for the whole crew, so that vote can't be passed.
     val canPass = drop.topic != DropTopic.DESTINATION
+    // Another car's quick drop sends one place: this car only says 예 (같이 들러요) or 아니요 (= 패스, 안 들러요).
+    val yesNo = VoteRules.isYesNo(drop)
 
     // The sender's car, as the tag names it: "아빠 차의 제안". This car's own vote says "우리 차".
     val sender = if (drop.fromCarId == vm.myCarId) "우리 차" else vm.carName(drop.fromCarId)
@@ -154,7 +156,7 @@ fun VoteScreen(
                         // A pass skips the stop first, so the stop never reaches this car's route, even if this
                         // answer is the last one and ends the vote at once.
                         if (pick == VotePick.Pass) onPass(dropId)
-                        vm.vote(dropId, vote, said = pick.answeredLine(drop.candidates))
+                        vm.vote(dropId, vote, said = pick.answeredLine(drop.candidates, yesNo))
                         // Back to driving; board 14 opens over it once the vote ends (DropRouting).
                         onClose()
                     }
@@ -241,7 +243,25 @@ fun VoteScreen(
             // (target lines 460-465, 722). Voting by voice isn't built yet; the hint is the design's. This car's own
             // quick drop has only the count: it doesn't answer.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (canVote) {
+                if (canVote && yesNo) {
+                    val place = drop.candidates.first()
+                    ChoiceButton(
+                        "예, 같이 들를게",
+                        on = pick == VotePick.Place(place.id),
+                        onBackground = CdColors.BlueLight,
+                        onText = CdColors.BlueDark,
+                        onEdge = CdColors.Blue,
+                        enabled = !locked,
+                    ) { pick = VotePick.Place(place.id) }
+                    ChoiceButton(
+                        "아니요, 난 안 들를게",
+                        on = pick == VotePick.Pass,
+                        onBackground = CdColors.RedLight,
+                        onText = CdColors.Red,
+                        onEdge = CdColors.Alert,
+                        enabled = !locked,
+                    ) { pick = VotePick.Pass }
+                } else if (canVote) {
                     ChoiceButton(
                         "아무 데나 좋아",
                         on = pick == VotePick.Anywhere,
@@ -262,7 +282,9 @@ fun VoteScreen(
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                if (canVote) {
+                if (canVote && yesNo) {
+                    Text("“예”, “아니요”", color = CdColors.Gray600, fontSize = 14.sp)
+                } else if (canVote) {
                     Text(if (canPass) "“1번”, “아무 데나”, “패스”" else "“1번”, “아무 데나”", color = CdColors.Gray600, fontSize = 14.sp)
                 }
                 Pill(
@@ -275,7 +297,7 @@ fun VoteScreen(
             // What this car's answer means, said by the AI: "**{1번}에 1표** · “1번”, “첫 번째”도 같은 표예요" (target
             // lines 466, 724). White, corners 18, padding 14 x 16, the small AI tag 12 to the left of the 15px text.
             // This car's own quick drop: why there's nothing to answer.
-            val (meaning, aside) = if (canVote) pick.explain(drop.candidates) else QUICK_DROP_SENDER_NOTE
+            val (meaning, aside) = if (canVote) pick.explain(drop.candidates, yesNo) else QUICK_DROP_SENDER_NOTE
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

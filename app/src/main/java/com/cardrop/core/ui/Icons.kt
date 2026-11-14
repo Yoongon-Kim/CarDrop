@@ -96,6 +96,12 @@ object CdIcons {
 
     // The side rail's icons.
     val Home = lineIcon("Home", strokeWidth = 2f, "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z")
+    /** Two arrows in a circle: the quick drop's 다른 곳 추천. */
+    val Refresh = lineIcon(
+        "Refresh", strokeWidth = 2.2f,
+        "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", "M21 3v5h-5",
+        "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", "M8 16H3v5",
+    )
     val Send = lineIcon("Send", strokeWidth = 2f, "M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z")
     val Crew = lineIcon(
         "Crew",

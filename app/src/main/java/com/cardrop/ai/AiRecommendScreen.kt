@@ -106,6 +106,8 @@ fun AiRecommendScreen(
  * "퀵 드랍 · 보낼 곳을 골라요"). It always goes to the whole crew. CarDropApp shows it over the drive
  * screen and closes it in [onSent]; the driver stays on 04. [placeTimes] as on the page.
  * This car doesn't vote on a quick drop: the other cars decide (`Drop.senderVotes`; lead, 2026-11-15).
+ * It sends one place (Member A, 2026-11-15): the AI's best pick, 다른 곳 추천 for its next one, or a place the driver
+ * searched or said instead. The other cars only answer 예 / 아니요 on it (board 11, `VoteRules.isYesNo`).
  */
 @Composable
 fun QuickDropPicker(
@@ -115,7 +117,7 @@ fun QuickDropPicker(
     onClose: () -> Unit,
     onSent: (Drop) -> Unit,
 ) {
-    LaunchedEffect(topic) { vm.loadCandidates(topic) }
+    LaunchedEffect(topic) { vm.loadCandidates(topic, single = true) }
     BackHandler(onBack = onClose)
     PopupFrame {
         PlacePicker(
@@ -152,9 +154,9 @@ private fun PlacePicker(
     // The cars that take part: the "4대 평균" is theirs.
     val carIds = vm.involvedCarIds(toCarIds)
     PlacePickerContent(
-        title = pickerTitle(topic, state),
+        title = pickerTitle(topic, state, popup),
         // The page shows only what the driver said (target line 409); board 08 already showed who gets it.
-        subtitle = if (popup) "퀵 드랍 · 보낼 곳을 골라요 · $recipients" else topic.driverQuote(),
+        subtitle = if (popup) "퀵 드랍 · 받는 차는 들를지만 답해요 · $recipients" else topic.driverQuote(),
         state = state,
         typed = typed,
         popup = popup,
@@ -180,7 +182,8 @@ private fun PlacePicker(
         onAddTyped = { vm.addTypedPlace(typed) { typed = "" } },
         onListen = vm::listenForPlace,
         onConfirmHeard = vm::confirmHeardPlace,
-        onRetry = { vm.loadCandidates(topic, toCarIds) },
+        onRetry = { vm.loadCandidates(topic, toCarIds, single = popup) },
+        onNext = vm::nextPick,
         // The pop-up is the quick drop: its sender doesn't vote. The page's sender answers on board 11 like the others.
         onSend = { vm.sendVote(topic, toCarIds, onSent, senderVotes = !popup) },
     )
@@ -212,6 +215,8 @@ private fun PlacePickerContent(
     onListen: () -> Unit = {},
     onConfirmHeard: () -> Unit = {},
     onRetry: () -> Unit = {},
+    /** The pop-up's 다른 곳 추천: the AI's next pick. */
+    onNext: () -> Unit = {},
     onSend: () -> Unit = {},
 ) {
     // While the driver types, the screen works like Kakao Map's search: the list steps aside, the
@@ -240,7 +245,9 @@ private fun PlacePickerContent(
                 Text(message, color = CdColors.OrangeDark, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 SecondaryButton("다시 시도", onClick = onRetry)
             }
+            // The pop-up (a quick drop) shows only the one place it sends; tapping it doesn't untick it.
             state.pick.candidates.forEachIndexed { index, candidate ->
+                if (popup && !state.pick.isSelected(candidate.id)) return@forEachIndexed
                 PlaceRow(
                     candidate = candidate,
                     rank = index,
@@ -249,7 +256,20 @@ private fun PlacePickerContent(
                     popup = popup,
                     crewTime = crewTime(candidate.place),
                     km = trip(candidate.place)?.kmText,
-                    onToggle = { onToggle(candidate.id) },
+                    onToggle = { if (!popup) onToggle(candidate.id) },
+                )
+            }
+            if (popup && state.pick.aiCount > 1) {
+                // Which of the AI's picks shows ("1/3"), and the next one.
+                val shown = state.pick.candidates.filterNot { state.pick.isAdded(it.id) }.indexOfFirst { state.pick.isSelected(it.id) }
+                CdChip(
+                    if (shown >= 0) "다른 곳 추천 · ${shown + 1}/${state.pick.aiCount}" else "AI 추천으로 돌아가기",
+                    onClick = onNext,
+                    style = ChipStyle.Blue,
+                    icon = CdIcons.Refresh,
+                    height = 48.dp,
+                    fontSize = 15.sp,
+                    iconSize = 18.dp,
                 )
             }
             if (state.pick.aiCount > 0) {
@@ -318,7 +338,11 @@ private fun PlacePickerContent(
             }
             val count = state.pick.selected.size
             PrimaryButton(
-                text = if (count > 0) "이 ${count}곳으로 투표 보내기" else "후보를 골라주세요",
+                text = when {
+                    count == 0 -> "후보를 골라주세요"
+                    popup -> "여기 들르자고 보내기"
+                    else -> "이 ${count}곳으로 투표 보내기"
+                },
                 enabled = count > 0,
                 onClick = onSend,
                 modifier = Modifier.fillMaxWidth(),
@@ -529,11 +553,13 @@ private fun PopupFrame(content: @Composable () -> Unit) {
     }
 }
 
-private fun pickerTitle(topic: DropTopic, state: AiViewModel.PickerState): String {
+private fun pickerTitle(topic: DropTopic, state: AiViewModel.PickerState, popup: Boolean = false): String {
     val noun = topic.placeNoun()
     return when {
         state.loading || state.aiError != null -> "$noun 추천"
         state.pick.aiCount == 0 -> "어디에 들를까요?"
+        popup && state.pick.selected.any { state.pick.isAdded(it.id) } -> "여기 들르자고 보낼까요?"
+        popup -> "AI가 고른 $noun"
         else -> "AI가 $noun ${state.pick.aiCount}곳을 골랐어요"
     }
 }

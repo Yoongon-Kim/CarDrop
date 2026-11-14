@@ -54,7 +54,12 @@ fun DropRoutingEffect(
                     }
                     else -> {
                         // A destination proposal asks 찬성 / 반대 on one place; any other vote picks between places.
-                        val what = if (VoteRules.isProposal(drop)) "목적지 변경을 제안했어요" else "투표를 보냈어요"
+                        // A quick drop's one place asks only 예 / 아니요 (VoteRules.isYesNo).
+                        val what = when {
+                            VoteRules.isProposal(drop) -> "목적지 변경을 제안했어요"
+                            VoteRules.isYesNo(drop) -> "${drop.candidates.first().place.name}에 같이 들르자고 해요"
+                            else -> "투표를 보냈어요"
+                        }
                         voice.speak("${sender.particle("이", "가")} $what. ${drop.title}")
                         navigator.go(Screen.Vote(drop.id))
                     }
@@ -88,6 +93,8 @@ internal fun reminderLine(drop: Drop, nowMillis: Long): String {
     val first = drop.candidates.firstOrNull()?.place?.name.orEmpty()
     return if (VoteRules.isProposal(drop)) {
         "${first.withRo()} 바꾸자는 제안이 ${seconds}초 남았어요. 답이 없으면 찬성으로 봐요"
+    } else if (VoteRules.isYesNo(drop)) {
+        "${first}에 같이 들를지 ${seconds}초 남았어요. 답이 없으면 들르는 걸로 봐요"
     } else {
         "${drop.topic.voteTag()} 투표가 ${seconds}초 남았어요. 답이 없으면 1번 ${first}에 투표한 걸로 봐요"
     }

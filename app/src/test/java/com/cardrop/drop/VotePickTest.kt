@@ -27,6 +27,11 @@ class VotePickTest {
         assertEquals("여주휴게소에 투표했어요", VotePick.Place("여주휴게소").answeredLine(stops))
         assertEquals("아무 데나 좋다고 답했어요", VotePick.Anywhere.answeredLine(stops))
         assertEquals("이번엔 패스했어요. 우리 차는 가던 길로 가요", VotePick.Pass.answeredLine(stops))
+        // A quick drop's one place: 예 / 아니요.
+        val one = stops.take(1)
+        assertEquals("덕평자연휴게소에 같이 들른다고 답했어요", VotePick.Place("덕평자연휴게소").answeredLine(one, yesNo = true))
+        assertEquals("안 들른다고 답했어요. 우리 차는 가던 길로 가요", VotePick.Pass.answeredLine(one, yesNo = true))
+        assertEquals("아니요 · 우리 차는 안 들러요", VotePick.Pass.explain(one, yesNo = true).first)
     }
 
     @Test

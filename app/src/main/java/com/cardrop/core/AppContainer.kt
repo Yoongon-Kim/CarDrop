@@ -9,11 +9,9 @@ import com.cardrop.ai.FallbackAiService
 import com.cardrop.ai.PhraseStore
 import com.cardrop.ai.PrefsPhraseStore
 import com.cardrop.ai.game.OmokCoordinator
-import com.cardrop.ai.game.OmokResumeStore
-import com.cardrop.ai.game.OmokRecoveringCrew
 import com.cardrop.ai.game.FirebaseOmokTransport
 import com.cardrop.ai.game.LocalOmokTransport
-import com.cardrop.ai.game.PrefsOmokRoomStore
+import com.cardrop.ai.game.MemoryOmokRoomStore
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
@@ -21,7 +19,6 @@ import com.cardrop.core.demo.DemoCar
 import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
-import com.cardrop.core.navigation.Screen
 import com.cardrop.core.navigation.DropRoutingMemory
 import com.cardrop.drive.BotFuel
 import com.cardrop.drive.CrewFuel
@@ -85,14 +82,10 @@ class AppContainer(context: Context) {
      * [useRealCrew]: the real crew on Firebase, shared by several devices; this device is [myCar].
      * Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
-    private val omokResume = OmokResumeStore(context)
-    private val baseCrew: CrewRepository =
+    val crew: CrewRepository =
         if (useRealCrew) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
-    private val hadOmokResume = omokResume.read(baseCrew.myCarId, useRealCrew) != null
-    private val recoveringCrew = OmokRecoveringCrew(baseCrew, appScope, omokResume, useRealCrew)
-    val crew: CrewRepository = recoveringCrew
-    val demoCrew: FakeCrewRepository? get() = baseCrew as? FakeCrewRepository
+    val demoCrew: FakeCrewRepository? get() = crew as? FakeCrewRepository
 
     // Lead
     /**
@@ -192,10 +185,14 @@ class AppContainer(context: Context) {
     val quickDrops = QuickDrops(PrefsQuickDropStore(context))
     /** What this car "plays" (boards 12, 13; no sound). Member A. */
     val songs = SongPlayer()
+    /**
+     * Board 15's omok. Nothing of it is saved on this device: after an app restart the app opens on its usual
+     * screen, and the bot crew's board starts empty (lead, 2026-11-15).
+     */
     val omok = OmokCoordinator(
         appScope, crew, vehicle,
-        if (useRealCrew) FirebaseOmokTransport(context) else LocalOmokTransport(PrefsOmokRoomStore(context)),
-        omokResume, useRealCrew,
+        if (useRealCrew) FirebaseOmokTransport(context) else LocalOmokTransport(MemoryOmokRoomStore()),
+        useRealCrew,
     )
 
     /** Record-entry GPT is independent of the shared Claude-backed AI features. */
@@ -210,7 +207,7 @@ class AppContainer(context: Context) {
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
      * keeps the driver on the same screen and doesn't open old drops again.
      */
-    val navigator = AppNavigator(start = if (hadOmokResume) Screen.Games else DemoCar.startScreen(useRealCrew, myCar))
+    val navigator = AppNavigator(start = DemoCar.startScreen(useRealCrew, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice, autoStartsGuidance = true)
@@ -220,10 +217,6 @@ class AppContainer(context: Context) {
 
     init {
         trip.start()
-        appScope.launch {
-            if (recoveringCrew.restored()) { omok.openGame(); navigator.switchTab(Screen.Games) }
-            else if (hadOmokResume && navigator.current == Screen.Games) navigator.switchTab(DemoCar.startScreen(useRealCrew, myCar))
-        }
         firebaseTrip?.shareMyFuel(vehicle.snapshot)
         firebaseTrip?.shareMyPosition(route.positions)
         // tools/drive_gps.py reads this car's crew code from the device (drive/TripCodeFile.kt). The bot crew

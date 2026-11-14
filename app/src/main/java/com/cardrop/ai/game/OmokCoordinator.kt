@@ -25,13 +25,15 @@ data class OmokSelection(val gameId: String, val revision: Int, val tokens: Map<
 internal fun omokGearReady(snapshot: VehicleSnapshot, elapsed: Long, demo: Boolean): Boolean =
     snapshot.gear == Gear.PARK && (demo || snapshot.gearCheckedAtElapsedMillis?.let { elapsed - it in 0..OMOK_PRESENCE_MS } == true)
 
-/** App-scoped: incoming challenges and paused games survive navigation and activity recreation. */
+/**
+ * App-scoped: incoming challenges and paused games survive navigation and activity recreation, but not an app
+ * restart. Nothing is saved on the device, so a restarted app opens on its usual screen (lead, 2026-11-15).
+ */
 class OmokCoordinator(
     private val scope: CoroutineScope,
     private val crew: CrewRepository,
     private val vehicle: VehicleRepository,
     val transport: OmokTransport,
-    private val resume: OmokRecoveryStore,
     private val real: Boolean,
     private val elapsedRealtime: () -> Long = SystemClock::elapsedRealtime,
 ) {
@@ -53,7 +55,6 @@ class OmokCoordinator(
     private var botThinkingAt = mutableMapOf<String, Long>()
     val myCarId: String get() = crew.myCarId
     val currentCrew: StateFlow<Crew?> get() = crew.crew
-    val recoveryError: StateFlow<String?> = (crew as? OmokRecoveringCrew)?.recoveryError ?: MutableStateFlow(null)
 
     init {
         scope.launch {
@@ -85,7 +86,6 @@ class OmokCoordinator(
         refreshReadiness(); refresh.trySend(Unit)
     }
     fun clearError() { error.value = null }
-    fun retryRecovery() { (crew as? OmokRecoveringCrew)?.retry() }
 
     @Synchronized private fun refreshReadiness() {
         val ready = visible && gameVisible && transport.connected.value && crew.crew.value?.isStarted == true &&
@@ -113,9 +113,6 @@ class OmokCoordinator(
                 if (!real) tickBot(current, games.value[game.id] ?: continue)
             } catch (e: CancellationException) { if (e !is TimeoutCancellationException) throw e }
             catch (_: Exception) { /* The lease expires, closing play; no stale P is kept alive. */ }
-        }
-        games.value.values.filter { myCarId in it.players && it.busy(clock.value) }.firstOrNull()?.let {
-            resume.save(current, myCarId, real)
         }
     }
 
@@ -156,7 +153,6 @@ class OmokCoordinator(
             val kept = rooms.filterValues { it.busy(now) || now - it.createdAt < 86_400_000 }
             OmokRules.invite(kept, game, now)
         }
-        resume.save(current, myCarId, real)
     }
 
     fun accept(game: OmokGame) = action {

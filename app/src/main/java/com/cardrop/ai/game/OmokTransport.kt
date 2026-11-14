@@ -31,12 +31,11 @@ interface OmokTransport {
 
 interface OmokRoomStore { fun read(key: String): String?; fun write(key: String, value: String) }
 
-class PrefsOmokRoomStore(context: Context) : OmokRoomStore {
-    private val prefs = context.getSharedPreferences("cardrop_omok_boards", Context.MODE_PRIVATE)
-    override fun read(key: String): String? = prefs.getString(key, null)
-    override fun write(key: String, value: String) {
-        if (!prefs.edit().putString(key, value).commit()) throw OmokRejected("대국을 저장하지 못했어요. 저장 공간을 확인해 주세요")
-    }
+/** The bot crew's boards, kept only while the app runs: after an app restart the board starts empty. */
+class MemoryOmokRoomStore : OmokRoomStore {
+    private val boards = mutableMapOf<String, String>()
+    override fun read(key: String): String? = boards[key]
+    override fun write(key: String, value: String) { boards[key] = value }
 }
 
 /** Also used by protocol tests. State changes and persistence are synchronous, never optimistic. */

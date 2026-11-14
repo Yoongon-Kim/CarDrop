@@ -152,11 +152,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   (`DropRouting.kt`): 괜찮아요, or 받아서 바로 듣기 → 지금 재생 / 다음 (what it was playing). The DEMO panel's
   "삼촌 차 노래 드랍 받기" stages the receiving side. A build without `SONG` skips these drops (`parseDrop`).
 - Omok (15) was restored by the user's implementation request: `ai/game/` owns 13x13 freestyle rules,
-  silent invitations, local practice bots, Firebase sessions and process-restart recovery. `AppContainer`
-  selects the transport. Both participants need fresh P readings, an open game screen and a live connection.
-  Keep readiness-token checks and the separate named Firebase client's disconnect handling intact.
-  `OmokRecoveringCrew` rejoins only crews saved by omok; a started host rejoin must not clear FirebaseTrip.
-  Existing quizzes and AI services keep their current behavior. See README > 오목 (15).
+  silent invitations, local practice bots and Firebase sessions. `AppContainer` selects the transport. Both
+  participants need fresh P readings, an open game screen and a live connection. Keep readiness-token checks
+  and the separate named Firebase client's disconnect handling intact. A game lasts only while the app runs
+  (lead, 2026-11-15; this removes #74's restart recovery, which reopened the game screen on every app start):
+  nothing of it is saved on the device, so a restarted app opens on its usual screen and the bot crew's board
+  starts empty (`MemoryOmokRoomStore`). A real crew's game stays in Firebase for that crew, so a car that joins
+  the same crew again finds it there. Existing quizzes and AI services keep their current behavior.
 
 ## Build and run
 

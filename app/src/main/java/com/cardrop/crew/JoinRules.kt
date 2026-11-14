@@ -19,7 +19,7 @@ object JoinRules {
      * itself, without the cars that are still missing, if the host hasn't pressed 출발 before and not every car
      * has joined (with every car in, it starts at once).
      */
-    const val JOIN_WINDOW_MILLIS = 2 * 60_000L
+    const val JOIN_WINDOW_MILLIS = 60_000L // 1 minute (2 until 2026-11-15; Member A: the waits felt too long)
 
     /**
      * The cars of [crew] that the trip leaves out when it starts now: every car not connected, except the host.

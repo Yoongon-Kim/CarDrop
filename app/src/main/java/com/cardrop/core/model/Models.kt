@@ -34,7 +34,7 @@ data class Crew(
     val hostCarId: String,
     val cars: List<Car>,
     /**
-     * Cars can join until then: 2 minutes after the host made the crew (`JoinRules.JOIN_WINDOW_MILLIS`). At that
+     * Cars can join until then: 1 minute after the host made the crew (`JoinRules.JOIN_WINDOW_MILLIS`). At that
      * time the trip starts by itself. Null = no time limit.
      */
     val joinDeadlineMillis: Long? = null,

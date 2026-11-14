@@ -56,6 +56,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - `TodoNote("...")` marks unbuilt parts of a screen. Remove it when the part is done.
 - After a place or car name, pick the particle with `core/text/Korean.kt`: `name.particle("을", "를")`,
   `particle("이", "가")`, `name.withRo()` (로/으로). Never hard-code 를/는/가/로 after a name ("경포해변로").
+- Waits are 1 minute (Member A, 2026-11-15; the design's 2 minutes felt too long): a vote or proposal
+  (`DropDraft.voteSeconds` = 60), joining a crew (`JoinRules.JOIN_WINDOW_MILLIS`) and an omok invitation (`OMOK_INVITE_MS`).
 - Design rule: DECISION drops are spoken aloud and need a vote; SOCIAL drops are on screen only,
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
   난 패스 is a vote with the value `VoteRules.PASS`: it counts for no place and the vote doesn't wait for that car,
@@ -189,7 +191,7 @@ With the real crew, 아빠 차 starts on board 01 and creates the crew; the othe
 with its code. Every new crew gets its own random 6-digit code (`crew/CrewCode.kt`), so two hosts (e.g. two
 emulators both on 아빠 차) never share a crew. Restarting the host's app makes a new crew with a new code, and the
 other cars join again with it (the bot crew keeps 482917). The trip starts with the host's 출발, or by itself: at
-once when every car has joined, else 2 minutes after the crew was made (board 01 counts down;
+once when every car has joined, else 1 minute after the crew was made (board 01 counts down;
 `JoinRules.JOIN_WINDOW_MILLIS`; both done by `TripCoordinator` on the host's device). Before that nobody drives off
 or sends drops: a car that joined waits on board 04 ("아빠 차가 출발하면 같이 출발해요"), and drops, the inbox and the
 rail's 드랍 / 게임 / 편지함 are greyed out. Behind those buttons `CrewRepository.sendDrop` itself refuses until the start
@@ -359,7 +361,7 @@ shares its position through Firebase about once a second, so each one draws the 
   - Kakao's angles: the camera turns counter-clockwise in radians (0..2π; a negative angle counts as 0),
     labels turn clockwise. Kakao's logo must stay visible; it is placed inside the camera padding.
 - AI and DEMO-panel candidates come from `AppContainer.stopsAhead`: stops near the live route at least
-  25 km ahead, so a 2-minute vote ends before the car passes the stop. Cafés (`DemoData.cafes`, real places
+  25 km ahead, so a 1-minute vote ends well before the car passes the stop. Cafés (`DemoData.cafes`, real places
   from OpenStreetMap near 경포해변) and destinations are near the end of the trip and skip this filter.
 - `drive/DemoRoute.kt` + `drive/DemoRouteData.kt` - the baked 244 km trip (OSRM, `tools/bake_route.py`).
   Used by `tools/drive_gps.py`.

@@ -47,9 +47,10 @@ class QuickDropsTest {
     }
 
     @Test
-    fun unknownRepeatedOrCutDropsAreLeftOutAndAtMostFourStay() {
+    fun unknownRepeatedOrCutDropsAreLeftOut() {
+        // 노래 is cut, 카페 doesn't exist, 휴게소 is there twice: the five real ones stay, in their order.
         assertEquals(
-            listOf(REST, FOOD, SHOUT, GAME),
+            listOf(REST, FOOD, SHOUT, GAME, INBOX),
             QuickDropRules.decode("rest,song,cafe,rest,,food,shout,game,inbox"),
         )
     }
@@ -73,10 +74,33 @@ class QuickDropsTest {
     }
 
     @Test
-    fun aFifthPickIsRefusedButUntickingStillWorks() {
+    fun aFifthPickGoesToTheSecondRowAndUntickingStillWorks() {
         val four = listOf(REST, FOOD, FUEL, SHOUT)
-        assertEquals(Pick.Full, QuickDropRules.pick(four, INBOX))
+        val five = four + INBOX
+        assertEquals(Pick.Changed(five), QuickDropRules.pick(four, INBOX))
         assertEquals(Pick.Changed(listOf(REST, FOOD, SHOUT)), QuickDropRules.pick(four, FUEL))
+        // Board 04: the first four in the slots, the fifth under them.
+        assertEquals(emptyList<QuickDrop>(), QuickDropRules.secondRow(four))
+        assertEquals(listOf(INBOX), QuickDropRules.secondRow(five))
+    }
+
+    @Test
+    fun aPickBeyondTheLastSlotIsRefused() {
+        val two = listOf(REST, FOOD)
+        assertEquals(Pick.Full, QuickDropRules.pick(two, FUEL, max = 2))
+        assertEquals(Pick.Changed(listOf(FOOD)), QuickDropRules.pick(two, REST, max = 2)) // unticking still works
+    }
+
+    @Test
+    fun theAddSlotShowsWhileThereIsADropLeftToPick() {
+        // 휴게소, 식사, 주유, 한마디, 게임 초대, 편지함 can be picked; 노래, 같이 켜기 and 운전 기록 are cut.
+        val all = QuickDrop.entries.filter { it.available }
+        assertEquals(listOf(REST, FOOD, FUEL, SHOUT, GAME, INBOX), all)
+        assertEquals(all.size, QuickDropRules.pickable)
+        assertEquals(true, QuickDropRules.showsAddSlot(emptyList()))
+        assertEquals(true, QuickDropRules.showsAddSlot(all.take(4)))
+        assertEquals(true, QuickDropRules.showsAddSlot(all.take(5)))
+        assertEquals(false, QuickDropRules.showsAddSlot(all)) // nothing left to add
     }
 
     @Test

@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Owner: lead. What the driver can put in board 04's four quick-drop slots (the live canvas's 퀵 드랍 편집,
+ * Owner: lead. What the driver can put in board 04's quick-drop slots (the live canvas's 퀵 드랍 편집,
  * `git show 1caa955:design/FinalApp.dc.html`, lines 302-344 and 947-969), in the editor's order.
  *
  * [key] is what this device saves (the canvas's names). [available] = false: cut this week; the editor shows
@@ -54,11 +54,29 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
 
 /** The quick-drop rules. Plain Kotlin, so QuickDropsTest covers them. */
 object QuickDropRules {
-    /** Board 04 has four slots. */
+    /** Board 04's first row has four slots. */
     const val SLOTS = 4
 
-    /** The editor's red line when all four slots are taken (the canvas's words). */
+    /**
+     * The most quick drops a driver can keep: the four slots and a second row under them (Member A, 2026-11-14;
+     * the canvas stops at four). The second row holds the fifth drop on, and one dashed "+" slot to add another.
+     */
+    const val MAX_SLOTS = 8
+
+    /** The editor's red line when every slot is taken (the canvas's words). */
     const val FULL_HINT = "기존 기능 하나를 해제하면 추가할 수 있어요."
+
+    /** How many drops the driver can pick at all: the ones that aren't cut, at most [MAX_SLOTS]. */
+    val pickable: Int get() = minOf(MAX_SLOTS, QuickDrop.entries.count { it.available })
+
+    /** The drops under the first row: the fifth one on. */
+    fun secondRow(chosen: List<QuickDrop>): List<QuickDrop> = chosen.drop(SLOTS)
+
+    /**
+     * True when board 04 shows the dashed "+" slot under the four: while the driver can still add a drop
+     * (there is one left to pick). It opens the editor, like the empty slots of the first row.
+     */
+    fun showsAddSlot(chosen: List<QuickDrop>): Boolean = chosen.size < pickable
 
     /**
      * Board 04's slots until the driver saves their own list: 휴게소 and 주유, the other two empty (the lead's choice,
@@ -68,32 +86,32 @@ object QuickDropRules {
 
     /**
      * The drops for these saved [keys], in their order: only ones that exist and aren't cut, each once, at most
-     * [SLOTS].
+     * [MAX_SLOTS].
      */
     fun fromKeys(keys: List<String>): List<QuickDrop> =
         keys
             .mapNotNull { key -> QuickDrop.entries.firstOrNull { it.key == key } }
             .filter { it.available }
             .distinct()
-            .take(SLOTS)
+            .take(MAX_SLOTS)
 
     /** What a tap in the editor does. */
     sealed interface Pick {
         /** The new list (in slot order). */
         data class Changed(val drops: List<QuickDrop>) : Pick
 
-        /** All four slots are taken: nothing changes, and the editor shows [FULL_HINT]. */
+        /** Every slot is taken: nothing changes, and the editor shows [FULL_HINT]. */
         data object Full : Pick
     }
 
     /**
      * Taps [drop] in the editor: a picked drop comes off (the ones after it move up), a new one goes in the next
-     * free slot. A cut drop changes nothing.
+     * free slot (the fifth one starts the second row). A cut drop changes nothing. [max] = how many fit.
      */
-    fun pick(draft: List<QuickDrop>, drop: QuickDrop): Pick = when {
+    fun pick(draft: List<QuickDrop>, drop: QuickDrop, max: Int = MAX_SLOTS): Pick = when {
         drop in draft -> Pick.Changed(draft - drop)
         !drop.available -> Pick.Changed(draft)
-        draft.size >= SLOTS -> Pick.Full
+        draft.size >= max -> Pick.Full
         else -> Pick.Changed(draft + drop)
     }
 

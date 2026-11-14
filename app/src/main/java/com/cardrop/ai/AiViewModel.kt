@@ -10,6 +10,8 @@ import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
 import com.cardrop.drop.GameInviteRules
+import com.cardrop.drop.VoiceClipRules
+import com.cardrop.drop.VoiceRecording
 import com.cardrop.core.model.QuizQuestion
 import com.cardrop.core.model.VehicleSnapshot
 import com.cardrop.core.model.recipientLabel
@@ -428,6 +430,28 @@ class AiViewModel(
         _shout.update { it.copy(spoken = text, selected = ShoutState.SPOKEN, hearing = false) }
     }
 
+    /**
+     * Board 09 녹음해서 보내기 (Member A, 2026-11-15): sends [recording] to [toCarIds] as a voice message, a silent SOCIAL
+     * drop the receivers play with ▶ ([VoiceClipRules]). When it can't be sent, the red line above the send button says why.
+     */
+    fun sendVoice(recording: VoiceRecording, toCarIds: List<String>, onSent: () -> Unit) {
+        if (sending) return
+        sending = true
+        _shout.update { it.copy(sendError = null) }
+        viewModelScope.launch {
+            try {
+                crew.sendDrop(VoiceClipRules.draft(recording.audio, recording.seconds, toCarIds))
+                onSent()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _shout.update { it.copy(sendError = notSentText(e)) }
+            } finally {
+                sending = false
+            }
+        }
+    }
+
     /** Board 09 "“…” 보내기": sends the chosen phrase to [toCarIds] as a silent SOCIAL drop. */
     fun sendChosenShout(toCarIds: List<String>, onSent: () -> Unit) {
         val state = _shout.value
@@ -564,6 +588,7 @@ class AiViewModel(
         DropTopic.CUSTOM -> "어디에 들를까요?"
         DropTopic.SONG -> "노래"
         DropTopic.GAME -> "게임 초대"
+        DropTopic.VOICE -> "음성 메시지"
     }
 }
 

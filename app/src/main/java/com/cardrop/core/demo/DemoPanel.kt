@@ -185,6 +185,19 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                                 crewRepo.injectDrop(DemoData.uncle, GameInviteRules.quiz("상식 퀴즈", toCarIds = emptyList()))
                             }
                         }
+                        // A voice message from a bot (Member A): the last one this car recorded on board 09, sent back as
+                        // if 삼촌 차 said it, so the banner's ▶ 재생 can be tried on one emulator.
+                        if (along(DemoData.uncle)) {
+                            DemoButton("삼촌 차 음성 메시지 받기 (내 마지막 녹음)") {
+                                val mine = crewRepo.drops.value.lastOrNull { it.topic == DropTopic.VOICE && it.fromCarId == crewRepo.myCarId }
+                                if (mine != null) {
+                                    crewRepo.injectDrop(
+                                        DemoData.uncle,
+                                        DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.VOICE, title = mine.title, message = mine.message),
+                                    )
+                                }
+                            }
+                        }
                         DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }
                         if (along(DemoData.aunt)) {
                             DemoButton("이모 차 한마디 받기") {

@@ -21,19 +21,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.Drop
+import com.cardrop.core.model.DropTopic
 import com.cardrop.core.ui.CarBadge
 import com.cardrop.core.ui.PrimaryButton
+import com.cardrop.core.ui.SecondaryButton
 import com.cardrop.core.ui.theme.CdColors
 import kotlinx.coroutines.delay
 
 /** How long another car's 한마디 stays at the top before it goes by itself. */
 const val SOCIAL_BANNER_MILLIS = 8_000L
+
+/** A voice message stays longer: time to tap ▶ and hear it (at most 20 s) before it goes. */
+const val VOICE_BANNER_MILLIS = 40_000L
 
 /**
  * Owner: Member A (2026-11-15). Another car's SOCIAL drop (a 한마디, "…에 도착했어요"; not a song, which has board 13)
@@ -45,7 +51,7 @@ const val SOCIAL_BANNER_MILLIS = 8_000L
 fun SocialBanner(drop: Drop?, sender: Car?, onDismiss: () -> Unit) {
     LaunchedEffect(drop?.id) {
         if (drop != null) {
-            delay(SOCIAL_BANNER_MILLIS)
+            delay(if (drop.topic == DropTopic.VOICE) VOICE_BANNER_MILLIS else SOCIAL_BANNER_MILLIS)
             onDismiss()
         }
     }
@@ -74,15 +80,16 @@ private fun BannerCard(drop: Drop, sender: Car?, onDismiss: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (sender != null) CarBadge(sender, size = 48, bob = false)
+        val voice = drop.topic == DropTopic.VOICE
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                "소셜 드랍 · ${sender?.name ?: "일행"}",
+                "${if (voice) "음성 메시지" else "소셜 드랍"} · ${sender?.name ?: "일행"}",
                 color = CdColors.VioletDark,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
             Text(
-                "“${drop.title}”",
+                if (voice) drop.title else "“${drop.title}”",
                 color = CdColors.Ink,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -90,6 +97,11 @@ private fun BannerCard(drop: Drop, sender: Car?, onDismiss: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        PrimaryButton("확인", onClick = onDismiss, containerColor = CdColors.Violet, height = 48.dp, radius = 14.dp, fontSize = 15.sp, horizontalPadding = 22.dp)
+        // A voice message (Member A, 2026-11-15): ▶ 재생 plays it; never by itself.
+        if (voice) {
+            val context = LocalContext.current
+            SecondaryButton("▶ 재생", onClick = { VoicePlayer.play(context, drop) }, height = 48.dp, radius = 14.dp, fontSize = 15.sp, horizontalPadding = 18.dp)
+        }
+        PrimaryButton("확인", onClick = { VoicePlayer.stop(); onDismiss() }, containerColor = CdColors.Violet, height = 48.dp, radius = 14.dp, fontSize = 15.sp, horizontalPadding = 22.dp)
     }
 }

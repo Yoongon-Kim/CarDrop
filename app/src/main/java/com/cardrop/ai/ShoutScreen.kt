@@ -86,6 +86,10 @@ fun ShoutScreen(
         onDelete = vm::deletePhrase,
         onListen = vm::listenForShout,
         onSend = { vm.sendChosenShout(toCarIds, onSent) },
+        voiceMessage = {
+            // 녹음해서 보내기 (Member A, 2026-11-15): the driver's own voice, at most 20 s.
+            VoiceMessageRow(enabled = !state.hearing, onSend = { clip -> vm.sendVoice(clip, toCarIds, onSent) })
+        },
     )
 }
 
@@ -119,6 +123,8 @@ private fun ShoutContent(
     onDelete: () -> Unit = {},
     onListen: () -> Unit = {},
     onSend: () -> Unit = {},
+    /** The 녹음해서 보내기 row, under 직접 말해서 보내기 (nothing in the previews). */
+    voiceMessage: @Composable () -> Unit = {},
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp),
@@ -140,6 +146,7 @@ private fun ShoutContent(
         ) {
             PhraseCard(state, onSelect, onSelectSpoken, onNew, onEdit, onChange, onCancel, onSave, onDelete)
             VoiceRow(exampleCar = exampleCar, enabled = !state.hearing, onListen = onListen)
+            voiceMessage()
         }
 
         // Why the last message wasn't sent (e.g. "출발하면 드랍을 보낼 수 있어요"), right above the send button.

@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import com.cardrop.core.AppContainer
 import com.cardrop.core.CarDropApp
+import com.cardrop.core.demo.CarNames
 import com.cardrop.core.demo.DemoCar
 import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.demo.StartMode
@@ -25,6 +26,11 @@ class CarDropApplication : Application() {
      */
     var container: AppContainer? = null
         private set
+
+    override fun onCreate() {
+        super.onCreate()
+        CarNames.load(this) // the cars' names typed on this device, before any screen or crew uses them
+    }
 
     /** Makes [container] (once) with the crew and car saved in DemoCrew / DemoCar. */
     fun startContainer(): AppContainer = container ?: AppContainer(this).also { container = it }

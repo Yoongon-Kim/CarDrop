@@ -232,7 +232,12 @@ When CarDrop starts, this demo version first asks how the device runs (not in th
 `core/demo/StartModeScreen.kt`): **봇 크루** (this device alone with three bot cars) or **실제 크루** and its car
 (아빠 / 삼촌 / 민지 / 이모 차). The app's parts are made only after the answer. A build without
 `app/google-services.json` has only the bot crew and doesn't ask. For adb, `--ez cardrop.skipStartQuestion true`
-on `am start` skips it and uses the last answer.
+on `am start` skips it and uses the last answer. A pencil next to each car there renames it (user request,
+2026-11-15; up to 10 letters, no brackets, 원래 이름으로 undoes it): the name shows on every screen of this device,
+the bot crew's included, and stays after a restart (`core/demo/CarNames.kt`, SharedPreferences; `DemoData`'s cars
+and `FirebaseCrewRepository.LINEUP` read it). It is this device's only (user's choice): in the real crew another
+device keeps its own names, and clearing the app's data brings back 아빠 / 삼촌 / 민지 / 이모 차. Keep car names out
+of hard-coded text: use `DemoData.uncle.name` etc. (the DEMO panel does).
 
 The **DEMO** button (low in the rail, above 내 차) changes fake fuel and gear, and makes bot cars send drops.
 Use it to rehearse the 시연 on one emulator. Its panel fits on the screen (buttons side by side) and closes with the ✕

@@ -145,6 +145,24 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                                 )
                             }
                         }
+                        // A quick drop from a bot (04's pop-up, one place): board 11 asks only 예 / 아니요 (Member A).
+                        if (along(DemoData.uncle)) {
+                            DemoButton("삼촌 차 퀵 드랍 받기 (예/아니요)") {
+                                demoCandidates(container).firstOrNull()?.let { place ->
+                                    crewRepo.injectDrop(
+                                        DemoData.uncle,
+                                        DropDraft(
+                                            kind = DropKind.DECISION,
+                                            topic = DropTopic.REST,
+                                            title = "휴게소 들렀다 가요",
+                                            message = "삼촌 차 · 퀵 드랍",
+                                            candidates = listOf(place),
+                                            senderVotes = false,
+                                        ),
+                                    )
+                                }
+                            }
+                        }
                         // A destination proposal from a bot (board 11's 찬성 / 반대 / 다른 목적지 제안하기), added by Member A:
                         // 속초 해수욕장, or another known destination when the crew is heading there already.
                         DemoButton("삼촌 차 목적지 제안 받기") {

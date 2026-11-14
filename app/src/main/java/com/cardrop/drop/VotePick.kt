@@ -31,7 +31,14 @@ sealed interface VotePick {
      * What the AI card says about this pick: a bold part and a grey part (target lines 466 and 724), e.g.
      * "덕평자연휴게소에 1표" and "“1번”, “첫 번째”도 같은 표예요".
      */
-    fun explain(candidates: List<Candidate>): Pair<String, String> = when (this) {
+    fun explain(candidates: List<Candidate>, yesNo: Boolean = false): Pair<String, String> = when {
+        // A quick drop's one place (VoteRules.isYesNo): 예 or 아니요.
+        yesNo && this is Pass -> "아니요 · 우리 차는 안 들러요" to "가던 길로 가고 결과만 알려드려요"
+        yesNo -> "예 · ${candidates.firstOrNull()?.place?.name ?: "그곳"}에 같이 들러요" to "답이 없으면 들르는 걸로 봐요"
+        else -> explainPlace(candidates)
+    }
+
+    private fun explainPlace(candidates: List<Candidate>): Pair<String, String> = when (this) {
         is Place -> {
             val index = candidates.indexOfFirst { it.id == candidateId }
             val name = candidates.getOrNull(index)?.place?.name ?: "이곳"
@@ -46,7 +53,13 @@ sealed interface VotePick {
      * What the voice says once 응답하기 sent this pick: board 11 then goes back to 홈 right away, so this tells the
      * driver which answer went out, e.g. "강문 덴켄에 투표했어요".
      */
-    fun answeredLine(candidates: List<Candidate>): String = when (this) {
+    fun answeredLine(candidates: List<Candidate>, yesNo: Boolean = false): String = when {
+        yesNo && this is Pass -> "안 들른다고 답했어요. 우리 차는 가던 길로 가요"
+        yesNo -> "${candidates.firstOrNull()?.place?.name ?: "그곳"}에 같이 들른다고 답했어요"
+        else -> placeLine(candidates)
+    }
+
+    private fun placeLine(candidates: List<Candidate>): String = when (this) {
         is Place -> "${candidates.firstOrNull { it.id == candidateId }?.place?.name ?: "고른 곳"}에 투표했어요"
         Anywhere -> "아무 데나 좋다고 답했어요"
         Pass -> "이번엔 패스했어요. 우리 차는 가던 길로 가요"

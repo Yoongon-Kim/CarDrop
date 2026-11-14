@@ -50,6 +50,32 @@ data class PlacePick(
         )
     }
 
+    // ---- A quick drop (04's pop-up) sends one place (Member A, 2026-11-15): only one place is ticked at a time. ----
+
+    /** Only [id] ticked. */
+    fun only(id: String): PlacePick = copy(selectedIds = setOf(id))
+
+    /** The quick drop's start: only the AI's best pick ticked (none when the AI picked nothing). */
+    fun single(): PlacePick =
+        candidates.firstOrNull { it.id !in addedIds }?.let { only(it.id) } ?: copy(selectedIds = emptySet())
+
+    /**
+     * 다른 곳 추천: the AI's next pick after the one ticked now, back to the first after the last. With a place the
+     * driver added ticked, the AI's first pick.
+     */
+    fun nextAi(): PlacePick {
+        val ai = candidates.filter { it.id !in addedIds }
+        if (ai.isEmpty()) return this
+        val current = ai.indexOfFirst { it.id in selectedIds }
+        return only(ai[(current + 1) % ai.size].id)
+    }
+
+    /** A place the driver searched or said, ticked on its own: the quick drop then sends only that place. */
+    fun addOnly(place: Place): PlacePick {
+        val added = add(place)
+        return added.find(place)?.let { added.only(it.id) } ?: added
+    }
+
     companion object {
         /** The line under a place the driver added (design: "직접 추가한 장소"). */
         const val ADDED_REASON = "직접 추가한 장소"

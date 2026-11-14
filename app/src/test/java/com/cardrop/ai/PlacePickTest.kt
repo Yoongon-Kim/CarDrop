@@ -31,6 +31,30 @@ class PlacePickTest {
     }
 
     @Test
+    fun quickDropShowsOneAiPickAndCyclesThroughThem() {
+        val pick = aiPick(deokpyeong, yeoju, munmak).single()
+        assertEquals(listOf("deokpyeong"), pick.selected.map { it.id })
+        assertEquals(listOf("yeoju"), pick.nextAi().selected.map { it.id })
+        assertEquals(listOf("munmak"), pick.nextAi().nextAi().selected.map { it.id })
+        assertEquals(listOf("deokpyeong"), pick.nextAi().nextAi().nextAi().selected.map { it.id }) // back to the first
+    }
+
+    @Test
+    fun quickDropSendsOnlyThePlaceTheDriverAdded() {
+        val pick = aiPick(deokpyeong, yeoju).single().addOnly(pyeongchang)
+        assertEquals(listOf("pyeongchang"), pick.selected.map { it.id })
+        assertEquals(listOf("deokpyeong"), pick.nextAi().selected.map { it.id }) // 다른 곳 추천 goes back to the AI
+        // A place the AI picked, found by search: that row on its own.
+        assertEquals(listOf("yeoju"), pick.addOnly(yeoju).selected.map { it.id })
+    }
+
+    @Test
+    fun quickDropWithoutAiPicksStartsEmpty() {
+        assertTrue(PlacePick().single().selected.isEmpty())
+        assertTrue(PlacePick().nextAi().selected.isEmpty())
+    }
+
+    @Test
     fun toggleUnticksAndTicksAgain() {
         val pick = aiPick(deokpyeong, yeoju, munmak).toggle("yeoju")
         assertEquals(listOf("deokpyeong", "munmak"), pick.selected.map { it.id })

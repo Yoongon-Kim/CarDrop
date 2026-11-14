@@ -58,6 +58,20 @@ class VoteRulesTest {
     }
 
     @Test
+    fun `a quick drop with one place is answered yes or no`() {
+        val one = drop(emptyMap()).copy(candidates = candidates.take(1), senderVotes = false)
+        assertTrue(VoteRules.isYesNo(one))
+        assertFalse(VoteRules.isYesNo(one.copy(senderVotes = true))) // board 10's page: a normal vote
+        assertFalse(VoteRules.isYesNo(drop(emptyMap()).copy(senderVotes = false))) // three places
+        // 아니요 is a pass: it ends on the place anyway, and only the cars that said 아니요 keep their route.
+        val answered = one.copy(votes = mapOf("uncle" to "a", "minji" to VoteRules.PASS, "aunt" to VoteRules.PASS))
+        val voters = answered.voterIds(cars)
+        assertTrue(VoteRules.isOver(answered, voters, nowMillis = 0))
+        assertEquals("a", VoteRules.winner(answered, voters))
+        assertEquals(1, VoteRules.agreeing(answered, voters))
+    }
+
+    @Test
     fun `a car that went offline isn't waited for`() {
         // 이모 차's app closed: FirebaseCrewRepository counts only the connected cars, so a pass and two votes end it.
         val d = drop(mapOf("me" to "b", "uncle" to VoteRules.PASS, "minji" to "c"))

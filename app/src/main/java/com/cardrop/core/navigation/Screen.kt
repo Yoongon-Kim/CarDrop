@@ -27,6 +27,8 @@ sealed interface Screen {
     data class Safety(val entryId: Long? = null) : Screen
     /** 17 내 차 결과 / 지난 기록. No entry encouragement. */
     data class SafetyResult(val recordId: String) : Screen
+    /** 이번 주 내 기록: this week's safety trips, opened from board 16's card · Member A (2026-11-15) */
+    data object SafetyWeek : Screen
     /** 05 연료 경고 (내 차) · Member B */
     data object FuelMe : Screen
     /** 06 연료 알림 받은 차 · Member B */

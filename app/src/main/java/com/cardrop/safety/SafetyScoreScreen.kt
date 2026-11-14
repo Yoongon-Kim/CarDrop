@@ -3,8 +3,6 @@ package com.cardrop.safety
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -37,7 +35,7 @@ import kotlin.math.roundToInt
 
 /** Boards 16 and 17. All numbers come from the trip journal, including the demo cars. */
 @Composable
-fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String) -> Unit) {
+fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onWeek: () -> Unit = {}, onResult: (String) -> Unit) {
     val record by safety.current.collectAsStateWithLifecycle()
     val peers by safety.peers.collectAsStateWithLifecycle()
     val history by safety.history.collectAsStateWithLifecycle()
@@ -86,12 +84,10 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     SafetyEncouragementCard(safety)
-                    val week = startOfWeek(now)
                     WeekCard(
-                        trips = history.filter { it.demo == safety.demo && it.startedAtMillis >= week && it.status != SafetyTripStatus.RECORDING },
+                        trips = weekTrips(history, safety.demo, now),
                         demo = safety.demo,
-                        parked = parked,
-                        onOpen = onResult,
+                        onOpen = onWeek,
                         modifier = Modifier.fillMaxWidth().then(if (rankHeight > 0) Modifier.weight(1f) else Modifier),
                     )
                 }
@@ -323,46 +319,65 @@ private fun SafetyPodium(rows: List<RankedSafetyCar>) {
 }
 
 /**
- * 이번 주 내 기록 (Member A, 2026-11-15): the week's finished trips and their average, then "저장된 내 차 기록 n개 ▾". A
- * tap on that line opens this week's trips inside the card (newest first, scrolling within the card when they don't
- * fit); a tap on a trip opens board 17 for it once the car has stopped, like 지난 내 차 기록.
+ * 이번 주 내 기록 (Member A, 2026-11-15): the week's finished trips and their average, and "저장된 내 차 기록 n개 보기 ›".
+ * A tap on the card opens [SafetyWeekScreen] with all of this week's trips ([onOpen]).
  */
 @Composable
-private fun WeekCard(trips: List<SafetyRecord>, demo: Boolean, parked: Boolean, onOpen: (String) -> Unit, modifier: Modifier) {
-    var open by remember { mutableStateOf(false) }
+private fun WeekCard(trips: List<SafetyRecord>, demo: Boolean, onOpen: () -> Unit, modifier: Modifier) {
     val full = trips.filter { it.status == SafetyTripStatus.COMPLETED && it.rankEligible }
-    CdCard(modifier, contentPadding = PaddingValues(18.dp), gap = 8.dp) {
+    CdCard(modifier, onClick = if (trips.isNotEmpty()) onOpen else null, contentPadding = PaddingValues(18.dp), gap = 8.dp) {
         SectionLabel("이번 주 내 기록")
         Text(if (full.isEmpty()) "완료된 주행 기록이 아직 없어요" else "${full.size}회 완주 · 평균 ${full.map { it.score }.average().roundToInt()}점",
             fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink2)
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                .clickable(enabled = trips.isNotEmpty()) { open = !open }.padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("저장된 내 차 기록 ${trips.size}개 · ${if (demo) "모의 기록" else "실제 주행"}",
                 fontSize = 13.sp, color = CdColors.Gray600, modifier = Modifier.weight(1f))
-            if (trips.isNotEmpty()) Text(if (open) "접기 ▴" else "보기 ▾", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark)
+            if (trips.isNotEmpty()) Text("보기 ›", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark)
         }
-        if (open) {
-            Column(
-                Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                trips.forEach { trip ->
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .clickable(enabled = parked) { onOpen(trip.id) }.padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("${shortDate(trip.startedAtMillis)}  ${trip.destination}", fontSize = 14.sp, color = CdColors.Ink2,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text("${trip.score}점 ›", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.BlueDark)
+    }
+}
+
+/** This week's trips of this car (demo or real, like board 16), newest first. */
+private fun weekTrips(history: List<SafetyRecord>, demo: Boolean, now: Long): List<SafetyRecord> {
+    val week = startOfWeek(now)
+    return history.filter { it.demo == demo && it.startedAtMillis >= week && it.status != SafetyTripStatus.RECORDING }
+}
+
+/**
+ * 이번 주 내 기록, opened from board 16's card (Member A, 2026-11-15): the week's summary and every trip of it. A trip
+ * opens board 17 for it ([onOpen]) once the car has stopped, like 지난 내 차 기록. [onBack] goes back to board 16.
+ */
+@Composable
+fun SafetyWeekScreen(safety: SafetyCoordinator, onBack: () -> Unit, onOpen: (String) -> Unit) {
+    val history by safety.history.collectAsStateWithLifecycle()
+    val parked by safety.canFinish.collectAsStateWithLifecycle()
+    val now by safety.clock.collectAsStateWithLifecycle()
+    val trips = weekTrips(history, safety.demo, now)
+    val full = trips.filter { it.status == SafetyTripStatus.COMPLETED && it.rankEligible }
+    ScreenColumn(gap = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BackButton(onBack)
+            ScreenHeader(eyebrow = "안전운전 대결 · ${if (safety.demo) "DEMO · 모의 기록" else "실제 주행"}", title = "이번 주 내 기록", titleSize = 28.sp)
+        }
+        CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(22.dp), gap = 6.dp) {
+            SectionLabel(if (full.isEmpty()) "완료된 주행 기록이 아직 없어요" else "${full.size}회 완주")
+            if (full.isNotEmpty()) Text("평균 ${full.map { it.score }.average().roundToInt()}점", color = CdColors.BlueDark, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
+            Text("저장된 내 차 기록 ${trips.size}개 · 완주한 기록만 평균에 들어가요", fontSize = 13.sp, color = CdColors.Gray500)
+        }
+        CdCard(Modifier.fillMaxWidth(), gap = 10.dp, contentPadding = PaddingValues(18.dp)) {
+            if (trips.isEmpty()) Text("이번 주에 저장된 기록이 없어요", color = CdColors.Gray500, fontSize = 14.sp)
+            trips.forEach { record ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = parked) { onOpen(record.id) }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(record.destination, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("${shortDate(record.startedAtMillis)} · ${when (record.status) { SafetyTripStatus.COMPLETED -> "도착 완료"; SafetyTripStatus.STOPPED -> "중도 종료"; else -> "중단된 주행" }} · 급가속 ${record.count(SafetyEventType.ACCELERATION)} · 급정거 ${record.count(SafetyEventType.BRAKING)}",
+                            fontSize = 12.sp, color = CdColors.Gray500)
                     }
+                    Text("${record.score}점  ›", color = CdColors.BlueDark, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
-            if (!parked) Text("자세한 기록은 정차 후 열 수 있어요", color = CdColors.Gray500, fontSize = 12.sp)
+            if (!parked && trips.isNotEmpty()) Text("자세한 기록은 정차 후 열 수 있어요", color = CdColors.Gray500, fontSize = 12.sp)
         }
     }
 }

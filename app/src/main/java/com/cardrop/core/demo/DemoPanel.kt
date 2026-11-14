@@ -49,6 +49,7 @@ import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
+import com.cardrop.drop.GameInviteRules
 import com.cardrop.drop.ProposalRules
 import com.cardrop.drop.SongRules
 import com.cardrop.vehicle.FakeVehicleRepository
@@ -176,6 +177,12 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                         if (along(DemoData.uncle)) {
                             DemoButton("삼촌 차 노래 드랍 받기") {
                                 crewRepo.injectDrop(DemoData.uncle, SongRules.draft(SongRules.SONGS.first(), toCarIds = emptyList()))
+                            }
+                        }
+                        // A 게임 초대 from a bot (Member A): the pop-up in P, only the inbox while driving.
+                        if (along(DemoData.uncle)) {
+                            DemoButton("삼촌 차 게임 초대 받기") {
+                                crewRepo.injectDrop(DemoData.uncle, GameInviteRules.quiz("상식 퀴즈", toCarIds = emptyList()))
                             }
                         }
                         DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }

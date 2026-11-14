@@ -34,7 +34,6 @@ import com.cardrop.ai.AiRecommendScreen
 import com.cardrop.ai.AiViewModel
 import com.cardrop.ai.QuickDropPicker
 import com.cardrop.ai.game.GamesScreen
-import com.cardrop.ai.game.OmokInviteNotice
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
 import com.cardrop.core.demo.DemoRailButton
@@ -62,6 +61,8 @@ import com.cardrop.drive.QuickDropEditScreen
 import com.cardrop.drive.QuickDrop
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
+import com.cardrop.drop.GameInvitePopup
+import com.cardrop.drop.GameInviteRules
 import com.cardrop.drop.SocialBanner
 import com.cardrop.drop.SongGetDialog
 import com.cardrop.drop.SongSendScreen
@@ -142,12 +143,19 @@ fun CarDropApp(container: AppContainer) {
 
     // Another car's 한마디 (or "…에 도착했어요"): the banner at the top until 확인 or 8 s (drop/SocialBanner.kt).
     var socialDrop by remember { mutableStateOf<Drop?>(null) }
+    // Another car's 게임 초대 that arrived in P: the pop-up in the middle until 수락, 거절 or its minute is over.
+    var gameInvite by remember { mutableStateOf<Drop?>(null) }
     DropRoutingEffect(
         crew = container.crew,
         voice = container.voice,
         navigator = navigator,
         memory = container.dropRouting,
-    ) { socialDrop = it }
+        onSocialDrop = { socialDrop = it },
+        // Another car's 게임 초대 (Member A, 2026-11-15): the pop-up only in P; while driving it waits in the inbox.
+        onGameInvite = { drop ->
+            if (GameInviteRules.popsUp(drop, driveVm.gamesOpen.value, System.currentTimeMillis())) gameInvite = drop
+        },
+    )
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
     // The trip just started (the host's 출발, every car joined, or the minute for joining is over): board 01 gives way to
@@ -183,7 +191,23 @@ fun CarDropApp(container: AppContainer) {
                 sender = crewNow?.cars?.firstOrNull { it.id == socialDrop?.fromCarId },
                 onDismiss = { socialDrop = null },
             )
-            if (navigator.current != Screen.Games) OmokInviteNotice(container.omok) { navigator.go(Screen.Games) }
+            gameInvite?.let { invite ->
+                val omokId = GameInviteRules.omokGameId(invite)
+                GameInvitePopup(
+                    drop = invite,
+                    sender = crewNow?.cars?.firstOrNull { it.id == invite.fromCarId },
+                    onAccept = {
+                        gameInvite = null
+                        if (omokId != null) container.omok.acceptWhenReady(omokId)
+                        navigator.go(Screen.Games)
+                    },
+                    onDecline = {
+                        gameInvite = null
+                        omokId?.let(container.omok::decline)
+                    },
+                    onTimeUp = { gameInvite = null },
+                )
+            }
             DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },
         myCar = myCar,
@@ -280,6 +304,8 @@ fun CarDropApp(container: AppContainer) {
                 InboxScreen(crewVm, onClose = navigator::back, isSkipped = driveVm::skipped) { drop ->
                     // A destination proposal that was turned down decided no place, so board 14 has nothing to
                     // show: it opens on board 11, which says who said 반대.
+                    // An omok 게임 초대 opens the omok tab, where its 도전장 waits for 수락.
+                    if (GameInviteRules.omokGameId(drop) != null) container.omok.openGame()
                     navigator.go(if (VoteRules.rejected(drop)) Screen.Vote(drop.id) else inboxScreenFor(drop))
                 }
             }

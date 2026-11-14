@@ -9,6 +9,7 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
+import com.cardrop.drop.GameInviteRules
 import com.cardrop.core.model.QuizQuestion
 import com.cardrop.core.model.VehicleSnapshot
 import com.cardrop.core.model.recipientLabel
@@ -521,8 +522,20 @@ class AiViewModel(
     fun sendChallenge() {
         val round = _round.value
         if (round.challengeSent) return
-        sendShout("${round.kind.title} 한 판 할까요? · 정차 중에 같이 해요", polish = false, toCarIds = listOfNotNull(round.opponentId)) {
-            _round.update { it.copy(challengeSent = true) }
+        // A 게임 초대 drop (Member A, 2026-11-15): a car in P gets the pop-up, a car driving finds it in its inbox.
+        if (sending) return
+        sending = true
+        viewModelScope.launch {
+            try {
+                crew.sendDrop(GameInviteRules.quiz(round.kind.title, listOfNotNull(round.opponentId)))
+                _round.update { it.copy(challengeSent = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _shout.update { it.copy(sendError = notSentText(e)) }
+            } finally {
+                sending = false
+            }
         }
     }
 
@@ -547,6 +560,7 @@ class AiViewModel(
         DropTopic.CAFE -> "어느 카페에 들를까요?"
         DropTopic.CUSTOM -> "어디에 들를까요?"
         DropTopic.SONG -> "노래"
+        DropTopic.GAME -> "게임 초대"
     }
 }
 

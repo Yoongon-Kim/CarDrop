@@ -206,6 +206,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   nothing of it is saved on the device, so a restarted app opens on its usual screen and the bot crew's board
   starts empty (`MemoryOmokRoomStore`). A real crew's game stays in Firebase for that crew, so a car that joins
   the same crew again finds it there. Existing quizzes and AI services keep their current behavior.
+  게임 초대 (Member A, 2026-11-15): an omok 도전장 (`OmokCoordinator.invite`) and board 15's quiz 도전장 드랍 each send a
+  SOCIAL drop with `DropTopic.GAME` (`drop/GameInvite.kt`; an omok one carries the game's id in `message`). A car in P
+  (`gamesOpen`) gets `GameInvitePopup` over any screen: 거절 (turns an omok 도전장 down) or 수락하고 게임으로 (opens board 15;
+  `OmokCoordinator.acceptWhenReady` accepts the omok game once its screen is ready). A car that is driving gets no pop-up:
+  the invite waits in its inbox ("소셜 · 게임 초대", 게임으로 → board 15). The pop-up closes after the invite's minute, and
+  the omok sender then reads "1분 동안 응답이 없었어요". It replaced the small 도전장 card at the top right
+  (`OmokInviteNotice`). The DEMO panel's "삼촌 차 게임 초대 받기" stages a quiz 도전장 from a bot.
 
 ## Build and run
 

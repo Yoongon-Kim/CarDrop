@@ -170,12 +170,15 @@ private fun OmokScreen(omok: OmokCoordinator, stop: Place?, drops: List<Drop>, o
                     !connected -> "연결이 끊겼어요 · 연결되면 현재 보드를 확인해요"
                     !localReady -> "P로 정차하고 게임 화면을 열어 주세요"
                     game == null -> "상대 차량에 도전장을 보내 주세요"
-                    game.phase == OmokPhase.INVITED && !game.invited(now) -> "도전장이 만료됐어요 · 새 도전장을 보내 주세요"
+                    // No answer within the minute (Member A, 2026-11-15): the sender reads that nobody answered.
+                    game.phase == OmokPhase.INVITED && !game.invited(now) ->
+                        if (game.blackId == omok.myCarId) "1분 동안 응답이 없었어요 · 새 도전장을 보내 주세요" else "도전장이 만료됐어요"
                     game.phase == OmokPhase.INVITED -> if (game.whiteId == omok.myCarId) "오목 도전장이 왔어요" else "상대의 수락을 기다리고 있어요"
                     game.phase == OmokPhase.FINISHED -> if (game.winnerId == null) "무승부예요" else if (game.winnerId == omok.myCarId) "이겼어요! · ${game.reason}" else "상대가 이겼어요 · ${game.reason}"
                     game.phase == OmokPhase.DECLINED -> "상대가 도전장을 거절했어요"
                     game.phase == OmokPhase.CANCELLED -> "도전장을 취소했어요"
-                    game.phase == OmokPhase.EXPIRED -> "도전장이 만료됐어요"
+                    game.phase == OmokPhase.EXPIRED ->
+                        if (game.blackId == omok.myCarId) "1분 동안 응답이 없었어요" else "도전장이 만료됐어요"
                     !game.ready(now) -> "상대의 정차·연결·게임 화면을 기다려요"
                     game.turnId == omok.myCarId -> "내 차례 · 놓을 자리를 고르고 착수를 눌러 주세요"
                     else -> "상대 차례예요"
@@ -275,18 +278,3 @@ private fun OmokBoard(game: OmokGame?, selected: Int?, enabled: Boolean, modifie
     }
 }
 
-/** A silent invite stays available outside the game; opening it never accepts on the driver's behalf. */
-@Composable
-fun OmokInviteNotice(omok: OmokCoordinator, onOpen: () -> Unit) {
-    val games by omok.games.collectAsStateWithLifecycle()
-    val now by omok.clock.collectAsStateWithLifecycle()
-    val crew by omok.currentCrew.collectAsStateWithLifecycle()
-    val incoming = games.values.firstOrNull { it.whiteId == omok.myCarId && it.invited(now) } ?: return
-    val sender = crew?.cars?.firstOrNull { it.id == incoming.blackId }?.name ?: "일행 차"
-    Box(Modifier.fillMaxWidth().padding(top = 90.dp, end = 28.dp), contentAlignment = Alignment.TopEnd) {
-        CdCard(Modifier.widthIn(max = 430.dp), radius = 20.dp, contentPadding = PaddingValues(16.dp)) {
-            Text("${sender.particle("이", "가")} 오목 도전장을 보냈어요", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink)
-            CdChip("게임에서 확인", { omok.openGame(); onOpen() }, style = ChipStyle.Blue)
-        }
-    }
-}

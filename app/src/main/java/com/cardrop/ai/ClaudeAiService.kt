@@ -107,7 +107,7 @@ class ClaudeAiService(
 
     private val intentSchema = jsonSchema(
         // CUSTOM (직접 추가) is a button on board 08, not something a driver says.
-        "topic" to mapOf("type" to "string", "enum" to DropTopic.entries.filter { it != DropTopic.CUSTOM && it != DropTopic.SONG }.map { it.name }),
+        "topic" to mapOf("type" to "string", "enum" to DropTopic.entries.filter { it != DropTopic.CUSTOM && it != DropTopic.SONG && it != DropTopic.GAME }.map { it.name }),
         "confidence" to mapOf("type" to "number"),
         "message" to STRING,
     )

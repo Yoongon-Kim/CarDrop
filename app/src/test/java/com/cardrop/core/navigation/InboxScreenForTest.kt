@@ -34,6 +34,12 @@ class InboxScreenForTest {
     }
 
     @Test
+    fun aGameInviteOpensTheGames() {
+        assertEquals(Screen.Games, inboxScreenFor(drop("game", DropTopic.GAME, kind = DropKind.SOCIAL)))
+        assertEquals(Screen.Inbox, inboxScreenFor(drop("shout", DropTopic.MESSAGE, kind = DropKind.SOCIAL)))
+    }
+
+    @Test
     fun aFinishedVoteOpensTheResult() {
         assertEquals(Screen.Decided("rest"), inboxScreenFor(drop("rest", DropTopic.REST, decided = true)))
         assertEquals(Screen.Decided("fuel"), inboxScreenFor(drop("fuel", DropTopic.FUEL, decided = true)))

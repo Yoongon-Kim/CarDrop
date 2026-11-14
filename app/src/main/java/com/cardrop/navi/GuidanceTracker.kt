@@ -41,6 +41,9 @@ enum class WaypointResult {
  * - waypoint PASSED = came within [nearMetres], then got more than [passedMetres] away without
  *   arriving. The motorway passes rest areas 70-100 m from their map point, so distance alone can't
  *   tell a stop from a drive-by; slowing down can.
+ *   Also PASSED (Member A, 2026-11-15): the car got within [approachMetres] of it, then [movedAwayMetres] further away
+ *   than its closest. That catches a stop whose map point lies far from the road, and a stop the car was already past
+ *   when it became the waypoint; before, neither was ever passed, so every reroute sent the car back to it.
  * - still parked at a stop it ARRIVED at = within [arriveMetres] of it and not faster than [slowKmh]
  *   ([isStillAt]); the navigator shows "… · 정차 중" until then.
  */
@@ -52,6 +55,8 @@ class GuidanceTracker(
     private val stopMillis: Long = 10_000,
     private val nearMetres: Double = 600.0,
     private val passedMetres: Double = 800.0,
+    private val approachMetres: Double = 3_000.0,
+    private val movedAwayMetres: Double = 1_000.0,
 ) {
     private var lastKm = 0.0
     private var offCount = 0
@@ -63,6 +68,7 @@ class GuidanceTracker(
     private var wasAt = false
     private var slowSinceMillis: Long? = null
     private var decided = false
+    private var closestMetres = Double.MAX_VALUE
 
     /** Call when a new route arrives. */
     fun reset() {
@@ -133,6 +139,7 @@ class GuidanceTracker(
         wasAt = false
         slowSinceMillis = null
         decided = false
+        closestMetres = Double.MAX_VALUE
     }
 
     /** True on the first reading within [arriveMetres] of [waypoint]. */
@@ -148,11 +155,14 @@ class GuidanceTracker(
         watch(waypoint)
         if (decided) return null
         if (metres <= nearMetres) cameNear = true
+        closestMetres = minOf(closestMetres, metres)
+        val movedAway = closestMetres <= approachMetres && metres > closestMetres + movedAwayMetres
         val slow = fix.speedKmh != null && fix.speedKmh <= slowKmh
         slowSinceMillis = if (metres <= arriveMetres && slow) slowSinceMillis ?: fix.timeMillis else null
         val result = when {
             slowSinceMillis?.let { fix.timeMillis - it >= stopMillis } == true -> WaypointResult.ARRIVED
             cameNear && metres > passedMetres -> WaypointResult.PASSED
+            movedAway && metres > passedMetres -> WaypointResult.PASSED
             else -> null
         }
         if (result != null) decided = true

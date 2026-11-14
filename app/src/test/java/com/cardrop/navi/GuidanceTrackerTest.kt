@@ -55,6 +55,34 @@ class GuidanceTrackerTest {
     }
 
     @Test
+    fun aStopFarFromTheRoadIsPassedOnceTheCarDrivesAway() {
+        // Its map point is 700 m off the road: the car never comes within 600 m, yet it drives on past it.
+        val tracker = GuidanceTracker()
+        val far = road.pointAt(5.0).let { Place("far", "휴게소", it.lat + 700 / 111_320.0, it.lng) }
+        val updates = (0..200).map { s -> tracker.update(route, fix(4.0 + s * step, second = s), far) }
+        assertEquals(listOf(WaypointResult.PASSED), updates.mapNotNull { it.waypoint })
+        assertTrue(updates.first { it.waypoint != null }.km > 5.5)
+    }
+
+    @Test
+    fun aStopAlreadyBehindTheCarIsPassedAfterItDrivesOn() {
+        // The vote ended 1.5 km after the car passed the stop: driving on, it gets further away, never closer.
+        val tracker = GuidanceTracker()
+        val behind = restAreaAt(1.0)
+        val updates = (0..120).map { s -> tracker.update(route, fix(2.5 + s * step, second = s), behind) }
+        assertEquals(listOf(WaypointResult.PASSED), updates.mapNotNull { it.waypoint })
+        assertTrue(updates.first { it.waypoint != null }.km < 3.6) // about 1 km later
+    }
+
+    @Test
+    fun aStopFarAheadIsNotPassedWhileTheCarApproaches() {
+        val tracker = GuidanceTracker()
+        val ahead = restAreaAt(9.5)
+        val updates = (0..150).map { s -> tracker.update(route, fix(4.0 + s * step, second = s), ahead) }
+        assertTrue(updates.none { it.waypoint != null })
+    }
+
+    @Test
     fun stoppingAtTheStopForTenSecondsIsArrived() {
         val tracker = GuidanceTracker()
         val restArea = restAreaAt(5.0)

@@ -69,7 +69,6 @@ import com.cardrop.drop.VoteScreen
 import com.cardrop.navi.InAppNavigatorPanel
 import com.cardrop.safety.SafetyScoreScreen
 import com.cardrop.safety.SafetyResultScreen
-import com.cardrop.safety.SafetyHomeSummary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -203,7 +202,6 @@ fun CarDropApp(container: AppContainer) {
                     )
                 },
                 invite = invite,
-                safetySummary = { SafetyHomeSummary(container.safety, crewNow) { navigator.go(Screen.Safety()) } },
             )
             // After sending, the pop-up closes and the driver stays on 04; the voice says "휴게소 투표를 보냈어요".
             quickDropTopic?.let { topic ->

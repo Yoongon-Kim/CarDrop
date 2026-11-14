@@ -570,7 +570,7 @@ private fun DropTopic.placeNoun(): String = when (this) {
     DropTopic.FUEL -> "주유소"
     DropTopic.DESTINATION -> "목적지"
     DropTopic.CAFE -> "카페"
-    DropTopic.MESSAGE, DropTopic.CUSTOM, DropTopic.SONG, DropTopic.GAME -> "장소"
+    DropTopic.MESSAGE, DropTopic.CUSTOM, DropTopic.SONG, DropTopic.GAME, DropTopic.VOICE -> "장소"
 }
 
 /** What the driver said to start this drop, shown above the title. */
@@ -584,6 +584,7 @@ private fun DropTopic.driverQuote(): String = when (this) {
     DropTopic.MESSAGE -> "“여기 들르자”"
     DropTopic.SONG -> "노래 드랍"
     DropTopic.GAME -> "게임 초대"
+    DropTopic.VOICE -> "음성 메시지"
 }
 
 /** Sample state for the previews: the AI's 3 stops, one unticked, plus one the driver added. */

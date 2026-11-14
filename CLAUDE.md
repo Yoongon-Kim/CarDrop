@@ -62,7 +62,12 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   never spoken. Another car's SOCIAL drop (a 한마디, "…에 도착했어요"; a song has board 13) shows as a banner at
   the top of the CarDrop side with the sender and 확인, gone after 8 s or on 확인, a newer one replacing it
   (`drop/SocialBanner.kt`; Member A, 2026-11-15; it was a small black caption). Board 08 has no 음성 메시지 tile any more:
-  일행에게 한마디 (board 09) already types or speaks. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
+  일행에게 한마디 (board 09) already has phrases and a voice message. Board 09 has no 직접 말해서 보내기 any more (Member A,
+  2026-11-15): its 녹음해서 보내기 records the driver's voice (Android's MediaRecorder,
+  at most 20 s, RECORD_AUDIO asked on first use; `ai/VoiceMessageRow.kt`), then 들어보기 / 다시 녹음 / 보내기 sends a SOCIAL
+  drop `DropTopic.VOICE` with the AAC recording Base64 in `message` (about 60 KB for 20 s; `drop/VoiceClipRules.kt`). The
+  receivers' banner says "음성 메시지 · 12초" with ▶ 재생 and stays 40 s; the inbox row plays it too. Never played by itself.
+  The DEMO panel's "삼촌 차 음성 메시지 받기" sends this car's last recording back as 삼촌 차's. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
   난 패스 is a vote with the value `VoteRules.PASS`: it counts for no place and the vote doesn't wait for that car,
   so `carId in drop.votes` means "answered", not "chose a place". In the real crew a vote doesn't wait for a car
   that is offline (app closed): `closeFinishedVotes` counts only connected cars, and that car counts for no place

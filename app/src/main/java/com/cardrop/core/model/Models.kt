@@ -85,6 +85,12 @@ enum class DropTopic {
      * quiz 도전장. Never spoken: a car in P gets a pop-up (수락 / 거절), a car driving finds it only in its inbox.
      */
     GAME,
+
+    /**
+     * 음성 메시지 (board 09's 녹음해서 보내기, Member A, 2026-11-15): a SOCIAL drop with a voice recording of at most 20 s,
+     * Base64 in `message` (drop/VoiceClip.kt). Never spoken by the app: the receiver plays it with ▶.
+     */
+    VOICE,
 }
 
 data class Candidate(

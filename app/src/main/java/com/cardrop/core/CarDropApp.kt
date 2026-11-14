@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,6 +65,7 @@ import com.cardrop.drop.DropSendScreen
 import com.cardrop.drop.GameInvitePopup
 import com.cardrop.drop.GameInviteRules
 import com.cardrop.drop.SocialBanner
+import com.cardrop.drop.VoicePlayer
 import com.cardrop.drop.SongGetDialog
 import com.cardrop.drop.SongSendScreen
 import com.cardrop.drop.InboxScreen
@@ -145,6 +147,7 @@ fun CarDropApp(container: AppContainer) {
     var socialDrop by remember { mutableStateOf<Drop?>(null) }
     // Another car's 게임 초대 that arrived in P: the pop-up in the middle until 수락, 거절 or its minute is over.
     var gameInvite by remember { mutableStateOf<Drop?>(null) }
+    val context = LocalContext.current
     DropRoutingEffect(
         crew = container.crew,
         voice = container.voice,
@@ -302,10 +305,12 @@ fun CarDropApp(container: AppContainer) {
             Screen.Inbox -> Box(modifier = Modifier.fillMaxSize()) {
                 driveScreen(null)
                 InboxScreen(crewVm, onClose = navigator::back, isSkipped = driveVm::skipped) { drop ->
-                    // A destination proposal that was turned down decided no place, so board 14 has nothing to
-                    // show: it opens on board 11, which says who said 반대.
+                    // A voice message plays right here (Member A, 2026-11-15).
+                    if (VoicePlayer.play(context, drop)) return@InboxScreen
                     // An omok 게임 초대 opens the omok tab, where its 도전장 waits for 수락.
                     if (GameInviteRules.omokGameId(drop) != null) container.omok.openGame()
+                    // A destination proposal that was turned down decided no place, so board 14 has nothing to
+                    // show: it opens on board 11, which says who said 반대.
                     navigator.go(if (VoteRules.rejected(drop)) Screen.Vote(drop.id) else inboxScreenFor(drop))
                 }
             }

@@ -190,7 +190,7 @@ private fun BoxScope.Sheet(slide: () -> Float, content: @Composable () -> Unit) 
 @Composable
 private fun InboxRow(drop: Drop, sender: Car, status: DropStatus, timeText: String, nowMillis: Long, onOpen: () -> Unit) {
     // A 게임 초대 opens the games too (Member A, 2026-11-15): a car that was driving when it came finds it here.
-    val decision = drop.kind == DropKind.DECISION || drop.topic == DropTopic.GAME
+    val decision = drop.kind == DropKind.DECISION || drop.topic == DropTopic.GAME || drop.topic == DropTopic.VOICE
     val text = inboxRowText(drop, sender.name, status, nowMillis)
     Row(
         modifier = Modifier
@@ -310,6 +310,9 @@ internal fun inboxRowText(drop: Drop, senderName: String, status: DropStatus, no
     return when {
         status == DropStatus.SOCIAL && drop.topic == DropTopic.SONG ->
             InboxRowText("소셜 · 노래", TagLook.SOCIAL, "$senderName: ♪ ${drop.title}", "노래 드랍")
+        // A voice message plays here too (Member A, 2026-11-15).
+        status == DropStatus.SOCIAL && drop.topic == DropTopic.VOICE ->
+            InboxRowText("소셜 · 음성 메시지", TagLook.SOCIAL, "$senderName: ${drop.title}", "녹음해서 보낸 목소리", action = "▶ 재생")
         status == DropStatus.SOCIAL && drop.topic == DropTopic.GAME ->
             InboxRowText("소셜 · 게임 초대", TagLook.SOCIAL, "$senderName: “${drop.title}”", "정차하면 같이 할 수 있어요", action = "게임으로")
         status == DropStatus.SOCIAL -> InboxRowText("소셜 · 한마디", TagLook.SOCIAL, "$senderName: “${drop.title}”", "일행에게 한마디")

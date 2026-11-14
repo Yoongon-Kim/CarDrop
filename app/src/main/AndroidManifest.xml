@@ -3,6 +3,8 @@
 
     <!-- AI calls, crew sync and map tiles -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Board 09's 녹음해서 보내기 (Member A, 2026-11-15): a voice message of at most 20 s, asked for on first use. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- GPS for the in-app navigator (asked at first launch). -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

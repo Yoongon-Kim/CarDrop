@@ -39,6 +39,7 @@ import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.drop.ProposalRules
+import com.cardrop.drop.SongRules
 import com.cardrop.vehicle.FakeVehicleRepository
 import kotlin.math.roundToInt
 
@@ -116,6 +117,12 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                     val others = DemoData.destinations.filterNot { ProposalRules.isCurrent(it, now) }
                     (others.firstOrNull { it.id == "sokcho" } ?: others.firstOrNull())?.let { place ->
                         crewRepo.injectDrop(DemoData.uncle, ProposalRules.draft(place, toCarIds = emptyList()))
+                    }
+                }
+                // A song drop from a bot (board 13), added by Member A.
+                if (along(DemoData.uncle)) {
+                    DemoButton("삼촌 차 노래 드랍 받기") {
+                        crewRepo.injectDrop(DemoData.uncle, SongRules.draft(SongRules.SONGS.first(), toCarIds = emptyList()))
                     }
                 }
                 DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }

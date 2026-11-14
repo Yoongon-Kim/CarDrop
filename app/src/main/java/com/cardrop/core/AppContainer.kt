@@ -35,6 +35,7 @@ import com.cardrop.drive.GearFile
 import com.cardrop.drive.TripCodeFile
 import com.cardrop.drive.PrefsQuickDropStore
 import com.cardrop.drive.QuickDrops
+import com.cardrop.drop.SongPlayer
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.FallbackRouteProvider
@@ -182,6 +183,8 @@ class AppContainer(context: Context) {
     val phrases: PhraseStore = PrefsPhraseStore(context)
     /** Board 04's quick-drop slots (퀵 드랍 편집), kept on this device. */
     val quickDrops = QuickDrops(PrefsQuickDropStore(context))
+    /** What this car "plays" (boards 12, 13; no sound). Member A. */
+    val songs = SongPlayer()
     val omok = OmokCoordinator(
         appScope, crew, vehicle,
         if (useRealCrew) FirebaseOmokTransport(context) else LocalOmokTransport(PrefsOmokRoomStore(context)),

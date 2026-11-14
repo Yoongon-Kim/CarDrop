@@ -98,7 +98,7 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   lines 302-344): four slots. Until the driver saves their own list they hold 휴게소 and 주유 and two dashed "추가"
   (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays
   empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in
-  the order ticked; 노래, 같이 켜기 and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`,
+  the order ticked; 같이 켜기 and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`,
   SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names: 휴게소 / 식사 / 주유
   board 10 as a pop-up over 04 for the whole crew (`QuickDrop.popupTopic()`, `QuickDropPicker`; lead, 2026-11-14). After
   보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
@@ -106,7 +106,7 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
   More than four (Member A, 2026-11-14; not on the canvas): under the four slots a second row holds the fifth drop on
   and one dashed "추가" slot while a drop is left to pick (`QuickDropRules.secondRow`, `showsAddSlot`, `MAX_SLOTS` = 8;
-  the editor counts "2 / 6" of the drops that aren't cut).
+  the editor counts "2 / 7" of the drops that aren't cut).
 - Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
   another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
   `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks
@@ -125,7 +125,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   only the quick-drop slots with 편집 and the quick-drop pop-up without its result notice (see board 04's quick drops
   above), not the others. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
-- Week 1 cuts: song drop (12, 13), chess (15), safety race (16, 17), ads and points (18, 19).
+- Week 1 cuts: chess (15), safety race (16, 17), ads and points (18, 19).
+- Song drop (12, 13) was restored by the user (Member A, 2026-11-14), screen only: nothing plays (no Apple Music).
+  `drop/SongDrop.kt` (`SongRules`, the target's 4 songs; `SongPlayer` = what "plays", unit tested) and
+  `drop/SongScreens.kt`. Board 08's 노래 드랍 tile and 04's 노래 quick drop open board 12; it sends a SOCIAL drop
+  (`DropTopic.SONG`, the song's id in `message`), never spoken. A receiver gets board 13 as a pop-up over 04
+  (`DropRouting.kt`): 괜찮아요, or 받아서 바로 듣기 → 지금 재생 / 다음 (what it was playing). The DEMO panel's
+  "삼촌 차 노래 드랍 받기" stages the receiving side. A build without `SONG` skips these drops (`parseDrop`).
 - Omok (15) was restored by the user's implementation request: `ai/game/` owns 13x13 freestyle rules,
   silent invitations, local practice bots, Firebase sessions and process-restart recovery. `AppContainer`
   selects the transport. Both participants need fresh P readings, an open game screen and a live connection.

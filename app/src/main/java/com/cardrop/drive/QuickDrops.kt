@@ -12,15 +12,15 @@ import kotlinx.coroutines.flow.asStateFlow
  * `git show 1caa955:design/FinalApp.dc.html`, lines 302-344 and 947-969), in the editor's order.
  *
  * [key] is what this device saves (the canvas's names). [available] = false: cut this week; the editor shows
- * it greyed out and it can't be picked, like board 08's 노래 드랍 and 같이 켜기.
+ * it greyed out and it can't be picked, like board 08's 같이 켜기.
  */
 enum class QuickDrop(val key: String, val label: String, val available: Boolean = true) {
     REST("rest", "휴게소"),
     FOOD("food", "식사"),
     FUEL("fuel", "주유"),
     SHOUT("shout", "한마디"),
-    /** The song drop (boards 12, 13): cut. */
-    SONG("song", "노래", available = false),
+    /** The song drop (boards 12, 13): opens board 12 for the whole crew. */
+    SONG("song", "노래"),
     GAME("game", "게임 초대"),
     /** 같이 켜기 (ads and points, boards 18, 19): cut. */
     TOGETHER("together", "같이 켜기", available = false),
@@ -41,14 +41,15 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
     }
 
     /**
-     * Where the other tiles go: 한마디 board 09, 게임 초대 board 15, 편지함 board 07. Null for the pop-up ones
+     * Where the other tiles go: 한마디 board 09, 노래 board 12, 게임 초대 board 15, 편지함 board 07. Null for the pop-up ones
      * ([popupTopic]) and the cut ones.
      */
     fun screen(): Screen? = when (this) {
         SHOUT -> Screen.Shout()
+        SONG -> Screen.SongSend()
         GAME -> Screen.Games
         INBOX -> Screen.Inbox
-        REST, FOOD, FUEL, SONG, TOGETHER, SCORE -> null
+        REST, FOOD, FUEL, TOGETHER, SCORE -> null
     }
 }
 

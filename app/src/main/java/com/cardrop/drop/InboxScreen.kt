@@ -307,6 +307,8 @@ internal fun inboxRowText(drop: Drop, senderName: String, status: DropStatus, no
     val title = if (drop.title.startsWith(senderName)) drop.title else "$senderName: ${drop.title}"
     val open = if (status == DropStatus.NEEDS_ANSWER) TagLook.NEEDS_ANSWER else TagLook.DONE
     return when {
+        status == DropStatus.SOCIAL && drop.topic == DropTopic.SONG ->
+            InboxRowText("소셜 · 노래", TagLook.SOCIAL, "$senderName: ♪ ${drop.title}", "노래 드랍")
         status == DropStatus.SOCIAL -> InboxRowText("소셜 · 한마디", TagLook.SOCIAL, "$senderName: “${drop.title}”", "일행에게 한마디")
         // A destination proposal one car said 반대 to: nothing was decided, the destination stays.
         VoteRules.rejected(drop) -> InboxRowText("결정 · 완료", TagLook.DONE, title, "반대가 있어 목적지는 그대로예요")

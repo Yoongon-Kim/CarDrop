@@ -120,6 +120,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   including repeated record-rail taps. Back, app resume, the home score summary and automatic arrival never request it.
   Keep entry-token cancellation, speech priority and the shared Claude-backed `AiService` intact.
   See `SAFETY_SCORE_PLAN.md` and README for settings and validation.
+  With the DEMO car, board 16 also shows three finished sample trips of this week (`safety/SafetySamples.kt`, unit
+  tested; Member A, 2026-11-15): 속초 96, 양양 91, 남이섬 100, in memory only. "이번 주 내 기록" lists the week's trips, and
+  a tap opens board 17 for that trip once the car has stopped, like 지난 내 차 기록.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
   lines 302-344): four slots. Until the driver saves their own list they hold 휴게소, 주유, 운전 기록 and one dashed "추가"
   (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays

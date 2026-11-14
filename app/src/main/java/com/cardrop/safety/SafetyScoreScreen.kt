@@ -27,7 +27,6 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -84,6 +83,20 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
                         Text(if (full.isEmpty()) "완료된 주행 기록이 아직 없어요" else "${full.size}회 완주 · 평균 ${full.map { it.score }.average().roundToInt()}점",
                             fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.Ink2)
                         Text("저장된 내 차 기록 ${weekly.size}개 · ${if (safety.demo) "모의 기록" else "실제 주행"}", fontSize = 13.sp, color = CdColors.Gray500)
+                        // This week's trips, newest first: a tap opens board 17 for that trip, once the car has stopped,
+                        // like 지난 내 차 기록 below (Member A, 2026-11-15).
+                        weekly.take(3).forEach { trip ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    .clickable(enabled = parked) { onResult(trip.id) }.padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text("${shortDate(trip.startedAtMillis)}  ${trip.destination}", fontSize = 14.sp, color = CdColors.Ink2,
+                                    maxLines = 1, modifier = Modifier.weight(1f))
+                                Text("${trip.score}점 ›", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.BlueDark)
+                            }
+                        }
                     }
                 }
             }
@@ -342,9 +355,7 @@ private fun sourceLabel(source: SafetySourceState, record: SafetyRecord): String
     else -> "급가속 · 급정거 평가 중"
 }
 private fun date(millis: Long): String = SimpleDateFormat("MM.dd HH:mm", Locale.KOREA).format(Date(millis))
+private fun shortDate(millis: Long): String = SimpleDateFormat("M.d (E)", Locale.KOREA).format(Date(millis))
 private fun time(millis: Long): String = SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(Date(millis))
 private fun Car.safetyName(): String = name + if (isMe && "(나)" !in name) " (나)" else ""
-private fun startOfWeek(now: Long): Long = Calendar.getInstance().apply {
-    timeInMillis = now; firstDayOfWeek = Calendar.MONDAY; set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-}.timeInMillis
+

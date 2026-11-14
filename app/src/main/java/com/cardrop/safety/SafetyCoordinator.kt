@@ -82,7 +82,12 @@ class SafetyCoordinator(
             for (record in writes) try { store.save(record) } catch (e: Exception) { Log.e("CarDropSafety", "Could not save safety record", e) }
         }
         scope.launch {
-            history.value = withContext(Dispatchers.IO) { store.load() }
+            val stored = withContext(Dispatchers.IO) { store.load() }
+            // The DEMO car: three finished sample trips of this week, so the 시연 has something to show (SafetySamples).
+            history.value = if (demo) {
+                val myName = crew.crew.value?.cars?.firstOrNull { it.id == crew.myCarId }?.name ?: "아빠 차"
+                SafetySamples.withSamples(stored, crew.myCarId, myName, System.currentTimeMillis())
+            } else stored
             crew.crew.collectLatest { group ->
                 val started = group?.startedAtMillis
                 val nextKey = if (group != null && started != null) "${group.code}-$started" else null

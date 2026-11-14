@@ -41,9 +41,6 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
     val speed by safety.speedKmh.collectAsStateWithLifecycle()
     val source by safety.sourceState.collectAsStateWithLifecycle()
     val parked by safety.canFinish.collectAsStateWithLifecycle()
-    val enabled by safety.cheerEnabled.collectAsStateWithLifecycle()
-    val busy by safety.cheerBusy.collectAsStateWithLifecycle()
-    val cheer by safety.cheerText.collectAsStateWithLifecycle()
     val closed by safety.groupClosed.collectAsStateWithLifecycle()
     val now by safety.clock.collectAsStateWithLifecycle()
     val cars = crew?.cars.orEmpty()
@@ -60,6 +57,7 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
         ) { Pill(if (closed) "크루 집계 종료" else if (mine?.status == SafetyTripStatus.RECORDING) "주행 기록 중" else "내 차 운전 기록") }
 
         if (mine == null) {
+            SafetyEncouragementCard(safety)
             CdCard(Modifier.fillMaxWidth()) {
                 Icon(CdIcons.Trophy, null, tint = CdColors.Blue, modifier = Modifier.size(40.dp))
                 Text("출발하면 100점에서 시작해요", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
@@ -77,16 +75,7 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
                     Text("급가속 · 급정거 기준 · 동점은 공동 순위\n확정 순위는 도착 후 주행 1분 · 속도 측정 95% 기준을 적용해요", fontSize = 11.sp, color = CdColors.Gray500)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp), gap = 8.dp) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            SectionLabel("AI 응원 · 내 차에게만")
-                            Switch(checked = enabled, onCheckedChange = safety::setCheerEnabled, modifier = Modifier.height(30.dp))
-                        }
-                        Text(if (!enabled) "응원이 꺼져 있어요" else if (busy) "지금 주행에 맞는 응원을 준비해요…" else cheer,
-                            fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark,
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)).background(CdColors.BlueLight).padding(14.dp))
-                        Text("기록 슬롯으로 들어올 때 한 번만 들려드려요", fontSize = 12.sp, color = CdColors.Gray500)
-                    }
+                    SafetyEncouragementCard(safety)
                     CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp), gap = 8.dp) {
                         SectionLabel("이번 주 내 기록")
                         val week = startOfWeek(now)
@@ -131,6 +120,23 @@ fun SafetyScoreScreen(safety: SafetyCoordinator, crew: Crew?, onResult: (String)
             if (confirmEnd) Text("중도 종료한 기록은 저장되며 최종 순위에서 제외돼요", color = CdColors.OrangeDark, fontSize = 13.sp)
         }
         HistoryCard(history.filter { it.id != mine?.id }, parked, onResult)
+    }
+}
+
+@Composable
+private fun SafetyEncouragementCard(safety: SafetyCoordinator) {
+    val enabled by safety.cheerEnabled.collectAsStateWithLifecycle()
+    val busy by safety.cheerBusy.collectAsStateWithLifecycle()
+    val cheer by safety.cheerText.collectAsStateWithLifecycle()
+    CdCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp), gap = 8.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionLabel("AI 응원 · 내 차에게만")
+            Switch(checked = enabled, onCheckedChange = safety::setCheerEnabled, modifier = Modifier.height(30.dp))
+        }
+        Text(if (!enabled) "응원이 꺼져 있어요" else if (busy) "지금 주행에 맞는 응원을 준비해요…" else cheer,
+            fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark,
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)).background(CdColors.BlueLight).padding(14.dp))
+        Text("기록 메뉴나 운전 기록 퀵 드랍을 누를 때마다 한 번씩 들려드려요", fontSize = 12.sp, color = CdColors.Gray500)
     }
 }
 

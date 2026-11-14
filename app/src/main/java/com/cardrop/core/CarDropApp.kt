@@ -83,7 +83,7 @@ import kotlinx.coroutines.flow.map
 fun CarDropApp(container: AppContainer) {
     // From AppContainer, not `remember`: a new activity (day/night theme, a second MainActivity) keeps the screen.
     val navigator = container.navigator
-    // Only an explicit SCORE quick-slot action creates a new greeting token.
+    // Each explicit record-tab or SCORE quick-slot tap gets a new greeting token.
     LaunchedEffect(navigator.current) {
         val screen = navigator.current
         if (screen is Screen.Safety) container.safety.showRecordEntry(screen.entryId)
@@ -168,7 +168,9 @@ fun CarDropApp(container: AppContainer) {
 
     CarDropShell(
         current = navigator.current,
-        onTab = navigator::switchTab,
+        onTab = { screen ->
+            navigator.switchTab(if (screen is Screen.Safety) Screen.Safety(container.safety.newEntry()) else screen)
+        },
         navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)

@@ -4,16 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SafetyEntryGateTest {
-    @Test fun onlyExplicitSlotEntryCanRequestOneGreeting() {
+    @Test fun onlyExplicitRecordEntryCanRequestOneGreeting() {
         val gate = SafetyEntryGate()
-        assertFalse(gate.enter(null, true, 0, 0)) // rail, result, arrival
+        assertFalse(gate.enter(null, true, 0, 0)) // summary, result, arrival
         val slot = gate.newEntry()
         assertTrue(gate.enter(slot, true, 0, 0))
         assertTrue(gate.valid(slot, 0, 100))
         assertFalse(gate.enter(slot, true, 0, 200)) // recreation / restoration
         gate.leave()
         assertFalse(gate.enter(slot, true, 0, 300)) // back / foreground
-        assertTrue(gate.enter(gate.newEntry(), true, 0, 400)) // explicit slot re-entry
+        assertTrue(gate.enter(gate.newEntry(), true, 0, 400)) // explicit record-tab or quick-slot re-entry
     }
 
     @Test fun leaveNewPenaltyAndLateResponseInvalidateThisEntry() {

@@ -1,6 +1,6 @@
 package com.cardrop.safety
 
-/** Single-use quick-slot tokens survive activity recreation with the app-scoped coordinator. */
+/** Single-use record-entry tokens survive activity recreation with the app-scoped coordinator. */
 internal class SafetyEntryGate {
     private var sequence = 0L
     private var consumedThrough = 0L

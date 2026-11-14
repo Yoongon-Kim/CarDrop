@@ -102,7 +102,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   deduct from 100 points, with a floor of 0; no speeding/lane-change scoring or speed-limit SDK dependency.
   Rules version 2 migrates local version 1 journals by keeping motion events and omitting retired events.
   Live ranks are provisional; final ranks require 60 moving seconds and 95% speed coverage.
-  `SafetyEncouragement` is a separate optional GPT client, called only once per explicit SCORE-slot entry.
+  `SafetyEncouragement` is a separate optional GPT client, called once per explicit record-rail or SCORE-slot tap,
+  including repeated record-rail taps. Back, app resume, the home score summary and automatic arrival never request it.
   Keep entry-token cancellation, speech priority and the shared Claude-backed `AiService` intact.
   See `SAFETY_SCORE_PLAN.md` and README for settings and validation.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,

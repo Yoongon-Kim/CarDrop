@@ -25,11 +25,14 @@ class DropRoutingMemoryTest {
         kind: DropKind = DropKind.DECISION,
         toCarIds: List<String> = emptyList(),
         decided: Boolean = false,
+        topic: DropTopic = DropTopic.REST,
+        votes: Map<String, String> = emptyMap(),
+        deadline: Long = 0,
     ): Drop {
         val candidate = Candidate(stop.id, stop, "test", 2)
         return Drop(
-            id = id, fromCarId = from, kind = kind, topic = DropTopic.REST, title = "test",
-            candidates = listOf(candidate), votes = emptyMap(), createdAtMillis = 1, deadlineMillis = 0,
+            id = id, fromCarId = from, kind = kind, topic = topic, title = "test",
+            candidates = listOf(candidate), votes = votes, createdAtMillis = 1, deadlineMillis = deadline,
             decidedCandidateId = if (decided) candidate.id else null, toCarIds = toCarIds,
         )
     }
@@ -92,11 +95,17 @@ class DropRoutingMemoryTest {
     }
 
     /** 삼촌 차's proposal to go to 속초 instead, with [votes] so far; [rejected] = one car said 반대 and it ended. */
-    private fun proposal(id: String, votes: Map<String, String> = emptyMap(), rejected: Boolean = false): Drop {
+    private fun proposal(
+        id: String,
+        votes: Map<String, String> = emptyMap(),
+        rejected: Boolean = false,
+        from: String = DemoData.uncle.id,
+        deadline: Long = 0,
+    ): Drop {
         val draft = ProposalRules.draft(DemoData.destinations[2], toCarIds = emptyList())
         return Drop(
-            id = id, fromCarId = DemoData.uncle.id, kind = draft.kind, topic = draft.topic, title = draft.title,
-            candidates = draft.candidates, votes = votes, createdAtMillis = 1, deadlineMillis = 0,
+            id = id, fromCarId = from, kind = draft.kind, topic = draft.topic, title = draft.title,
+            candidates = draft.candidates, votes = votes, createdAtMillis = 1, deadlineMillis = deadline,
             decidedCandidateId = if (rejected) VoteRules.REJECTED else null,
         )
     }
@@ -124,5 +133,40 @@ class DropRoutingMemoryTest {
         // A reconnect delivers the history: a proposal turned down long ago stays quiet.
         val old = proposal("old", votes = mapOf(DemoData.minji.id to VoteRules.NO), rejected = true)
         assertEquals(emptyList<Drop>(), DropRoutingMemory({ me }).newlyRejected(listOf(old)))
+    }
+
+    // ---- 30 seconds before a vote ends ----
+
+    @Test
+    fun `a vote this car has not answered is said again 30 seconds before it ends, once`() {
+        val memory = DropRoutingMemory({ me })
+        val vote = drop("vote", deadline = 120_000)
+        assertEquals(emptyList<Drop>(), memory.dueReminders(listOf(vote), nowMillis = 89_000)) // 31 s left
+        assertEquals(listOf(vote), memory.dueReminders(listOf(vote), nowMillis = 90_000))
+        assertEquals(emptyList<Drop>(), memory.dueReminders(listOf(vote), nowMillis = 91_000)) // only once
+        assertEquals("휴게소 투표가 30초 남았어요. 답이 없으면 1번 덕평자연휴게소에 투표한 걸로 봐요", reminderLine(vote, 90_000))
+    }
+
+    @Test
+    fun `no reminder for an answered or finished vote, a fuel invite or a drop for other cars`() {
+        val deadline = 120_000L
+        val quiet = listOf(
+            drop("answered", deadline = deadline, votes = mapOf(me to stop.id)),
+            drop("passed", deadline = deadline, votes = mapOf(me to VoteRules.PASS)),
+            drop("decided", deadline = deadline, decided = true),
+            drop("over", deadline = 99_000),
+            drop("fuel", deadline = deadline, topic = DropTopic.FUEL), // no answer = not going along
+            drop("others", deadline = deadline, toCarIds = listOf(DemoData.minji.id)),
+            drop("social", deadline = deadline, kind = DropKind.SOCIAL),
+        )
+        assertEquals(emptyList<Drop>(), DropRoutingMemory({ me }).dueReminders(quiet, nowMillis = 100_000))
+    }
+
+    @Test
+    fun `a proposal is said to the cars that answer it, not to the car that sent it`() {
+        val theirs = proposal("theirs", deadline = 120_000)
+        val mine = proposal("mine", from = me, deadline = 120_000) // sending it said 찬성
+        assertEquals(listOf(theirs), DropRoutingMemory({ me }).dueReminders(listOf(theirs, mine), nowMillis = 110_000))
+        assertEquals("속초 해수욕장으로 바꾸자는 제안이 10초 남았어요. 답이 없으면 찬성으로 봐요", reminderLine(theirs, 110_000))
     }
 }

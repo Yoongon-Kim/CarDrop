@@ -22,11 +22,14 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cardrop.core.model.Car
+import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.*
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.drop.VoteRules
+import com.cardrop.drop.voteTag
 import com.cardrop.voice.VoiceService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -44,6 +47,9 @@ import kotlin.math.ceil
  * The screen is a notice, not a page to stay on (lead, 2026-11-14): 15 seconds after it opened it goes back to 홈
  * by itself, as "주행 화면으로" does, so the driver doesn't have to tap. If the microphone is listening then (the
  * driver may be saying "우리 차는 안 들르기"), it waits until the microphone stops.
+ *
+ * Its first line says whose vote it was ([voteEndedText]): it opens on every car the vote reroutes, not only on
+ * the car that sent it.
  */
 @Composable
 fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice: VoiceService? = null) {
@@ -81,7 +87,6 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
         // A tap means "go now": start guidance (unless the countdown already did) and go back to driving.
         val start = { if (started || vm.startGuidance()) onDone() }
         val skip = { if (vm.skipStop(drop.id)) onDone() }
-        val ids = drop.voterIds(crew?.cars?.map { it.id }.orEmpty())
         // What changed in the navigator, in the target's words (line 493); the navigator's toast keeps its own.
         // When the place isn't in the route (e.g. "…는 이미 지났어요"), the navigator's last message says why.
         val destinationVote = drop.topic == DropTopic.DESTINATION
@@ -109,7 +114,7 @@ fun DecidedScreen(vm: DriveViewModel, dropId: String, onDone: () -> Unit, voice:
                     Icon(CdIcons.Check, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(22.dp))
                 }
                 Text(
-                    "투표가 끝났어요 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의",
+                    voteEndedText(drop, crew?.cars.orEmpty(), vm.myCarId),
                     color = CdColors.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 )
             }
@@ -202,6 +207,19 @@ private fun ArrivalRow(arrival: Arrival) {
         )
         Text(arrival.time, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
     }
+}
+
+/**
+ * Board 14's first line: whose vote ended, about what, and how many cars agreed, e.g. "삼촌 차의 휴게소 투표가
+ * 끝났어요 · 4대 중 3대 동의". This car's own vote says "우리 차", as board 11's tag does; a car no longer in the crew
+ * is "일행". Only the cars the vote was for are counted. The design says just "투표가 끝났어요 · 4대 중 3대 동의",
+ * which made another car's result look like this car's own (lead, 2026-11-15). Pure Kotlin, unit tested
+ * (VoteEndedTextTest).
+ */
+internal fun voteEndedText(drop: Drop, cars: List<Car>, myCarId: String): String {
+    val sender = if (drop.fromCarId == myCarId) "우리 차" else cars.firstOrNull { it.id == drop.fromCarId }?.name ?: "일행"
+    val ids = drop.voterIds(cars.map { it.id })
+    return "${sender}의 ${drop.topic.voteTag()} 투표가 끝났어요 · ${ids.size}대 중 ${VoteRules.agreeing(drop, ids)}대 동의"
 }
 
 private const val COUNTDOWN_MILLIS = 3_000

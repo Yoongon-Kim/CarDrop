@@ -96,7 +96,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   receiving side with the bot crew.
 - Board 14 (결정, `drive/DecidedScreen.kt`) starts guidance after 3 s and goes back to 04 by itself 15 s after it
   opened (lead, 2026-11-14; not on the design board), also when opened from 11's 결과 보기 or the inbox, but not
-  while the microphone is listening. 지금 안내 시작 / 주행 화면으로 still go at once.
+  while the microphone is listening. 지금 안내 시작 / 주행 화면으로 still go at once. It opens on every car the vote
+  reroutes, not only the sender's, so its first line names whose vote it was (`voteEndedText`): "삼촌 차의 휴게소 투표가
+  끝났어요 · 4대 중 3대 동의", this car's own "우리 차의 …" (lead, 2026-11-15; the design says only "투표가 끝났어요").
 - Safety scoring (user-approved, 2026-11-14): `safety/` owns boards 16/17, trip-scoped public AAOS speed,
   SQLite journals and separate Firebase `safetyTrips` summaries. Only acceleration (-2) and braking (-3)
   deduct from 100 points, with a floor of 0; no speeding/lane-change scoring or speed-limit SDK dependency.

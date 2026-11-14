@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,11 +26,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cardrop.ai.AiRecommendScreen
 import com.cardrop.ai.AiViewModel
 import com.cardrop.ai.QuickDropPicker
-import com.cardrop.ai.QuizScreen
+import com.cardrop.ai.game.GamesScreen
+import com.cardrop.ai.game.OmokInviteNotice
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
 import com.cardrop.core.demo.DemoRailButton
@@ -71,6 +76,16 @@ import kotlinx.coroutines.flow.map
 fun CarDropApp(container: AppContainer) {
     // From AppContainer, not `remember`: a new activity (day/night theme, a second MainActivity) keeps the screen.
     val navigator = container.navigator
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, container) {
+        container.omok.onVisible(lifecycle, lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) container.omok.onVisible(lifecycle, true)
+            if (event == Lifecycle.Event.ON_STOP) container.omok.onVisible(lifecycle, false)
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer); container.omok.onVisible(lifecycle, false) }
+    }
     val crewVm: CrewViewModel = viewModel { CrewViewModel(
             container.crew, container.placeSearch, container::myPosition, container.voice, container.destinationTrip,
         ) }
@@ -129,6 +144,7 @@ fun CarDropApp(container: AppContainer) {
         navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)
+            if (navigator.current != Screen.Games) OmokInviteNotice(container.omok) { navigator.go(Screen.Games) }
             DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },
         myCar = myCar,
@@ -260,7 +276,7 @@ fun CarDropApp(container: AppContainer) {
                 // For the eyebrow "덕평자연휴게소 · 4대 모두 정차": the stop this car is parked at, and the crew's messages.
                 val stop by container.inAppNavigation.parkedAt.collectAsStateWithLifecycle()
                 val drops by driveVm.drops.collectAsStateWithLifecycle()
-                QuizScreen(aiVm, stop = stop, drops = drops)
+                GamesScreen(aiVm, container.omok, stop = stop, drops = drops)
             }
         }
     }

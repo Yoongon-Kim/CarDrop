@@ -5,7 +5,7 @@ import com.cardrop.core.model.QuizQuestion
 /** Questions in one round of board 15's quiz (the design's "3 / 10 문제" counter, shortened for the demo). */
 const val QUIZ_ROUND = 5
 
-/** Board 15's games. The design also lists 오목 and 체스; those are cut for week 1. */
+/** Board 15's quiz tabs. Omok lives in ai/game; chess remains outside the implemented scope. */
 enum class QuizKind(val title: String, val meta: String, val icon: String) {
     INITIALS("초성 퀴즈", "4대 다 같이", "ㅊ"),
     LOCAL("지역 퀴즈", "AI가 지금 위치로 출제", "?"),

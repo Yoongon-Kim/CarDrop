@@ -126,7 +126,7 @@ class FirebaseTrip(
 
         val ref = db.getReference("trips").child(current.code)
         // This car just created the crew: a new trip, without an earlier trip's positions.
-        if (current.hostCarId == crew.myCarId) {
+        if (current.hostCarId == crew.myCarId && !current.isStarted) {
             ref.removeValue().addOnFailureListener { Log.w(TAG, "Could not clear the old trip: ${it.message}") }
         }
         val l = object : ValueEventListener {

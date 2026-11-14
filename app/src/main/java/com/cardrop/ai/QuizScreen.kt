@@ -41,8 +41,8 @@ import com.cardrop.navi.WaypointResult
 
 /**
  * Board 15 게임 (정차 중) · Owner: lead. Laid out like the design: the games on the left with "도전장 드랍", and on the
- * right "나 VS 상대", who to play with, and the quiz with a question counter. Week 1 has the two quizzes (no omok or
- * chess). It opens only in P; a game paused in D carries on at the next stop.
+ * right "나 VS 상대", who to play with, and the quiz with a question counter. GamesScreen adds the omok tab;
+ * this composable keeps the existing two quizzes. It opens only in P and keeps its question when paused.
  */
 @Composable
 fun QuizScreen(
@@ -51,6 +51,7 @@ fun QuizScreen(
     stop: Place? = null,
     /** This car's drops, for who else said "…에 도착했어요" there. */
     drops: List<Drop> = emptyList(),
+    onOmok: (() -> Unit)? = null,
 ) {
     val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
     val quiz by vm.quiz.collectAsStateWithLifecycle()
@@ -75,6 +76,7 @@ fun QuizScreen(
         // The design fills the screen's height (509): the two columns take what is left under the header.
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(Modifier.width(250.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                onOmok?.let { CdChip("●  오목 · 1:1", it, modifier = Modifier.fillMaxWidth(), height = 64.dp) }
                 QuizKind.entries.forEach { kind -> GameRow(kind, selected = kind == round.kind) { vm.chooseQuiz(kind) } }
                 Spacer(Modifier.weight(1f)) // 도전장 드랍 and its hint at the bottom of the column (512-513)
                 ChallengeButton(opponentName, sent = round.challengeSent, enabled = crew != null, onClick = vm::sendChallenge)

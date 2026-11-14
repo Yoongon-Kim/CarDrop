@@ -122,6 +122,8 @@ data class VehicleSnapshot(
     val rangeKm: Float? = null,
     val gear: Gear = Gear.UNKNOWN,
     val drivingMinutes: Int? = null,
+    /** Monotonic time of a successful gear read; game readiness expires if the SDK stops answering. */
+    val gearCheckedAtElapsedMillis: Long? = null,
 ) {
     val isParked: Boolean get() = gear == Gear.PARK
 }

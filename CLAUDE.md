@@ -122,7 +122,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   only the quick-drop slots with 편집 and the quick-drop pop-up without its result notice (see board 04's quick drops
   above), not the others. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
-- Week 1 cuts: song drop (12, 13), omok/chess (15), safety race (16, 17), ads and points (18, 19).
+- Week 1 cuts: song drop (12, 13), chess (15), safety race (16, 17), ads and points (18, 19).
+- Omok (15) was restored by the user's implementation request: `ai/game/` owns 13x13 freestyle rules,
+  silent invitations, local practice bots, Firebase sessions and process-restart recovery. `AppContainer`
+  selects the transport. Both participants need fresh P readings, an open game screen and a live connection.
+  Keep readiness-token checks and the separate named Firebase client's disconnect handling intact.
+  `OmokRecoveringCrew` rejoins only crews saved by omok; a started host rejoin must not clear FirebaseTrip.
+  Existing quizzes and AI services keep their current behavior. See README > 오목 (15).
 
 ## Build and run
 

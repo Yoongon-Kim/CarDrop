@@ -5,14 +5,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +44,7 @@ import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Gear
 import com.cardrop.core.model.Place
 import com.cardrop.core.text.withRo
+import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.theme.CdColors
 import com.cardrop.crew.DropDraft
 import com.cardrop.crew.FakeCrewRepository
@@ -62,114 +70,148 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
     val snapshot by container.vehicle.snapshot.collectAsStateWithLifecycle()
     val crew by container.crew.crew.collectAsStateWithLifecycle()
 
-    // Opens at the bottom left of the screen, next to its button in the rail.
+    // Opens at the bottom left of the screen, next to its button in the rail. 460 wide, so the buttons sit two or
+    // three to a row and the whole panel fits on the screen without scrolling (the Pleos emulator has no mouse
+    // input device, so only a drag scrolls).
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomStart) {
         if (!open) return@Box
         Column(
             modifier = Modifier
-                .width(320.dp)
+                .width(460.dp)
                 .heightIn(max = 790.dp)
                 .clip(RoundedCornerShape(18.dp))
                 .background(CdColors.NavBanner)
-                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("시연 컨트롤", color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-            CrewSwitch(realCrew = container.useRealCrew, myCar = container.myCar)
-            if (container.useRealCrew) MyCarPicker(current = container.myCar)
-            if (vehicle != null) {
-                Text("연료 ${snapshot.fuelPercent ?: 0}%", color = CdColors.White, fontSize = 14.sp)
-                Slider(
-                    value = (snapshot.fuelPercent ?: 0).toFloat(),
-                    onValueChange = { vehicle.setFuelPercent(it.toInt()) },
-                    valueRange = 0f..100f,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DemoButton(if (snapshot.gear == Gear.PARK) "P ✓" else "P") { vehicle.setGear(Gear.PARK) }
-                    DemoButton(if (snapshot.gear == Gear.DRIVE) "D ✓" else "D") { vehicle.setGear(Gear.DRIVE) }
-                }
-            } else {
-                Text("실차 데이터 사용 중 (useRealVehicle=true)", color = CdColors.Gray400, fontSize = 13.sp)
+            // The title and a ✕ that never scroll away, even when the controls below have to scroll (a long real crew).
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("시연 컨트롤", color = CdColors.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                CloseX(onClose)
             }
-            // The bots send drops only on the road, like the real cars, and only the bots that came along (a bot
-            // that hadn't joined by 출발 was left out).
-            val current = crew
-            if (container.safety.demo && current?.isStarted == true) {
-                Text("안전운전 DEMO · 같은 감점 판정기 사용", color = CdColors.White, fontSize = 13.sp)
-                Text("D에서 감점 입력 · P에서 도착 / 종료", color = CdColors.Gray400, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DemoButton("급가속") { container.safety.demoTelemetry?.scenario(SafetyEventType.ACCELERATION) }
-                    DemoButton("급정거") { container.safety.demoTelemetry?.scenario(SafetyEventType.BRAKING) }
+            Column(
+                modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                CrewSwitch(realCrew = container.useRealCrew, myCar = container.myCar)
+                if (container.useRealCrew) MyCarPicker(current = container.myCar)
+                if (vehicle != null) {
+                    Text("연료 ${snapshot.fuelPercent ?: 0}%", color = CdColors.White, fontSize = 14.sp)
+                    Slider(
+                        value = (snapshot.fuelPercent ?: 0).toFloat(),
+                        onValueChange = { vehicle.setFuelPercent(it.toInt()) },
+                        valueRange = 0f..100f,
+                    )
+                    DemoButtons {
+                        DemoButton(if (snapshot.gear == Gear.PARK) "P ✓" else "P") { vehicle.setGear(Gear.PARK) }
+                        DemoButton(if (snapshot.gear == Gear.DRIVE) "D ✓" else "D") { vehicle.setGear(Gear.DRIVE) }
+                    }
+                } else {
+                    Text("실차 데이터 사용 중 (useRealVehicle=true)", color = CdColors.Gray400, fontSize = 13.sp)
                 }
-                var gap by remember { mutableStateOf(false) }
-                DemoButton(if (gap) "속도 입력 재개" else "속도 입력 끊기") {
-                    gap = !gap; container.safety.demoTelemetry?.paused = gap
+                // The bots send drops only on the road, like the real cars, and only the bots that came along (a bot
+                // that hadn't joined by 출발 was left out).
+                val current = crew
+                if (container.safety.demo && current?.isStarted == true) {
+                    Text("안전운전 DEMO · 같은 감점 판정기 사용 · D에서 감점 입력, P에서 도착 / 종료", color = CdColors.Gray400, fontSize = 12.sp)
+                    var gap by remember { mutableStateOf(false) }
+                    DemoButtons {
+                        DemoButton("급가속") { container.safety.demoTelemetry?.scenario(SafetyEventType.ACCELERATION) }
+                        DemoButton("급정거") { container.safety.demoTelemetry?.scenario(SafetyEventType.BRAKING) }
+                        DemoButton(if (gap) "속도 입력 재개" else "속도 입력 끊기") {
+                            gap = !gap; container.safety.demoTelemetry?.paused = gap
+                        }
+                        DemoButton("P · 최종 도착 재현") { vehicle?.setGear(Gear.PARK); container.safety.demoArrival() }
+                    }
                 }
-                DemoButton("P · 최종 도착 재현") { vehicle?.setGear(Gear.PARK); container.safety.demoArrival() }
+                val along = { bot: Car -> current?.cars?.any { it.id == bot.id } == true }
+                if (crewRepo != null && current != null && current.isStarted) {
+                    DemoButtons {
+                        if (along(DemoData.minji)) {
+                            DemoButton("민지 차 연료 경고 받기") {
+                                crewRepo.injectDrop(DemoData.minji, minjiFuelInvite(container))
+                            }
+                        }
+                        if (along(DemoData.uncle)) {
+                            DemoButton("삼촌 차 휴게소 투표 받기") {
+                                crewRepo.injectDrop(
+                                    DemoData.uncle,
+                                    DropDraft(
+                                        kind = DropKind.DECISION,
+                                        topic = DropTopic.REST,
+                                        title = "어디서 쉬어갈까요?",
+                                        message = "삼촌 차 · 2시간 연속 운전",
+                                        candidates = demoCandidates(container),
+                                    ),
+                                )
+                            }
+                        }
+                        // A destination proposal from a bot (board 11's 찬성 / 반대 / 다른 목적지 제안하기), added by Member A:
+                        // 속초 해수욕장, or another known destination when the crew is heading there already.
+                        DemoButton("삼촌 차 목적지 제안 받기") {
+                            val now = crew?.destination
+                            val others = DemoData.destinations.filterNot { ProposalRules.isCurrent(it, now) }
+                            (others.firstOrNull { it.id == "sokcho" } ?: others.firstOrNull())?.let { place ->
+                                crewRepo.injectDrop(DemoData.uncle, ProposalRules.draft(place, toCarIds = emptyList()))
+                            }
+                        }
+                        // A song drop from a bot (board 13), added by Member A.
+                        if (along(DemoData.uncle)) {
+                            DemoButton("삼촌 차 노래 드랍 받기") {
+                                crewRepo.injectDrop(DemoData.uncle, SongRules.draft(SongRules.SONGS.first(), toCarIds = emptyList()))
+                            }
+                        }
+                        DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }
+                        if (along(DemoData.aunt)) {
+                            DemoButton("이모 차 한마디 받기") {
+                                crewRepo.injectDrop(
+                                    DemoData.aunt,
+                                    DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "뒤에 사고 났어요, 조심하세요"),
+                                )
+                            }
+                        }
+                    }
+                } else if (crewRepo != null && current != null) {
+                    Text("출발하면 봇 차의 드랍을 받을 수 있어요", color = CdColors.Gray400, fontSize = 13.sp)
+                } else if (crewRepo != null) {
+                    Text("크루를 먼저 만들어 주세요", color = CdColors.Gray400, fontSize = 13.sp)
+                }
+                // Board 03's "…들렀다 가기" shows only when this car's navigator was heading somewhere else before it
+                // joined. The app has no way to set a route without a crew, so this button stages that moment:
+                // press it, then join with the code.
+                DemoButton("내 내비를 ${DemoData.seoul.name.withRo()} (03 들렀다 가기)") {
+                    container.navigation.setRoute(
+                        DemoData.seoul,
+                        waypoint = null,
+                        reason = "${DemoData.seoul.name.withRo()} 안내해요",
+                    )
+                }
             }
-            val along = { bot: Car -> current?.cars?.any { it.id == bot.id } == true }
-            if (crewRepo != null && current != null && current.isStarted) {
-                if (along(DemoData.minji)) {
-                    DemoButton("민지 차 연료 경고 받기") {
-                        crewRepo.injectDrop(DemoData.minji, minjiFuelInvite(container))
-                    }
-                }
-                if (along(DemoData.uncle)) {
-                    DemoButton("삼촌 차 휴게소 투표 받기") {
-                        crewRepo.injectDrop(
-                            DemoData.uncle,
-                            DropDraft(
-                                kind = DropKind.DECISION,
-                                topic = DropTopic.REST,
-                                title = "어디서 쉬어갈까요?",
-                                message = "삼촌 차 · 2시간 연속 운전",
-                                candidates = demoCandidates(container),
-                            ),
-                        )
-                    }
-                }
-                // A destination proposal from a bot (board 11's 찬성 / 반대 / 다른 목적지 제안하기), added by Member A:
-                // 속초 해수욕장, or another known destination when the crew is heading there already.
-                DemoButton("삼촌 차 목적지 제안 받기") {
-                    val now = crew?.destination
-                    val others = DemoData.destinations.filterNot { ProposalRules.isCurrent(it, now) }
-                    (others.firstOrNull { it.id == "sokcho" } ?: others.firstOrNull())?.let { place ->
-                        crewRepo.injectDrop(DemoData.uncle, ProposalRules.draft(place, toCarIds = emptyList()))
-                    }
-                }
-                // A song drop from a bot (board 13), added by Member A.
-                if (along(DemoData.uncle)) {
-                    DemoButton("삼촌 차 노래 드랍 받기") {
-                        crewRepo.injectDrop(DemoData.uncle, SongRules.draft(SongRules.SONGS.first(), toCarIds = emptyList()))
-                    }
-                }
-                DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }
-                if (along(DemoData.aunt)) {
-                    DemoButton("이모 차 한마디 받기") {
-                        crewRepo.injectDrop(
-                            DemoData.aunt,
-                            DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "뒤에 사고 났어요, 조심하세요"),
-                        )
-                    }
-                }
-            } else if (crewRepo != null && current != null) {
-                Text("출발하면 봇 차의 드랍을 받을 수 있어요", color = CdColors.Gray400, fontSize = 13.sp)
-            } else if (crewRepo != null) {
-                Text("크루를 먼저 만들어 주세요", color = CdColors.Gray400, fontSize = 13.sp)
-            }
-            // Board 03's "…들렀다 가기" shows only when this car's navigator was heading somewhere else before it
-            // joined. The app has no way to set a route without a crew, so this button stages that moment:
-            // press it, then join with the code.
-            DemoButton("내 내비를 ${DemoData.seoul.name.withRo()} (03 들렀다 가기)") {
-                container.navigation.setRoute(
-                    DemoData.seoul,
-                    waypoint = null,
-                    reason = "${DemoData.seoul.name.withRo()} 안내해요",
-                )
-            }
-            DemoButton("닫기", onClick = onClose)
         }
+    }
+}
+
+/** The panel's ✕ at the top right: a 36 px circle, a little lighter than the panel, with a white cross. */
+@Composable
+private fun CloseX(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(CdColors.White.copy(alpha = 0.14f))
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(CdIcons.Close, contentDescription = "닫기", tint = CdColors.White, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** Buttons side by side, wrapping to the next line when the row is full, 8 apart both ways. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DemoButtons(content: @Composable () -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        content()
     }
 }
 

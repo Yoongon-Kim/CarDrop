@@ -47,6 +47,15 @@ class InboxRowTest {
     }
 
     @Test
+    fun aSongDropNamesTheSong() {
+        val song = drop(DropTopic.SONG, DropKind.SOCIAL, title = "바다로 가자 · 드라이브 밴드", message = "sea", candidates = 0)
+        assertEquals(
+            InboxRowText("소셜 · 노래", TagLook.SOCIAL, "삼촌 차: ♪ 바다로 가자 · 드라이브 밴드", "노래 드랍"),
+            inboxRowText(song, "삼촌 차", DropStatus.SOCIAL, 0),
+        )
+    }
+
+    @Test
     fun aFuelInviteKeepsItsTitleAndSaysItIsNotAnsweredYet() {
         val demo = drop(DropTopic.FUEL, title = "민지 차 연료가 부족해요 · 같이 갈래요?", message = "민지 차 · 주행 가능 85km", candidates = 1)
         assertEquals(

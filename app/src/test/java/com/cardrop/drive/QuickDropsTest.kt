@@ -48,10 +48,10 @@ class QuickDropsTest {
 
     @Test
     fun unknownRepeatedOrCutDropsAreLeftOut() {
-        // 노래 is cut, 카페 doesn't exist, 휴게소 is there twice: the five real ones stay, in their order.
+        // 운전 기록 is cut, 카페 doesn't exist, 휴게소 is there twice: the six real ones stay, in their order.
         assertEquals(
-            listOf(REST, FOOD, SHOUT, GAME, INBOX),
-            QuickDropRules.decode("rest,song,cafe,rest,,food,shout,game,inbox"),
+            listOf(REST, SONG, FOOD, SHOUT, GAME, INBOX),
+            QuickDropRules.decode("rest,song,score,cafe,rest,,food,shout,game,inbox"),
         )
     }
 
@@ -93,19 +93,19 @@ class QuickDropsTest {
 
     @Test
     fun theAddSlotShowsWhileThereIsADropLeftToPick() {
-        // 휴게소, 식사, 주유, 한마디, 게임 초대, 편지함 can be picked; 노래, 같이 켜기 and 운전 기록 are cut.
+        // 휴게소, 식사, 주유, 한마디, 노래, 게임 초대, 편지함 can be picked; 같이 켜기 and 운전 기록 are cut.
         val all = QuickDrop.entries.filter { it.available }
-        assertEquals(listOf(REST, FOOD, FUEL, SHOUT, GAME, INBOX), all)
+        assertEquals(listOf(REST, FOOD, FUEL, SHOUT, SONG, GAME, INBOX), all)
         assertEquals(all.size, QuickDropRules.pickable)
         assertEquals(true, QuickDropRules.showsAddSlot(emptyList()))
         assertEquals(true, QuickDropRules.showsAddSlot(all.take(4)))
-        assertEquals(true, QuickDropRules.showsAddSlot(all.take(5)))
+        assertEquals(true, QuickDropRules.showsAddSlot(all.take(6)))
         assertEquals(false, QuickDropRules.showsAddSlot(all)) // nothing left to add
     }
 
     @Test
     fun cutDropsCantBePicked() {
-        listOf(SONG, TOGETHER, SCORE).forEach { cut ->
+        listOf(TOGETHER, SCORE).forEach { cut ->
             assertEquals(Pick.Changed(listOf(REST)), QuickDropRules.pick(listOf(REST), cut))
         }
     }
@@ -120,8 +120,9 @@ class QuickDropsTest {
         assertEquals(Screen.Shout(), SHOUT.screen())
         assertEquals(Screen.Games, GAME.screen())
         assertEquals(Screen.Inbox, INBOX.screen())
-        listOf(SHOUT, GAME, INBOX).forEach { assertNull(it.popupTopic()) }
-        listOf(SONG, TOGETHER, SCORE).forEach {
+        assertEquals(Screen.SongSend(), SONG.screen())
+        listOf(SHOUT, SONG, GAME, INBOX).forEach { assertNull(it.popupTopic()) }
+        listOf(TOGETHER, SCORE).forEach {
             assertNull(it.screen())
             assertNull(it.popupTopic())
         }

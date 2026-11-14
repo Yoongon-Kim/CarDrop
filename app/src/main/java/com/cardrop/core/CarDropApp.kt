@@ -41,6 +41,7 @@ import com.cardrop.core.demo.DemoRailButton
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.navigation.DropRoutingEffect
 import com.cardrop.core.navigation.Screen
 import com.cardrop.core.navigation.inboxScreenFor
@@ -59,6 +60,8 @@ import com.cardrop.drive.FuelInvite
 import com.cardrop.drive.QuickDropEditScreen
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
+import com.cardrop.drop.SongGetDialog
+import com.cardrop.drop.SongSendScreen
 import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteRules
 import com.cardrop.drop.VoteScreen
@@ -246,7 +249,30 @@ fun CarDropApp(container: AppContainer) {
                 onClose = { navigator.switchTab(Screen.Drive) },
                 // 목적지 변경: the proposal just sent opens on board 11, where the answers come in.
                 onProposalSent = { drop -> navigator.go(Screen.Vote(drop.id)) },
+                onSong = { toCarIds -> navigator.go(Screen.SongSend(toCarIds)) },
             )
+            // Board 12: after 노래 드랍하기 the driver is back on 04, with a quiet caption.
+            is Screen.SongSend -> SongSendScreen(
+                vm = crewVm,
+                player = container.songs,
+                toCarIds = screen.toCarIds,
+                onBack = navigator::back,
+                onSent = {
+                    socialMessage = "${crewNow?.recipientLabel(screen.toCarIds, crewVm.myCarId) ?: "크루 전체"}에 노래를 보냈어요"
+                    navigator.switchTab(Screen.Drive)
+                },
+            )
+            // Board 13: another car's song, a pop-up over board 04.
+            is Screen.SongGet -> Box(modifier = Modifier.fillMaxSize()) {
+                driveScreen(null)
+                val drops by crewVm.drops.collectAsStateWithLifecycle()
+                val drop = drops.firstOrNull { it.id == screen.dropId }
+                if (drop == null) {
+                    LaunchedEffect(screen.dropId) { navigator.back() }
+                } else {
+                    SongGetDialog(drop, crewNow?.cars?.firstOrNull { it.id == drop.fromCarId }, container.songs, onClose = navigator::back)
+                }
+            }
             is Screen.Shout -> ShoutScreen(
                 vm = aiVm,
                 initialText = screen.initialText,

@@ -458,4 +458,5 @@ internal fun DropTopic.voteTag(): String = when (this) {
     DropTopic.CAFE -> "카페"
     DropTopic.CUSTOM -> "들를 곳"
     DropTopic.MESSAGE -> "한마디"
+    DropTopic.SONG -> "노래"
 }

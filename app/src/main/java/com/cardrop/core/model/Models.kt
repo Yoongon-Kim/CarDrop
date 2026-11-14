@@ -76,6 +76,9 @@ enum class DropTopic {
 
     /** 직접 추가: no AI picks; the driver adds the places for the vote. */
     CUSTOM,
+
+    /** 노래 드랍 (boards 12, 13): a SOCIAL drop with a song (drop/SongDrop.kt), never voted on. Member A. */
+    SONG,
 }
 
 data class Candidate(

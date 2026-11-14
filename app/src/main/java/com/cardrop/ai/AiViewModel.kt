@@ -532,6 +532,7 @@ class AiViewModel(
         DropTopic.MESSAGE -> "한마디"
         DropTopic.CAFE -> "어느 카페에 들를까요?"
         DropTopic.CUSTOM -> "어디에 들를까요?"
+        DropTopic.SONG -> "노래"
     }
 }
 

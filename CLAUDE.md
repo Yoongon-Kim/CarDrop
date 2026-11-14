@@ -64,7 +64,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   (`drop/SocialBanner.kt`; Member A, 2026-11-15; it was a small black caption). Board 08 has no 음성 메시지 tile any more:
   일행에게 한마디 (board 09) already types or speaks. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
   난 패스 is a vote with the value `VoteRules.PASS`: it counts for no place and the vote doesn't wait for that car,
-  so `carId in drop.votes` means "answered", not "chose a place".
+  so `carId in drop.votes` means "answered", not "chose a place". In the real crew a vote doesn't wait for a car
+  that is offline (app closed): `closeFinishedVotes` counts only connected cars, and that car counts for no place
+  (Member A, 2026-11-15).
 - After its answer the driver is back on 04 at once (lead, 2026-11-15): board 11's 응답하기 (a proposal's 찬성 / 반대
   too) sends the vote, says which answer went out ("강문 덴켄에 투표했어요", `VotePick.answeredLine`) and goes to 04;
   board 14 opens over it once the vote ends. The car that sends a board 10 vote still answers it on board 11 first,

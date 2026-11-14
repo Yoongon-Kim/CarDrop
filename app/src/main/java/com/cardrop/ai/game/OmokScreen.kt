@@ -40,33 +40,19 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
-import androidx.compose.runtime.mutableLongStateOf
 import com.cardrop.drive.gamesOpen
-import com.cardrop.navi.GpsFix
-import kotlinx.coroutines.delay
 
 /**
- * Board 15. While the car is driving ([gamesOpen]: not in P, or the GPS says it is moving) nothing of the games
- * shows, only a card that says so: no board, no quiz, no 도전장. [fix] = this car's latest GPS reading.
- * A game in progress is paused meanwhile (the board counts as not visible) and comes back at the next stop.
+ * Board 15. Outside P ([gamesOpen]) nothing of the games shows, only a card that says so: no board, no quiz,
+ * no 도전장. A game in progress is paused meanwhile (the board counts as not visible) and comes back in P.
  */
 @Composable
-fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: List<Drop>, fix: GpsFix?) {
+fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: List<Drop>) {
     var tab by rememberSaveable { mutableStateOf("omok") }
     val openRequests by omok.openRequests.collectAsStateWithLifecycle()
     LaunchedEffect(openRequests) { if (openRequests > 0) tab = "omok" }
     val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
-    // Ticks every second while this screen is open, so the check runs again and an old GPS reading stops counting.
-    var tick by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_000)
-            tick++
-        }
-    }
-    // The time is read right here, not kept from the last tick: a GPS reading that came after the tick would look
-    // like it is from the future, and the games opened and closed every second while driving.
-    val open = remember(snapshot.gear, fix, tick) { gamesOpen(snapshot.gear, fix, System.currentTimeMillis()) }
+    val open = gamesOpen(snapshot.gear)
     DisposableEffect(omok, tab, open) {
         val owner = Any()
         omok.onGameVisible(owner, open && tab == "omok")

@@ -213,9 +213,9 @@ landed on `main`.
   range or gear. A value that fails stays null (gear: `UNKNOWN`); `adb logcat -s CarDropVehicle` shows why.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
-  If gear stays `UNKNOWN`, the games (board 15) stay closed: they open only in P, and not while a GPS reading of the
-  last 10 s says the car moves faster than 5 km/h (`gamesOpen` in `drive/DriveRules.kt`, unit tested; the emulator's
-  fake gear is a DEMO button while `drive_gps.py` drives). Closed, board 15 shows one card and no game at all.
+  If gear stays `UNKNOWN`, the games (board 15) stay closed: they open only in P, the gear alone deciding
+  (`gamesOpen` in `drive/DriveRules.kt`; on the emulator P is the DEMO panel's button). Closed, board 15 shows one card
+  and no game at all.
 - The SDK has no vehicle speed or location API. Crew positions come from Pleos FusedLocation with a GPS fallback (`navi/GpsCrewPositions.kt`).
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 

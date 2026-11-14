@@ -56,27 +56,8 @@ class DriveRulesTest {
         assertEquals(DriveVoiceCommand.SKIP, driveVoiceCommand("우리 차는 안 들르기"))
         listOf(null, "", "배고파", "알려주지 마", "같이 갈래요 말래요", "안내 시작하지 마").forEach { assertNull(driveVoiceCommand(it)) }
     }
-    @Test fun gamesOpenOnlyInParkAndNotWhileTheGpsSaysTheCarMoves() {
-        val now = 100_000L
-        fun fix(speed: Double?, at: Long = now) = GpsFix(37.5, 127.0, speed, 90.0, at)
-        // Parked: no GPS, a GPS without a speed, standing still, or creeping under 5 km/h.
-        assertTrue(gamesOpen(Gear.PARK, null, now))
-        assertTrue(gamesOpen(Gear.PARK, fix(null), now))
-        assertTrue(gamesOpen(Gear.PARK, fix(0.0), now))
-        assertTrue(gamesOpen(Gear.PARK, fix(4.9), now))
-        // The gear says P but the GPS says 100 km/h (the emulator's fake gear with drive_gps.py): closed.
-        assertFalse(gamesOpen(Gear.PARK, fix(100.0), now))
-        assertFalse(gamesOpen(Gear.PARK, fix(5.1), now))
-        // An old reading (over 10 s) says nothing about now.
-        assertTrue(gamesOpen(Gear.PARK, fix(100.0, at = now - 10_001), now))
-        // A reading a little ahead of this clock (the GPS clock differs) is still now: closed, without flicker.
-        assertFalse(gamesOpen(Gear.PARK, fix(100.0, at = now + 1), now))
-        assertFalse(gamesOpen(Gear.PARK, fix(100.0, at = now + 900), now))
-        assertTrue(gamesOpen(Gear.PARK, fix(100.0, at = now + 5_001), now))
-        // Any other gear keeps the games closed, standing still too.
-        listOf(Gear.DRIVE, Gear.REVERSE, Gear.NEUTRAL, Gear.UNKNOWN).forEach {
-            assertFalse(gamesOpen(it, null, now))
-            assertFalse(gamesOpen(it, fix(0.0), now))
-        }
+    @Test fun gamesOpenOnlyInPark() {
+        assertTrue(gamesOpen(Gear.PARK))
+        listOf(Gear.DRIVE, Gear.REVERSE, Gear.NEUTRAL, Gear.UNKNOWN).forEach { assertFalse(gamesOpen(it)) }
     }
 }

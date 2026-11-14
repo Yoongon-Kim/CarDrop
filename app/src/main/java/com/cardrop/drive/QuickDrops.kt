@@ -8,19 +8,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Owner: lead. What the driver can put in board 04's four quick-drop slots (the live canvas's 퀵 드랍 편집,
+ * Owner: lead. What the driver can put in board 04's quick-drop slots (the live canvas's 퀵 드랍 편집,
  * `git show 1caa955:design/FinalApp.dc.html`, lines 302-344 and 947-969), in the editor's order.
  *
  * [key] is what this device saves (the canvas's names). [available] = false: cut this week; the editor shows
- * it greyed out and it can't be picked, like board 08's 노래 드랍 and 같이 켜기.
+ * it greyed out and it can't be picked, like board 08's 같이 켜기.
  */
 enum class QuickDrop(val key: String, val label: String, val available: Boolean = true) {
     REST("rest", "휴게소"),
     FOOD("food", "식사"),
     FUEL("fuel", "주유"),
     SHOUT("shout", "한마디"),
-    /** The song drop (boards 12, 13): cut. */
-    SONG("song", "노래", available = false),
+    /** The song drop (boards 12, 13): opens board 12 for the whole crew. */
+    SONG("song", "노래"),
     GAME("game", "게임 초대"),
     /** 같이 켜기 (ads and points, boards 18, 19): cut. */
     TOGETHER("together", "같이 켜기", available = false),
@@ -41,25 +41,45 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
     }
 
     /**
-     * Where the other tiles go: 한마디 board 09, 게임 초대 board 15, 편지함 board 07. Null for the pop-up ones
+     * Where the other tiles go: 한마디 board 09, 노래 board 12, 게임 초대 board 15, 편지함 board 07,
+     * 운전 기록 boards 16/17. Null for the pop-up ones
      * ([popupTopic]) and the cut ones.
      */
     fun screen(): Screen? = when (this) {
         SHOUT -> Screen.Shout()
+        SONG -> Screen.SongSend()
         GAME -> Screen.Games
         INBOX -> Screen.Inbox
         SCORE -> Screen.Safety()
-        REST, FOOD, FUEL, SONG, TOGETHER -> null
+        REST, FOOD, FUEL, TOGETHER -> null
     }
 }
 
 /** The quick-drop rules. Plain Kotlin, so QuickDropsTest covers them. */
 object QuickDropRules {
-    /** Board 04 has four slots. */
+    /** Board 04's first row has four slots. */
     const val SLOTS = 4
 
-    /** The editor's red line when all four slots are taken (the canvas's words). */
+    /**
+     * The most quick drops a driver can keep: the four slots and a second row under them (Member A, 2026-11-14;
+     * the canvas stops at four). The second row holds the fifth drop on, and one dashed "+" slot to add another.
+     */
+    const val MAX_SLOTS = 8
+
+    /** The editor's red line when every slot is taken (the canvas's words). */
     const val FULL_HINT = "기존 기능 하나를 해제하면 추가할 수 있어요."
+
+    /** How many drops the driver can pick at all: the ones that aren't cut, at most [MAX_SLOTS]. */
+    val pickable: Int get() = minOf(MAX_SLOTS, QuickDrop.entries.count { it.available })
+
+    /** The drops under the first row: the fifth one on. */
+    fun secondRow(chosen: List<QuickDrop>): List<QuickDrop> = chosen.drop(SLOTS)
+
+    /**
+     * True when board 04 shows the dashed "+" slot under the four: while the driver can still add a drop
+     * (there is one left to pick). It opens the editor, like the empty slots of the first row.
+     */
+    fun showsAddSlot(chosen: List<QuickDrop>): Boolean = chosen.size < pickable
 
     /**
      * Slots before the driver saves a custom list. Explicitly saved and empty lists are preserved.
@@ -68,32 +88,32 @@ object QuickDropRules {
 
     /**
      * The drops for these saved [keys], in their order: only ones that exist and aren't cut, each once, at most
-     * [SLOTS].
+     * [MAX_SLOTS].
      */
     fun fromKeys(keys: List<String>): List<QuickDrop> =
         keys
             .mapNotNull { key -> QuickDrop.entries.firstOrNull { it.key == key } }
             .filter { it.available }
             .distinct()
-            .take(SLOTS)
+            .take(MAX_SLOTS)
 
     /** What a tap in the editor does. */
     sealed interface Pick {
         /** The new list (in slot order). */
         data class Changed(val drops: List<QuickDrop>) : Pick
 
-        /** All four slots are taken: nothing changes, and the editor shows [FULL_HINT]. */
+        /** Every slot is taken: nothing changes, and the editor shows [FULL_HINT]. */
         data object Full : Pick
     }
 
     /**
      * Taps [drop] in the editor: a picked drop comes off (the ones after it move up), a new one goes in the next
-     * free slot. A cut drop changes nothing.
+     * free slot (the fifth one starts the second row). A cut drop changes nothing. [max] = how many fit.
      */
-    fun pick(draft: List<QuickDrop>, drop: QuickDrop): Pick = when {
+    fun pick(draft: List<QuickDrop>, drop: QuickDrop, max: Int = MAX_SLOTS): Pick = when {
         drop in draft -> Pick.Changed(draft - drop)
         !drop.available -> Pick.Changed(draft)
-        draft.size >= SLOTS -> Pick.Full
+        draft.size >= max -> Pick.Full
         else -> Pick.Changed(draft + drop)
     }
 

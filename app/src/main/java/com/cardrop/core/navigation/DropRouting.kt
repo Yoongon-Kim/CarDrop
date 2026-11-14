@@ -17,7 +17,8 @@ import com.cardrop.voice.VoiceService
  * Owner: lead.
  *
  * Opens the right screen when something arrives from another car:
- * - a SOCIAL drop -> a quiet on-screen message, never spoken
+ * - a song drop (SOCIAL) -> board 13 over board 04, never spoken (Member A)
+ * - any other SOCIAL drop -> a quiet on-screen message, never spoken
  * - a FUEL drop -> board 06 (같이 갈래요?)
  * - any other DECISION drop -> board 11 (vote), announced by voice
  * - a vote that just ended -> board 14 (decision), only if it changed this car's route ([DecidedScreenPicker])
@@ -39,6 +40,7 @@ fun DropRoutingEffect(
             for (drop in memory.newFromOthers(drops)) {
                 val sender = crew.crew.value?.cars?.firstOrNull { it.id == drop.fromCarId }?.name ?: "일행"
                 when {
+                    drop.kind == DropKind.SOCIAL && drop.topic == DropTopic.SONG -> navigator.go(Screen.SongGet(drop.id))
                     drop.kind == DropKind.SOCIAL -> onSocialMessage("$sender · ${drop.title}")
                     drop.topic == DropTopic.FUEL -> {
                         voice.speak(drop.title)

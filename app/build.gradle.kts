@@ -85,6 +85,7 @@ android {
 
 dependencies {
     implementation(libs.vehicle.sdk)
+    implementation(libs.pleos.fused.location) // measured vehicle position for the crew diagram
     implementation(libs.maplibre.android) // in-app navigator map (navi/NavMap.kt)
     implementation(libs.kakao.map) // Kakao's map for the navigator (navi/KakaoNavMap.kt), test added by the lead 2026-11-13
     implementation(libs.anthropic.java) // real AiService (ai/ClaudeAiService.kt), approved by the lead 2026-11-13

@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
+    <!-- Vehicle position for the crew diagram; requested at runtime on supported Pleos devices. -->
+    <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
+
     <!-- The real voice (cardrop.useRealVoice=true): the Pleos speech service, used through the Pleos
          TextToSpeech and SpeechToText SDKs (protectionLevel="normal", no prompt). The Pleos service
          records the microphone itself, so CarDrop needs no microphone permission. -->

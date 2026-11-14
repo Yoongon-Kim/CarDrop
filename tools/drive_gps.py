@@ -13,7 +13,9 @@ Usage (emulator running):
     python3 tools/drive_gps.py --stop 여주휴게소     # pull into that stop, stand still 20 s, drive on
     python3 tools/drive_gps.py --car uncle        # 삼촌 차 with the real crew: waits for the host's 출발
     python3 tools/drive_gps.py --serial emulator-5556 --car minji   # the second emulator on this Mac
-Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
+Ctrl+C stops; the car stays where it is, standing still (a last fix at 0 km/h). While CarDrop's gear is P (the DEMO
+panel's P) the car stands still and drives on after D. The reported speed is always --kmh
+(not sped up), like a real car.
 
 --car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
 holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, every car joined, or
@@ -84,6 +86,18 @@ def device_crew_code(adb):
         code = result.stdout.strip()
         if result.returncode == 0 and code.isdigit():
             return code
+    return None
+
+
+def device_gear(adb):
+    """The gear CarDrop on the emulator is in (drive/GearFile.kt): "PARK", "DRIVE", ...; None when it can't be
+    read (no file yet, or run-as needs the debug build). The DEMO panel's P holds the demo car still."""
+    for user in (["--user", "10"], []):  # the Pleos image runs apps as Android user 10
+        result = subprocess.run(adb + ["shell", "run-as", "com.cardrop", *user, "cat", "files/gear.txt"],
+                                capture_output=True, text=True)
+        gear = result.stdout.strip()
+        if result.returncode == 0 and gear.isalpha():
+            return gear
     return None
 
 
@@ -257,6 +271,8 @@ def main():
     step = args.kmh / 3600.0 * args.speed
     print(f"Driving {total - km:.0f} km at {args.kmh:.0f} km/h x{args.speed:g}. Ctrl+C to stop.")
     tick = 0
+    was_parked = False
+    last_km = km
     try:
         while km <= total:
             if stop and km >= stop[2]:
@@ -268,16 +284,42 @@ def main():
                     time.sleep(1.0)
                 print(f"  Leaving {name}.")
                 km, stop = stop_km, None
-            lat, lng = point_at(points, cumulative, km)
-            send(lat, lng, knots)
-            if tick % 10 == 0:
-                print(f"  km {km:6.1f} / {total:.0f}   {lat:.5f}, {lng:.5f}")
+                last_km = stop_km
+            # The DEMO panel's P (CarDrop's gear, drive/GearFile.kt): stand still where the car is until the gear
+            # leaves P. Parked, it stays at the last place it was sent, so the app sees 0 km/h at once (a jump to the
+            # next point would read as driving), and CarDrop's games open only after that.
+            parked = device_gear(adb) == "PARK"
+            if parked != was_parked:
+                print(f"  {'Parked (P): standing still' if parked else 'Gear out of P: driving on'} at km {last_km:.1f}.")
+                was_parked = parked
+            if parked:
+                lat, lng = point_at(points, cumulative, last_km)
+                send(lat, lng, 0.0)
+                km = last_km + step  # drive on from here after D
+            else:
+                lat, lng = point_at(points, cumulative, km)
+                send(lat, lng, knots)
+                last_km = km
+                if tick % 10 == 0:
+                    print(f"  km {km:6.1f} / {total:.0f}   {lat:.5f}, {lng:.5f}")
+                km += step
             tick += 1
-            km += step
-            time.sleep(1.0)
+            # Wait a second, but look at the gear 4 times meanwhile, so P stops the car within a moment.
+            for _ in range(4):
+                time.sleep(0.25)
+                if not parked and device_gear(adb) == "PARK":
+                    break
         print("Arrived at 경포해변.")
     except KeyboardInterrupt:
         print(f"\nStopped at km {km:.1f}.")
+    finally:
+        # The emulator keeps repeating the last fix, with its speed, after the script ends. Without this last fix
+        # at 0 km/h the car would look like it still drives at --kmh, and the games (board 15) would never open.
+        try:
+            lat, lng = point_at(points, cumulative, min(last_km, total))
+            send(lat, lng, 0.0)
+        except (Exception, KeyboardInterrupt):
+            pass
 
 
 if __name__ == "__main__":

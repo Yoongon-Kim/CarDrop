@@ -9,11 +9,18 @@ import ai.pleos.playground.vehicle.listener.GearSelectionListener
 import ai.pleos.playground.vehicle.listener.RangeRemainingListener
 import android.content.Context
 import android.util.Log
+import android.os.SystemClock
 import com.cardrop.core.model.Gear
 import com.cardrop.core.model.VehicleSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Owner: Member B. One session, with callbacks and subscriptions tied to that session. */
 class PleosVehicleRepository(context: Context) : VehicleRepository {
@@ -22,6 +29,8 @@ class PleosVehicleRepository(context: Context) : VehicleRepository {
     private var started = false
     private var generation = 0L
     private val unsubscribe = mutableListOf<() -> Unit>()
+    private val gearScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var gearRefresh: Job? = null
     private val _snapshot = MutableStateFlow(VehicleSnapshot())
     override val snapshot: StateFlow<VehicleSnapshot> = _snapshot
 
@@ -91,19 +100,43 @@ class PleosVehicleRepository(context: Context) : VehicleRepository {
         }
         sdkCall("gear") {
             val gear = vehicle.getGear()
+            val reads = GearReadEpoch()
+            fun publishGear(value: VehicleGear?) {
+                _snapshot.update { it.copy(gear = value.toGear(), gearCheckedAtElapsedMillis = SystemClock.elapsedRealtime()) }
+            }
+            fun failedGear(exception: Exception) {
+                _snapshot.update { it.copy(gear = Gear.UNKNOWN, gearCheckedAtElapsedMillis = null) }
+                logFailure("gear updates", exception)
+            }
             val listener = object : GearSelectionListener {
                 override fun onSelected(value: VehicleGear?) = current(session) {
-                    _snapshot.update { it.copy(gear = value.toGear()) }
+                    reads.event()
+                    publishGear(value)
                 }
                 override fun onFailed(exception: Exception) = current(session) {
-                    _snapshot.update { it.copy(gear = Gear.UNKNOWN) }
-                    logFailure("gear updates", exception)
+                    reads.event()
+                    failedGear(exception)
                 }
             }
-            sdkCall("getCurrentGearSelectionState") {
-                gear.getCurrentGearSelectionState(listener::onSelected, listener::onFailed)
+            fun readGear() {
+                val ticket = reads.request()
+                val sent = sdkCall("getCurrentGearSelectionState") {
+                    gear.getCurrentGearSelectionState(
+                        { value -> current(session) { if (reads.complete(ticket)) publishGear(value) } },
+                        { exception -> current(session) { if (reads.complete(ticket)) failedGear(exception) } },
+                    )
+                }
+                if (!sent && reads.complete(ticket)) _snapshot.update { it.copy(gear = Gear.UNKNOWN, gearCheckedAtElapsedMillis = null) }
             }
+            readGear()
             subscribe("gear", { gear.registerGearSelection(listener) }, { gear.unregisterGearSelection(listener) })
+            // Gear callbacks can be change-only. Re-read instead of refreshing an old cached P lease.
+            gearRefresh = gearScope.launch {
+                while (true) {
+                    delay(2_000)
+                    current(session) { readGear() }
+                }
+            }
         }
         Unit
     }
@@ -112,6 +145,8 @@ class PleosVehicleRepository(context: Context) : VehicleRepository {
         if (!started) return@synchronized
         started = false
         generation++ // Ignore callbacks from the old session, even after a subsequent start().
+        gearRefresh?.cancel()
+        gearRefresh = null
         unsubscribe.asReversed().forEach { sdkCall("unregister", it) }
         unsubscribe.clear()
         sdkCall("release") { vehicle.release() }

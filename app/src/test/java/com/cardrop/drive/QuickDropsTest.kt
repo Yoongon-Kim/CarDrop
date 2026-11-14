@@ -47,10 +47,11 @@ class QuickDropsTest {
     }
 
     @Test
-    fun unknownRepeatedOrCutDropsAreLeftOutAndAtMostFourStay() {
+    fun unknownRepeatedOrCutDropsAreLeftOut() {
+        // 같이 켜기 is cut, 카페 doesn't exist, 휴게소 is there twice: the saved available drops keep their order.
         assertEquals(
-            listOf(REST, FOOD, SHOUT, GAME),
-            QuickDropRules.decode("rest,song,cafe,rest,,food,shout,game,inbox"),
+            listOf(REST, SONG, SCORE, FOOD, SHOUT, GAME, INBOX),
+            QuickDropRules.decode("rest,song,score,together,cafe,rest,,food,shout,game,inbox"),
         )
     }
 
@@ -73,15 +74,38 @@ class QuickDropsTest {
     }
 
     @Test
-    fun aFifthPickIsRefusedButUntickingStillWorks() {
+    fun aFifthPickGoesToTheSecondRowAndUntickingStillWorks() {
         val four = listOf(REST, FOOD, FUEL, SHOUT)
-        assertEquals(Pick.Full, QuickDropRules.pick(four, INBOX))
+        val five = four + INBOX
+        assertEquals(Pick.Changed(five), QuickDropRules.pick(four, INBOX))
         assertEquals(Pick.Changed(listOf(REST, FOOD, SHOUT)), QuickDropRules.pick(four, FUEL))
+        // Board 04: the first four in the slots, the fifth under them.
+        assertEquals(emptyList<QuickDrop>(), QuickDropRules.secondRow(four))
+        assertEquals(listOf(INBOX), QuickDropRules.secondRow(five))
+    }
+
+    @Test
+    fun aPickBeyondTheLastSlotIsRefused() {
+        val two = listOf(REST, FOOD)
+        assertEquals(Pick.Full, QuickDropRules.pick(two, FUEL, max = 2))
+        assertEquals(Pick.Changed(listOf(FOOD)), QuickDropRules.pick(two, REST, max = 2)) // unticking still works
+    }
+
+    @Test
+    fun theAddSlotShowsWhileThereIsADropLeftToPick() {
+        // Song drops and driving records both remain available; only 같이 켜기 is cut.
+        val all = QuickDrop.entries.filter { it.available }
+        assertEquals(listOf(REST, FOOD, FUEL, SHOUT, SONG, GAME, INBOX, SCORE), all)
+        assertEquals(all.size, QuickDropRules.pickable)
+        assertEquals(true, QuickDropRules.showsAddSlot(emptyList()))
+        assertEquals(true, QuickDropRules.showsAddSlot(all.take(4)))
+        assertEquals(true, QuickDropRules.showsAddSlot(all.take(6)))
+        assertEquals(false, QuickDropRules.showsAddSlot(all)) // nothing left to add
     }
 
     @Test
     fun cutDropsCantBePicked() {
-        listOf(SONG, TOGETHER).forEach { cut ->
+        listOf(TOGETHER).forEach { cut ->
             assertEquals(Pick.Changed(listOf(REST)), QuickDropRules.pick(listOf(REST), cut))
         }
     }
@@ -96,10 +120,12 @@ class QuickDropsTest {
         assertEquals(Screen.Shout(), SHOUT.screen())
         assertEquals(Screen.Games, GAME.screen())
         assertEquals(Screen.Inbox, INBOX.screen())
+        assertEquals(Screen.SongSend(), SONG.screen())
         assertEquals(Screen.Safety(), SCORE.screen())
+        assertEquals(Pick.Changed(listOf(REST, SONG)), QuickDropRules.pick(listOf(REST), SONG))
         assertEquals(Pick.Changed(listOf(REST, SCORE)), QuickDropRules.pick(listOf(REST), SCORE))
-        listOf(SHOUT, GAME, INBOX, SCORE).forEach { assertNull(it.popupTopic()) }
-        listOf(SONG, TOGETHER).forEach {
+        listOf(SHOUT, SONG, GAME, INBOX, SCORE).forEach { assertNull(it.popupTopic()) }
+        listOf(TOGETHER).forEach {
             assertNull(it.screen())
             assertNull(it.popupTopic())
         }

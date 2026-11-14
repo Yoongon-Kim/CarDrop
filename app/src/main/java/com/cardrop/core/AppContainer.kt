@@ -8,6 +8,12 @@ import com.cardrop.ai.FakeAiService
 import com.cardrop.ai.FallbackAiService
 import com.cardrop.ai.PhraseStore
 import com.cardrop.ai.PrefsPhraseStore
+import com.cardrop.ai.game.OmokCoordinator
+import com.cardrop.ai.game.OmokResumeStore
+import com.cardrop.ai.game.OmokRecoveringCrew
+import com.cardrop.ai.game.FirebaseOmokTransport
+import com.cardrop.ai.game.LocalOmokTransport
+import com.cardrop.ai.game.PrefsOmokRoomStore
 import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
@@ -15,6 +21,7 @@ import com.cardrop.core.demo.DemoCar
 import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
+import com.cardrop.core.navigation.Screen
 import com.cardrop.core.navigation.DropRoutingMemory
 import com.cardrop.drive.BotFuel
 import com.cardrop.drive.CrewFuel
@@ -24,9 +31,11 @@ import com.cardrop.drive.PlaceTimes
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
+import com.cardrop.drive.GearFile
 import com.cardrop.drive.TripCodeFile
 import com.cardrop.drive.PrefsQuickDropStore
 import com.cardrop.drive.QuickDrops
+import com.cardrop.drop.SongPlayer
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.FallbackRouteProvider
@@ -38,6 +47,7 @@ import com.cardrop.navi.KakaoPlaceSearch
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.OsrmDirections
 import com.cardrop.navi.NavigationHandoff
+import com.cardrop.navi.PleosFusedLocationSource
 import com.cardrop.vehicle.FakeVehicleRepository
 import com.cardrop.vehicle.PleosVehicleRepository
 import com.cardrop.vehicle.VehicleRepository
@@ -51,6 +61,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -73,9 +85,14 @@ class AppContainer(context: Context) {
      * [useRealCrew]: the real crew on Firebase, shared by several devices; this device is [myCar].
      * Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
-    val crew: CrewRepository =
+    private val omokResume = OmokResumeStore(context)
+    private val baseCrew: CrewRepository =
         if (useRealCrew) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
         else FakeCrewRepository(appScope)
+    private val hadOmokResume = omokResume.read(baseCrew.myCarId, useRealCrew) != null
+    private val recoveringCrew = OmokRecoveringCrew(baseCrew, appScope, omokResume, useRealCrew)
+    val crew: CrewRepository = recoveringCrew
+    val demoCrew: FakeCrewRepository? get() = baseCrew as? FakeCrewRepository
 
     // Lead
     /**
@@ -102,8 +119,17 @@ class AppContainer(context: Context) {
             ),
             kakaoMapKey = BuildConfig.KAKAO_NATIVE_KEY.takeIf { it.isNotBlank() },
         )
-    /** Every car's position: this car from GPS, the others from their devices (real crew) or behind it (bots). */
-    val route: RouteSimulator = GpsCrewPositions(appScope, inAppNavigation, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions)
+    private val crewLocation = PleosFusedLocationSource(context.applicationContext, appScope)
+    val supportsFusedLocation: Boolean get() = crewLocation.supported
+
+    /** A grant after the crew started connects the SDK without restarting the app or the trip. */
+    fun onFusedLocationPermissionGranted() = crewLocation.onPermissionGranted()
+
+    /** Crew diagram: fresh FusedLocation measurements, GPS fallback, and the other cars through Firebase. */
+    val route: RouteSimulator = GpsCrewPositions(
+        appScope, inAppNavigation, myCarId = { crew.myCarId }, shared = firebaseTrip?.positions,
+        preferredLocation = crewLocation,
+    )
     val navigation: NavigationHandoff = inAppNavigation
 
     /**
@@ -157,6 +183,13 @@ class AppContainer(context: Context) {
     val phrases: PhraseStore = PrefsPhraseStore(context)
     /** Board 04's quick-drop slots (퀵 드랍 편집), kept on this device. */
     val quickDrops = QuickDrops(PrefsQuickDropStore(context))
+    /** What this car "plays" (boards 12, 13; no sound). Member A. */
+    val songs = SongPlayer()
+    val omok = OmokCoordinator(
+        appScope, crew, vehicle,
+        if (useRealCrew) FirebaseOmokTransport(context) else LocalOmokTransport(PrefsOmokRoomStore(context)),
+        omokResume, useRealCrew,
+    )
 
     /** Record-entry GPT is independent of the shared Claude-backed AI features. */
     private val safetyEncouragement = com.cardrop.ai.OpenAiSafetyEncouragement(BuildConfig.SAFETY_OPENAI_API_KEY)
@@ -170,7 +203,7 @@ class AppContainer(context: Context) {
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)
      * keeps the driver on the same screen and doesn't open old drops again.
      */
-    val navigator = AppNavigator(start = DemoCar.startScreen(useRealCrew, myCar))
+    val navigator = AppNavigator(start = if (hadOmokResume) Screen.Games else DemoCar.startScreen(useRealCrew, myCar))
     val dropRouting = DropRoutingMemory({ crew.myCarId }, navigation.decisions::isSkipped)
 
     private val trip = TripCoordinator(appScope, crew, route, navigation, voice, autoStartsGuidance = true)
@@ -180,12 +213,20 @@ class AppContainer(context: Context) {
 
     init {
         trip.start()
+        appScope.launch {
+            if (recoveringCrew.restored()) { omok.openGame(); navigator.switchTab(Screen.Games) }
+            else if (hadOmokResume && navigator.current == Screen.Games) navigator.switchTab(DemoCar.startScreen(useRealCrew, myCar))
+        }
         firebaseTrip?.shareMyFuel(vehicle.snapshot)
         firebaseTrip?.shareMyPosition(route.positions)
         // tools/drive_gps.py reads this car's crew code from the device (drive/TripCodeFile.kt). The bot crew
         // saves none, and an old code from an earlier start is removed.
         appScope.launch(Dispatchers.IO) {
             (firebaseTrip?.crewCode ?: flowOf(null)).collect { TripCodeFile.save(context, it) }
+        }
+        // tools/drive_gps.py also reads the gear (drive/GearFile.kt): the DEMO panel's P holds the demo car still.
+        appScope.launch(Dispatchers.IO) {
+            vehicle.snapshot.map { it.gear }.distinctUntilChanged().collect { GearFile.save(context, it) }
         }
     }
 }

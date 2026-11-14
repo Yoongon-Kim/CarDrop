@@ -42,6 +42,12 @@ sealed interface Screen {
     data class Shout(val initialText: String = "", val toCarIds: List<String> = emptyList()) : Screen
     /** 10 AI 추천 · lead. [toCarIds]: the cars chosen on board 08; empty = the whole crew. */
     data class AiRecommend(val topic: DropTopic, val toCarIds: List<String> = emptyList()) : Screen
+    /**
+     * 12 노래 드랍 보내기 · Member A. [toCarIds]: the cars chosen on board 08; empty = the whole crew (04's quick drop).
+     */
+    data class SongSend(val toCarIds: List<String> = emptyList()) : Screen
+    /** 13 노래 받기: a pop-up over board 04 for another car's song drop · Member A */
+    data class SongGet(val dropId: String) : Screen
     /** 11 투표 · Member A */
     data class Vote(val dropId: String) : Screen
     /** 14 결정 · Member B */

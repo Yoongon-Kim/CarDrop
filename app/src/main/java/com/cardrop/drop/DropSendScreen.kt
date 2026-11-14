@@ -49,7 +49,7 @@ import com.cardrop.crew.CrewViewModel
 /**
  * Board 08 드랍 보내기 · Owner: Member A.
  * Choose who gets it (크루 전체, one car alone, or a 조합 of cars), then what to send: a decision topic
- * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates), 한마디 and 음성 메시지 open board 09.
+ * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates), 한마디 and 음성 메시지 open board 09, 노래 드랍 board 12 ([onSong]).
  * Both get the chosen cars (empty = whole crew). 게임 초대 opens board 15 ([onGames]), where the driver picks
  * the game and who to play. The ✕ at the top right ([onClose]) goes back to 홈 (board 04).
  *
@@ -65,6 +65,7 @@ fun DropSendScreen(
     onGames: () -> Unit,
     onClose: () -> Unit,
     onProposalSent: (Drop) -> Unit,
+    onSong: (toCarIds: List<String>) -> Unit,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
@@ -164,8 +165,10 @@ fun DropSendScreen(
                 TopicTile("음성 메시지", "녹음해서", CdIcons.Mic, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
                     onShout(toCarIds)
                 }
-                // Song drop and 같이 켜기 (points) are cut for now: shown as in the target, greyed out (D8).
-                TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f), enabled = false)
+                // 노래 드랍 opens board 12 for the chosen cars. 같이 켜기 (points) is cut: shown as in the target, greyed out (D8).
+                TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f)) {
+                    onSong(toCarIds)
+                }
                 TopicTile("게임 초대", "정차 시 시작", CdIcons.Game, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onGames)
                 TopicTile(
                     "같이 켜기", "P 정차 중 · 포인트", CdIcons.Power, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f),

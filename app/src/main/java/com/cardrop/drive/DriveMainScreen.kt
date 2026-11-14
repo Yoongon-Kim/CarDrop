@@ -41,7 +41,8 @@ import kotlinx.coroutines.delay
  * Board 04 주행 메인, laid out like the design: the crew on the road, a card per car, four quick-drop slots and the
  * big "드랍하기" button (its mic suggests a drop by voice). Owner: Member B (now the lead).
  * The slots hold the driver's [quickDrops] in order (the live canvas's 퀵 드랍 with 편집); the rest are dashed
- * "추가" slots. 편집 and an empty slot open the editor ([onEditQuickDrops]).
+ * "추가" slots. 편집 and an empty slot open the editor ([onEditQuickDrops]). Under the four slots a second row
+ * holds the fifth drop on and one more dashed "추가" slot, so the driver can keep more than four.
  * With an [invite] it is board 06: another car's fuel invitation shows as a banner under the road.
  */
 @Composable
@@ -154,6 +155,19 @@ fun DriveMainScreen(
                     } else {
                         EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
                     }
+                }
+            }
+            // Under the four: the driver's fifth drop on, then one dashed "+" slot to add another (it opens the
+            // editor). Each takes a quarter of the width, like the slots above; the rest of the row stays empty.
+            val more = QuickDropRules.secondRow(quickDrops)
+            val addSlot = QuickDropRules.showsAddSlot(quickDrops)
+            if (more.isNotEmpty() || addSlot) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    more.forEach { drop ->
+                        QuickTile(drop, enabled = canDrop, modifier = Modifier.weight(1f)) { onQuickDrop(drop) }
+                    }
+                    if (addSlot) EmptyQuickSlot(Modifier.weight(1f), onClick = onEditQuickDrops)
+                    repeat(QuickDropRules.SLOTS - more.size - (if (addSlot) 1 else 0)) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

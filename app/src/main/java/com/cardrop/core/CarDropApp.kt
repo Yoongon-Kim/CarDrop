@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,13 +33,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cardrop.ai.AiRecommendScreen
 import com.cardrop.ai.AiViewModel
 import com.cardrop.ai.QuickDropPicker
-import com.cardrop.ai.QuizScreen
+import com.cardrop.ai.game.GamesScreen
+import com.cardrop.ai.game.OmokInviteNotice
 import com.cardrop.ai.ShoutScreen
 import com.cardrop.core.demo.DemoPanel
 import com.cardrop.core.demo.DemoRailButton
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
 import com.cardrop.core.model.DropTopic
+import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.navigation.DropRoutingEffect
 import com.cardrop.core.navigation.Screen
 import com.cardrop.core.navigation.inboxScreenFor
@@ -59,6 +61,8 @@ import com.cardrop.drive.QuickDropEditScreen
 import com.cardrop.drive.QuickDrop
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
+import com.cardrop.drop.SongGetDialog
+import com.cardrop.drop.SongSendScreen
 import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteRules
 import com.cardrop.drop.VoteScreen
@@ -87,11 +91,20 @@ fun CarDropApp(container: AppContainer) {
     }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, container) {
+        container.omok.onVisible(lifecycle, lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) container.safety.leaveRecordScreen()
+            if (event == Lifecycle.Event.ON_START) container.omok.onVisible(lifecycle, true)
+            if (event == Lifecycle.Event.ON_STOP) {
+                container.omok.onVisible(lifecycle, false)
+                container.safety.leaveRecordScreen()
+            }
         }
         lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer); container.safety.leaveRecordScreen() }
+        onDispose {
+            lifecycle.removeObserver(observer)
+            container.omok.onVisible(lifecycle, false)
+            container.safety.leaveRecordScreen()
+        }
     }
     val safetyCompletion by container.safety.completion.collectAsStateWithLifecycle()
     LaunchedEffect(safetyCompletion) {
@@ -158,6 +171,7 @@ fun CarDropApp(container: AppContainer) {
         navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)
+            if (navigator.current != Screen.Games) OmokInviteNotice(container.omok) { navigator.go(Screen.Games) }
             DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },
         myCar = myCar,
@@ -263,7 +277,30 @@ fun CarDropApp(container: AppContainer) {
                 onClose = { navigator.switchTab(Screen.Drive) },
                 // 목적지 변경: the proposal just sent opens on board 11, where the answers come in.
                 onProposalSent = { drop -> navigator.go(Screen.Vote(drop.id)) },
+                onSong = { toCarIds -> navigator.go(Screen.SongSend(toCarIds)) },
             )
+            // Board 12: after 노래 드랍하기 the driver is back on 04, with a quiet caption.
+            is Screen.SongSend -> SongSendScreen(
+                vm = crewVm,
+                player = container.songs,
+                toCarIds = screen.toCarIds,
+                onBack = navigator::back,
+                onSent = {
+                    socialMessage = "${crewNow?.recipientLabel(screen.toCarIds, crewVm.myCarId) ?: "크루 전체"}에 노래를 보냈어요"
+                    navigator.switchTab(Screen.Drive)
+                },
+            )
+            // Board 13: another car's song, a pop-up over board 04.
+            is Screen.SongGet -> Box(modifier = Modifier.fillMaxSize()) {
+                driveScreen(null)
+                val drops by crewVm.drops.collectAsStateWithLifecycle()
+                val drop = drops.firstOrNull { it.id == screen.dropId }
+                if (drop == null) {
+                    LaunchedEffect(screen.dropId) { navigator.back() }
+                } else {
+                    SongGetDialog(drop, crewNow?.cars?.firstOrNull { it.id == drop.fromCarId }, container.songs, onClose = navigator::back)
+                }
+            }
             is Screen.Shout -> ShoutScreen(
                 vm = aiVm,
                 initialText = screen.initialText,
@@ -293,7 +330,9 @@ fun CarDropApp(container: AppContainer) {
                 // For the eyebrow "덕평자연휴게소 · 4대 모두 정차": the stop this car is parked at, and the crew's messages.
                 val stop by container.inAppNavigation.parkedAt.collectAsStateWithLifecycle()
                 val drops by driveVm.drops.collectAsStateWithLifecycle()
-                QuizScreen(aiVm, stop = stop, drops = drops)
+                // The games open once the car has stopped: P, and the GPS no longer says it moves (gamesOpen).
+                val nav by container.inAppNavigation.state.collectAsStateWithLifecycle()
+                GamesScreen(aiVm, container.omok, stop = stop, drops = drops, fix = nav.fix)
             }
         }
     }

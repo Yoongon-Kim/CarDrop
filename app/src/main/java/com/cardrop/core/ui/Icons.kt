@@ -58,7 +58,7 @@ object CdIcons {
     val Shout = lineIcon("Shout", strokeWidth = 2.2f, "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z")
     /** 목적지 변경 (a flag): board 08's tile, target line 657 (`dest`). */
     val Flag = lineIcon("Flag", strokeWidth = 2.2f, "M4 22V4M4 4h12l-2 4 2 4H4")
-    /** 노래 드랍 (a note): board 08's tile, target line 657 (`song`), and 노래 in the quick-drop editor (cut, faded). */
+    /** 노래 드랍 (a note): board 08's tile, target line 657 (`song`), 노래 in the quick-drop editor and boards 12, 13. */
     val Music = lineIcon(
         "Music",
         strokeWidth = 2.2f,

@@ -8,6 +8,8 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.Place
 import com.cardrop.drive.GeoPoint
 import com.cardrop.drop.ProposalRules
+import com.cardrop.drop.Song
+import com.cardrop.drop.SongRules
 import com.cardrop.drop.VoteRules
 import com.cardrop.navi.DestinationTrip
 import com.cardrop.navi.PlaceSearch
@@ -203,6 +205,34 @@ class CrewViewModel(
             stopListening()
             destinationSearch.clear()
             onSent(sent)
+        }
+    }
+
+    /** True while board 12's song is on its way, so a second tap doesn't send it twice. */
+    private var sendingSong = false
+
+    /**
+     * Board 12: sends [song] to [toCarIds] (empty = the whole crew) as a SOCIAL drop (SongRules.draft).
+     * [onDone] gets null when it went out, or the line to show: before the trip starts the repository refuses
+     * ("출발하면 드랍을 보낼 수 있어요"), and offline it fails.
+     */
+    fun sendSong(song: Song, toCarIds: List<String>, onDone: (error: String?) -> Unit) {
+        if (sendingSong) return
+        sendingSong = true
+        viewModelScope.launch {
+            val error = try {
+                repo.sendDrop(SongRules.draft(song, toCarIds))
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: TripNotStartedException) {
+                e.message
+            } catch (e: Exception) {
+                "노래를 보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."
+            } finally {
+                sendingSong = false
+            }
+            onDone(error)
         }
     }
 

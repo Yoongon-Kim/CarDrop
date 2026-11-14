@@ -51,6 +51,9 @@ object CdColors {
     val RedLight = Color(0xFFFFEEEE)
     val NavBackground = Color(0xFFE9EEF3)
     val NavBanner = Color(0xFF1E2A4A)
+    /** 노래 드랍 (boards 12, 13): the target's pink `#D6336C` and its tint `#FFF0F5`. */
+    val Pink = Color(0xFFD6336C)
+    val PinkLight = Color(0xFFFFF0F5)
     val Purple = Color(0xFF8B5CF6)
     val Teal = Color(0xFF00B8A9)
     val TealLight = Color(0xFFE6F8F4)

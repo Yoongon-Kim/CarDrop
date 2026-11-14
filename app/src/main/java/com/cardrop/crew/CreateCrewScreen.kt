@@ -413,7 +413,7 @@ private fun MembersCard(
         PrimaryButton(
             when {
                 started -> "주행 화면으로"
-                hostCanStart -> "다 모이면 출발하기"
+                hostCanStart -> "이 멤버로 출발하기"
                 else -> "${hostName.particle("이", "가")} 출발하면 같이 출발해요"
             },
             onClick = onDepart,

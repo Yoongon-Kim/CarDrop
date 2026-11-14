@@ -37,7 +37,7 @@ Rules:
 Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
                                        CrewRepository      FakeCrewRepository (bots) -> FirebaseCrewRepository
                                        VehicleRepository   FakeVehicleRepository     -> PleosVehicleRepository
-                                       RouteSimulator      GpsCrewPositions (GPS; tools/drive_gps.py on the emulator)
+                                       RouteSimulator      GpsCrewPositions (Pleos FusedLocation, GPS fallback)
                                        NavigationHandoff   InAppNavigation (GPS + Kakao/OSRM)
                                        AiService           FakeAiService             -> Claude API
                                        VoiceService        FakeVoiceService          -> Android TTS/STT
@@ -105,13 +105,16 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
   lines 302-344): four slots. Until the driver saves their own list they hold 휴게소, 주유, 운전 기록 and one dashed "추가"
   (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays
-  empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in
-  the order ticked; 노래 and 같이 켜기 are greyed out (cut). Existing custom lists stay saved. The list stays on the device (`drive/QuickDrops.kt`,
+  empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 8, in
+  the order ticked; 같이 켜기 is greyed out (cut). Existing custom lists stay saved. The list stays on the device (`drive/QuickDrops.kt`,
   SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names: 휴게소 / 식사 / 주유
   board 10 as a pop-up over 04 for the whole crew (`QuickDrop.popupTopic()`, `QuickDropPicker`; lead, 2026-11-14). After
   보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
   vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
+  More than four (Member A, 2026-11-14; not on the canvas): under the four slots a second row holds the fifth drop on
+  and one dashed "추가" slot while a drop is left to pick (`QuickDropRules.secondRow`, `showsAddSlot`, `MAX_SLOTS` = 8;
+  the editor counts the saved drops out of 8 available drops, including 노래 and 운전 기록).
 - Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
   another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
   `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks
@@ -130,8 +133,20 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   only the quick-drop slots with 편집 and the quick-drop pop-up without its result notice (see board 04's quick drops
   above), not the others. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
-- Week 1 cuts: song drop (12, 13), omok/chess (15), ads and points (18, 19). Safety race (16, 17) was
+- Week 1 cuts: chess (15), ads and points (18, 19). Safety race (16, 17) was
   restored by user request, limited to acceleration and braking.
+- Song drop (12, 13) was restored by the user (Member A, 2026-11-14), screen only: nothing plays (no Apple Music).
+  `drop/SongDrop.kt` (`SongRules`, the target's 4 songs; `SongPlayer` = what "plays", unit tested) and
+  `drop/SongScreens.kt`. Board 08's 노래 드랍 tile and 04's 노래 quick drop open board 12; it sends a SOCIAL drop
+  (`DropTopic.SONG`, the song's id in `message`), never spoken. A receiver gets board 13 as a pop-up over 04
+  (`DropRouting.kt`): 괜찮아요, or 받아서 바로 듣기 → 지금 재생 / 다음 (what it was playing). The DEMO panel's
+  "삼촌 차 노래 드랍 받기" stages the receiving side. A build without `SONG` skips these drops (`parseDrop`).
+- Omok (15) was restored by the user's implementation request: `ai/game/` owns 13x13 freestyle rules,
+  silent invitations, local practice bots, Firebase sessions and process-restart recovery. `AppContainer`
+  selects the transport. Both participants need fresh P readings, an open game screen and a live connection.
+  Keep readiness-token checks and the separate named Firebase client's disconnect handling intact.
+  `OmokRecoveringCrew` rejoins only crews saved by omok; a started host rejoin must not clear FirebaseTrip.
+  Existing quizzes and AI services keep their current behavior. See README > 오목 (15).
 
 ## Build and run
 
@@ -217,8 +232,10 @@ landed on `main`.
   range or gear. A value that fails stays null (gear: `UNKNOWN`); `adb logcat -s CarDropVehicle` shows why.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
-  If gear stays `UNKNOWN`, the game (board 15) stays closed: it opens only in P (`ai/QuizScreen.kt`).
-- The SDK has no vehicle speed or location API. Car positions come from GPS (`navi/GpsCrewPositions.kt`).
+  If gear stays `UNKNOWN`, the games (board 15) stay closed: they open in P once the car has stopped, i.e. no GPS
+  reading of the last 10 s says faster than 5 km/h (`gamesOpen` in `drive/DriveRules.kt`, unit tested). In the 시연 the
+  DEMO panel's P stops `drive_gps.py` first, then the games open. Closed, board 15 shows one card and no game at all.
+- The SDK has no vehicle speed or location API. Crew positions come from Pleos FusedLocation with a GPS fallback (`navi/GpsCrewPositions.kt`).
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 
 ## Voice notes (Pleos speech SDKs 3.3.1, checked on the emulator 2026-11-13)
@@ -254,7 +271,10 @@ GPS position, live routes, rerouting, turn guidance. Only the GPS input is simul
 **Run the demo car:** start the emulator and the app, then
 `python3 tools/drive_gps.py` (drives the 영동고속도로 from km 40 at 6x speed, 1 GPS fix per second via
 `adb emu geo fix`; `--speed 1` for real time, `--start-km`, `--gpx` for Extended controls,
-`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). The emulator's
+`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). While CarDrop's gear is P
+(the DEMO panel's P) the script holds the car still at 0 km/h where it was and drives on after D: the app writes its
+gear to `files/gear.txt` (`drive/GearFile.kt`), read 4 times a second like the crew code. Ctrl+C or arriving ends with a 0 km/h fix
+(the emulator keeps repeating the last one). The emulator's
 own route player can't make Korean routes (Google has no driving directions in Korea). Grant location
 when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permission.ACCESS_FINE_LOCATION`).
 
@@ -288,9 +308,18 @@ shares its position through Firebase about once a second, so each one draws the 
 - Routing: `navi/KakaoDirections.kt` (Kakao Mobility, Korean data + traffic + Korean turn texts; key
   `cardrop.kakaoRestKey`, free for non-commercial use up to 10,000 requests/day), then
   `navi/OsrmDirections.kt` (public OSRM server, no key, no traffic, no uptime promise) as backup.
-- `navi/GpsCrewPositions.kt` - crew positions: this car from GPS. Real crew: the other cars where their own
+- `navi/GpsCrewPositions.kt` - crew diagram positions: this car from Pleos FusedLocation when usable, else GPS. Real crew: the other cars where their own
   devices say (`drive/FirebaseTrip.kt`, `trips/<code>/positions` in Firebase); a car without a connected device
   is not drawn. Bot crew: the bots follow this car's GPS trail 0.8 / 1.8 / 3 km behind.
+- `navi/PleosFusedLocationSource.kt` subscribes to the Pleos vehicle-location service (SDK 1.1.3) while
+  in a crew, and unsubscribes/releases it on leaving. It preserves `LocationData.timestampMillis`;
+  a newly received cache reply is not a new measurement. A watchdog clears an expired fix even when
+  callbacks stop, allowing `GpsCrewPositions` to switch to GPS. `navi/CrewLocation.kt` rejects invalid,
+  future or over-5-second-old SDK measurements, and positions over 1 km from the last known GPS fix.
+  Distance/ETA come from projecting the chosen position onto CarDrop's route. Firebase shares that
+  position with the other cars. `MainActivity` explains and requests `pleos.car.permission.FUSED_LOCATION`
+  on supported devices and starts a waiting subscription after a grant; unsupported/denied devices use GPS.
+  The in-app navigator still uses Android GPS. Logs: `adb logcat -s CarDropFused`.
 - Board 01's destination card adds the road distance and drive time ("약 62km · 1시간 5분") from the live
   route (`navi/DestinationTrip.kt`, `AppContainer.destinationTrip`). Nothing shows until the route is there,
   or while the route still ends at the old destination after a change.

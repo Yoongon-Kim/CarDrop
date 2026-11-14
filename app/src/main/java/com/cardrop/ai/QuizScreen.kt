@@ -41,8 +41,8 @@ import com.cardrop.navi.WaypointResult
 
 /**
  * Board 15 게임 (정차 중) · Owner: lead. Laid out like the design: the games on the left with "도전장 드랍", and on the
- * right "나 VS 상대", who to play with, and the quiz with a question counter. Week 1 has the two quizzes (no omok or
- * chess). It opens only in P; a game paused in D carries on at the next stop.
+ * right "나 VS 상대", who to play with, and the quiz with a question counter. GamesScreen adds the omok tab;
+ * this composable keeps the existing two quizzes. It opens only in P and keeps its question when paused.
  */
 @Composable
 fun QuizScreen(
@@ -51,6 +51,7 @@ fun QuizScreen(
     stop: Place? = null,
     /** This car's drops, for who else said "…에 도착했어요" there. */
     drops: List<Drop> = emptyList(),
+    onOmok: (() -> Unit)? = null,
 ) {
     val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
     val quiz by vm.quiz.collectAsStateWithLifecycle()
@@ -75,7 +76,10 @@ fun QuizScreen(
         // The design fills the screen's height (509): the two columns take what is left under the header.
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(Modifier.width(250.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                QuizKind.entries.forEach { kind -> GameRow(kind, selected = kind == round.kind) { vm.chooseQuiz(kind) } }
+                // 오목 as the same card as the quizzes, like the omok tab's list (ai/game/OmokScreen.kt), so the list
+                // doesn't change size when switching tabs.
+                onOmok?.let { GameRow("●", "오목", "5개 먼저 잇기 · 1:1", selected = false, onClick = it) }
+                QuizKind.entries.forEach { kind -> GameRow(kind.icon, kind.title, kind.meta, selected = kind == round.kind) { vm.chooseQuiz(kind) } }
                 Spacer(Modifier.weight(1f)) // 도전장 드랍 and its hint at the bottom of the column (512-513)
                 ChallengeButton(opponentName, sent = round.challengeSent, enabled = crew != null, onClick = vm::sendChallenge)
                 Text("D로 바꾸면 게임이 멈추고 다음 정차 때 이어서 해요", fontSize = 13.sp, color = CdColors.Gray600, lineHeight = 20.sp)
@@ -113,7 +117,7 @@ internal fun gameEyebrow(stop: Place?, crew: Crew?, myCarId: String, drops: List
 
 /** One game in the left column: its icon tile, name and what it is. */
 @Composable
-private fun GameRow(kind: QuizKind, selected: Boolean, onClick: () -> Unit) {
+private fun GameRow(icon: String, title: String, meta: String, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(22.dp)
     Row(
         modifier = Modifier
@@ -131,11 +135,11 @@ private fun GameRow(kind: QuizKind, selected: Boolean, onClick: () -> Unit) {
             modifier = Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(if (selected) CdColors.Blue else CdColors.Gray100),
             contentAlignment = Alignment.Center,
         ) {
-            Text(kind.icon, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = if (selected) CdColors.White else CdColors.Ink2)
+            Text(icon, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = if (selected) CdColors.White else CdColors.Ink2)
         }
         Column {
-            Text(kind.title, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
-            Text(kind.meta, fontSize = 12.sp, color = CdColors.Gray600)
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink)
+            Text(meta, fontSize = 12.sp, color = CdColors.Gray600)
         }
     }
 }

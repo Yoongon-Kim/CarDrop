@@ -135,10 +135,22 @@ class FakeCrewRepository(
     /**
      * Pretends another car sent a drop, e.g. 민지 차's low-fuel warning (board 06). Like [sendDrop], nothing before the
      * trip starts (the DEMO panel hides these buttons until then); a tap then does nothing instead of closing the app.
+     *
+     * The bot that sends a vote answers it at once with its first place, as a driver answers their own vote on board
+     * 11, so the vote ends as soon as the other cars have answered. It used to never answer, so a bot's vote always ran
+     * until its time was up, and board 14 came long after the driver had answered (lead, 2026-11-15). A proposal
+     * needs no such vote: its sender counts as 찬성 (VoteRules).
      */
     fun injectDrop(from: Car, draft: DropDraft) {
         if (_crew.value?.isStarted != true) return
-        val drop = newDrop(fromCarId = from.id, draft = draft)
+        val drop = newDrop(fromCarId = from.id, draft = draft).let { drop ->
+            val first = drop.candidates.firstOrNull()
+            if (drop.kind == DropKind.DECISION && !VoteRules.isProposal(drop) && first != null) {
+                drop.copy(votes = mapOf(from.id to first.id))
+            } else {
+                drop
+            }
+        }
         _drops.update { it + drop }
         if (drop.kind == DropKind.DECISION) botsVote(drop.id, except = from.id)
     }
@@ -170,7 +182,8 @@ class FakeCrewRepository(
 
     /**
      * 삼촌 votes after 3 s, 민지 after 5 s and 이모 after 8 s, each for its place in [botChoice]. [except] = the bot that
-     * sent the drop: it doesn't vote. 이모 used to never answer, so every vote waited for its 2 minutes (lead, 2026-11-15).
+     * sent the drop: it answered when it sent it ([injectDrop]). 이모 used to never answer, so every vote waited for its
+     * 2 minutes (lead, 2026-11-15).
      */
     private fun botsVote(dropId: String, except: String? = null) {
         scope.launch {

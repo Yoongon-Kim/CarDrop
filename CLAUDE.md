@@ -66,8 +66,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   too) sends the vote, says which answer went out ("강문 덴켄에 투표했어요", `VotePick.answeredLine`) and goes to 04;
   board 14 opens over it once the vote ends. The car that sends a board 10 vote still answers it on board 11 first.
   The bot crew's bots all answer (`FakeCrewRepository.botChoice`): 삼촌 place 1 after 3 s, 민지 place 2 after 5 s,
-  이모 the last place after 8 s, so with three places this car's answer decides and ends the vote. A bot that sent
-  the drop doesn't vote (the DEMO panel's votes wait for the timer or 투표 바로 마감). A vote this car hasn't
+  이모 the last place after 8 s, so with three places this car's answer decides and ends the vote. A bot that sends
+  a vote answers it at once with its first place (`injectDrop`; lead, 2026-11-15), so the DEMO panel's votes also end
+  once every car has answered (a fuel invite only after 같이 갈래요: 가던 길 갈래요 records no vote). A vote this car hasn't
   answered is said once more 30 s before it ends ("휴게소 투표가 30초 남았어요. 답이 없으면 1번 횡성휴게소에 투표한 걸로
   봐요"; a proposal: "…답이 없으면 찬성으로 봐요"), so its board 14 is no surprise; not a fuel invite or this car's own
   proposal (`DropRoutingMemory.dueReminders`).

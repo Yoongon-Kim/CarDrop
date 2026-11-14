@@ -333,7 +333,8 @@ private fun VoiceRow(exampleCar: String, enabled: Boolean, onListen: () -> Unit)
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("직접 말해서 보내기", color = CdColors.VioletInk, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
-            Text("“${exampleCar}에 곧 도착한다고 전해줘” → AI가 짧게 다듬어 보내요", color = CdColors.Gray600, fontSize = 14.sp)
+            // Sent word for word, no AI polish (Member A, 2026-11-15).
+            Text("말한 그대로 글자로 보내요 · “${exampleCar}에 곧 도착해요”", color = CdColors.Gray600, fontSize = 14.sp)
         }
     }
 }

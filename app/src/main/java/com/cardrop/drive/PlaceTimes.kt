@@ -29,6 +29,10 @@ data class CrewTime(val minutes: Double, val cars: Int) {
  * destination beach. A place more than 1.5 km off the route (a town off the motorway, another destination) or
  * one this car already passed has no time, and the screens then show none.
  *
+ * Except in the destination's town (the route's last 10 km, off the motorway): a place there up to 10 km from the
+ * route, such as 안목 보사노바 by another beach 5 km away, is the drive to the nearest point of the route and then
+ * through town, estimated from the straight line (lead, 2026-11-15; it had no time on board 10's 카페).
+ *
  * One of these is a snapshot of the navigator and the crew positions; AppContainer.placeTimes makes a new one on
  * every GPS fix, so a screen that collects it stays up to date. Pure Kotlin, unit tested (PlaceTimesTest).
  */
@@ -41,10 +45,16 @@ class PlaceTimes(
     fun trip(place: Place): PlaceTrip? {
         val route = state.route ?: return null
         val located = route.geometry.locate(place.lat, place.lng)
-        if (located.offMeters > NEAR_ROUTE_METERS) return null
+        // The drive off the route: none beside it; through town in the destination's town; elsewhere not known.
+        val townKm = when {
+            located.offMeters <= NEAR_ROUTE_METERS -> 0.0
+            located.offMeters <= TOWN_METERS && located.km >= route.totalKm - TOWN_KM -> located.offMeters / 1000 * TOWN_ROAD_FACTOR
+            else -> return null
+        }
         val km = located.km - state.progressKm
         if (km < -PASSED_KM) return null
-        return PlaceTrip(km.coerceAtLeast(0.0), route.secondsBetween(state.progressKm, located.km) / 60)
+        val minutes = route.secondsBetween(state.progressKm, located.km) / 60 + townKm / TOWN_KMH * 60
+        return PlaceTrip(km.coerceAtLeast(0.0) + townKm, minutes)
     }
 
     /**
@@ -71,6 +81,16 @@ class PlaceTimes(
     private companion object {
         /** Further from the route than this, a place isn't on the way (the same limit as board 14's arrivals). */
         const val NEAR_ROUTE_METERS = 1_500.0
+
+        /** The destination's town: the route's last 10 km, where it has left the motorway. */
+        const val TOWN_KM = 10.0
+
+        /** How far from the route a place in the destination's town can be and still get a time. */
+        const val TOWN_METERS = 10_000.0
+
+        /** The road through town is this much longer than the straight line, driven at [TOWN_KMH]. */
+        const val TOWN_ROAD_FACTOR = 1.3
+        const val TOWN_KMH = 30.0
 
         /** Further behind than this, the car has passed the place. */
         const val PASSED_KM = 0.3

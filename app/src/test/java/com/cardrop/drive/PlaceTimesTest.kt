@@ -50,6 +50,20 @@ class PlaceTimesTest {
     }
 
     @Test
+    fun aPlaceInTheDestinationsTownIsTheRoadThenADriveThroughTown() {
+        // 5 km east of the road's 95th km, in its last 10 km (안목 보사노바 is 5 km from the way to 경포해변):
+        // 85 km on the road, then about 1.3 x 5 km through town at 30 km/h.
+        val trip = times.trip(place(95.0, eastKm = 5.0))!!
+        assertEquals(85.0 + 1.3 * 5.0, trip.km, 0.2)
+        assertEquals(85 * 0.6 + 1.3 * 5.0 / 30 * 60, trip.minutes, 0.5)
+    }
+
+    @Test
+    fun aPlaceFarFromTheDestinationsTownHasNoTime() {
+        assertNull(times.trip(place(95.0, eastKm = 20.0))) // another destination (양양 is 30 km away), not a café in town
+    }
+
+    @Test
     fun aPlaceThisCarPassedHasNoTime() {
         assertNull(times.trip(place(5.0)))
         assertEquals(0.0, times.trip(place(9.9))!!.km, 1e-9) // right beside it: about to get there

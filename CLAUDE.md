@@ -60,6 +60,15 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   never spoken. No answer before the timer ends counts as candidate 1 (`drop/VoteRules.kt`). Board 11's
   난 패스 is a vote with the value `VoteRules.PASS`: it counts for no place and the vote doesn't wait for that car,
   so `carId in drop.votes` means "answered", not "chose a place".
+- After its answer the driver is back on 04 at once (lead, 2026-11-15): board 11's 응답하기 (a proposal's 찬성 / 반대
+  too) sends the vote, says which answer went out ("강문 덴켄에 투표했어요", `VotePick.answeredLine`) and goes to 04;
+  board 14 opens over it once the vote ends. The car that sends a board 10 vote still answers it on board 11 first.
+  The bot crew's bots all answer (`FakeCrewRepository.botChoice`): 삼촌 place 1 after 3 s, 민지 place 2 after 5 s,
+  이모 the last place after 8 s, so with three places this car's answer decides and ends the vote. A bot that sent
+  the drop doesn't vote (the DEMO panel's votes wait for the timer or 투표 바로 마감). A vote this car hasn't
+  answered is said once more 30 s before it ends ("휴게소 투표가 30초 남았어요. 답이 없으면 1번 횡성휴게소에 투표한 걸로
+  봐요"; a proposal: "…답이 없으면 찬성으로 봐요"), so its board 14 is no surprise; not a fuel invite or this car's own
+  proposal (`DropRoutingMemory.dueReminders`).
 - Place search (boards 02 and 10), like Kakao Map's: typing shows the places that fit (Kakao Local keyword
   search, `navi/KakaoPlaceSearch.kt`, key `cardrop.kakaoRestKey`, nearby places first, distance from the car's
   GPS via `AppContainer.myPosition()`). The shared parts: `navi/PlaceSuggester.kt` (2+ letters, 300 ms pause,
@@ -83,7 +92,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   wasn't sent to never see it (`Drop.isFor`), and only the sender and its receivers vote (`Drop.voterIds`).
 - 목적지 변경 is a proposal, not an AI vote (Member A, 2026-11-14; not on the design board): board 08's tile opens
   "어디로 제안할까요?" on the same screen (`drop/DestinationProposal.kt`, board 02's place search), then "여기로 제안을
-  보낼까요?" sends a DESTINATION drop with one place (`ProposalRules.draft`). The receivers get board 11 as
+  보낼까요?" sends a DESTINATION drop with one place (`ProposalRules.draft`); the sender is then back on 04 with
+  "목적지 변경 제안을 보냈어요" (lead, 2026-11-15; it used to wait on board 11). The receivers get board 11 as
   `drop/ProposalVoteScreen.kt`: 찬성 / 반대 / 다른 목적지 제안하기 (the same search, without the place it answers; it
   says 반대 first). Rules in `VoteRules`: `isProposal` = a DESTINATION drop with exactly one place (board 10 with one
   destination ticked is one too); the sender has answered (찬성) even without a written vote; one 반대
@@ -340,7 +350,9 @@ shares its position through Firebase about once a second, so each one draws the 
   or while the route still ends at the old destination after a change.
 - Boards 10 and 11's times and distances ("12분 · 4대 평균", "6분", "9km") come from `drive/PlaceTimes.kt`
   (`AppContainer.placeTimes`, unit tested): along the live route, only for places within 1.5 km of it that the
-  car hasn't passed; the other cars are timed from this one.
+  car hasn't passed; the other cars are timed from this one. In the destination's town (the route's last 10 km) a
+  place up to 10 km from the route also gets a time: the road to its nearest point, then 1.3 x the straight line at
+  30 km/h (lead, 2026-11-15; 안목 보사노바 is 5 km from the way to 경포해변 and had none).
 - `navi/InAppNavigatorPanel.kt` + `navi/NavPanelState.kt` - the design's overlays (turn banner, CarDrop
   toast, speed from GPS, ETA card), "전체 경로" and, after dragging the map, "현재 위치".
 - `navi/NavMap.kt` - MapLibre (`org.maplibre.gl:android-sdk-opengl:13.0.2`) with free OpenFreeMap tiles

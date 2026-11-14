@@ -145,7 +145,8 @@ class FakeCrewRepository(
         if (_crew.value?.isStarted != true) return
         val drop = newDrop(fromCarId = from.id, draft = draft).let { drop ->
             val first = drop.candidates.firstOrNull()
-            if (drop.kind == DropKind.DECISION && !VoteRules.isProposal(drop) && first != null) {
+            // A quick drop's sender doesn't vote (Drop.senderVotes).
+            if (drop.kind == DropKind.DECISION && drop.senderVotes && !VoteRules.isProposal(drop) && first != null) {
                 drop.copy(votes = mapOf(from.id to first.id))
             } else {
                 drop
@@ -204,6 +205,10 @@ class FakeCrewRepository(
         updateDrop(dropId) { drop ->
             // A bot only answers drops that were sent to it.
             if (drop.isDecided || !drop.isFor(bot.id)) return@updateDrop drop
+            // A quick drop's one place (예 / 아니요): 이모 says 아니요, so the demo shows a car that keeps its route.
+            if (VoteRules.isYesNo(drop) && bot.id == DemoData.aunt.id) {
+                return@updateDrop drop.copy(votes = drop.votes + (bot.id to VoteRules.PASS))
+            }
             val candidate = botChoice(bot, drop.candidates) ?: return@updateDrop drop
             drop.copy(votes = drop.votes + (bot.id to candidate.id))
         }

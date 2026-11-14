@@ -272,6 +272,7 @@ def main():
     print(f"Driving {total - km:.0f} km at {args.kmh:.0f} km/h x{args.speed:g}. Ctrl+C to stop.")
     tick = 0
     was_parked = False
+    last_km = km
     try:
         while km <= total:
             if stop and km >= stop[2]:
@@ -283,19 +284,31 @@ def main():
                     time.sleep(1.0)
                 print(f"  Leaving {name}.")
                 km, stop = stop_km, None
-            lat, lng = point_at(points, cumulative, km)
-            # The DEMO panel's P (CarDrop's gear, drive/GearFile.kt): stand still here until the gear leaves P.
+                last_km = stop_km
+            # The DEMO panel's P (CarDrop's gear, drive/GearFile.kt): stand still where the car is until the gear
+            # leaves P. Parked, it stays at the last place it was sent, so the app sees 0 km/h at once (a jump to the
+            # next point would read as driving), and CarDrop's games open only after that.
             parked = device_gear(adb) == "PARK"
             if parked != was_parked:
-                print(f"  {'Parked (P): standing still' if parked else 'Gear out of P: driving on'} at km {km:.1f}.")
+                print(f"  {'Parked (P): standing still' if parked else 'Gear out of P: driving on'} at km {last_km:.1f}.")
                 was_parked = parked
-            send(lat, lng, 0.0 if parked else knots)
-            if tick % 10 == 0 and not parked:
-                print(f"  km {km:6.1f} / {total:.0f}   {lat:.5f}, {lng:.5f}")
-            tick += 1
-            if not parked:
+            if parked:
+                lat, lng = point_at(points, cumulative, last_km)
+                send(lat, lng, 0.0)
+                km = last_km + step  # drive on from here after D
+            else:
+                lat, lng = point_at(points, cumulative, km)
+                send(lat, lng, knots)
+                last_km = km
+                if tick % 10 == 0:
+                    print(f"  km {km:6.1f} / {total:.0f}   {lat:.5f}, {lng:.5f}")
                 km += step
-            time.sleep(1.0)
+            tick += 1
+            # Wait a second, but look at the gear 4 times meanwhile, so P stops the car within a moment.
+            for _ in range(4):
+                time.sleep(0.25)
+                if not parked and device_gear(adb) == "PARK":
+                    break
         print("Arrived at 경포해변.")
     except KeyboardInterrupt:
         print(f"\nStopped at km {km:.1f}.")
@@ -303,7 +316,7 @@ def main():
         # The emulator keeps repeating the last fix, with its speed, after the script ends. Without this last fix
         # at 0 km/h the car would look like it still drives at --kmh, and the games (board 15) would never open.
         try:
-            lat, lng = point_at(points, cumulative, min(km, total))
+            lat, lng = point_at(points, cumulative, min(last_km, total))
             send(lat, lng, 0.0)
         except (Exception, KeyboardInterrupt):
             pass

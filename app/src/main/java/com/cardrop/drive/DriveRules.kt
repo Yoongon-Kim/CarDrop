@@ -38,12 +38,23 @@ fun drivingInput(gear: Gear, fix: GpsFix?, now: Long): DrivingInput = when (gear
         fix.speedKmh?.let { it.isFinite() && it > 0 } == true) DrivingInput.MOVING else DrivingInput.UNKNOWN
 }
 
+/** Above this GPS speed the car counts as moving for the games, whatever the gear says. */
+const val GAMES_MAX_SPEED_KMH = 5.0
+
 /**
- * True when board 15 (the games) may open: only in P. Any other gear, or an unknown one, keeps them closed.
- * The gear alone decides (the user's choice for the 시연, 2026-11-14): on the emulator P is the DEMO panel's button,
- * so the games open there even while `tools/drive_gps.py` is driving the car.
+ * True when board 15 (the games) may open: the gear is P, and the GPS doesn't say the car is still moving.
+ * So in the 시연 the car stops first and the games open after it: the DEMO panel's P makes `tools/drive_gps.py`
+ * stand still (drive/GearFile.kt), and the games wait for its first 0 km/h reading (about a second).
+ * A GPS reading older than 10 s (or none, or one without a speed) can't keep them closed: a parked car indoors has
+ * no fix. A reading up to 5 s ahead of [now] still counts (the GPS clock differs a little). Any other gear, or an
+ * unknown one, keeps them closed.
  */
-fun gamesOpen(gear: Gear): Boolean = gear == Gear.PARK
+fun gamesOpen(gear: Gear, fix: GpsFix?, now: Long): Boolean {
+    if (gear != Gear.PARK) return false
+    val fresh = fix != null && now - fix.timeMillis in -5_000..10_000
+    val moving = fresh && fix?.speedKmh?.let { it.isFinite() && it > GAMES_MAX_SPEED_KMH } == true
+    return !moving
+}
 
 /** Route distance plus the offset to the station and a 5 km reserve. */
 fun reachableFuelStops(pool: List<Place>, geometry: RouteGeometry, progressKm: Double, rangeKm: Float?, minimumAheadKm: Double = 0.5): List<Place> {

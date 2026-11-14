@@ -13,7 +13,8 @@ Usage (emulator running):
     python3 tools/drive_gps.py --stop 여주휴게소     # pull into that stop, stand still 20 s, drive on
     python3 tools/drive_gps.py --car uncle        # 삼촌 차 with the real crew: waits for the host's 출발
     python3 tools/drive_gps.py --serial emulator-5556 --car minji   # the second emulator on this Mac
-Ctrl+C stops; the car stays where it is. The reported speed is always --kmh (not sped up), like a real car.
+Ctrl+C stops; the car stays where it is, standing still (a last fix at 0 km/h). The reported speed is always --kmh
+(not sped up), like a real car.
 
 --car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
 holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, every car joined, or
@@ -278,6 +279,14 @@ def main():
         print("Arrived at 경포해변.")
     except KeyboardInterrupt:
         print(f"\nStopped at km {km:.1f}.")
+    finally:
+        # The emulator keeps repeating the last fix, with its speed, after the script ends. Without this last fix
+        # at 0 km/h the car would look like it still drives at --kmh, and the games (board 15) would never open.
+        try:
+            lat, lng = point_at(points, cumulative, min(km, total))
+            send(lat, lng, 0.0)
+        except (Exception, KeyboardInterrupt):
+            pass
 
 
 if __name__ == "__main__":

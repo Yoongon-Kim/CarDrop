@@ -122,8 +122,9 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   row (lead, 2026-11-15; it read "안전운전 대결 · DEMO"): board 16 opens from the rail's 기록 or the 운전 기록 quick drop.
   Keep entry-token cancellation, speech priority and the shared Claude-backed `AiService` intact.
   See `SAFETY_SCORE_PLAN.md` and README for settings and validation.
-  With the DEMO car, board 16 also shows three finished sample trips of this week (`safety/SafetySamples.kt`, unit
-  tested; Member A, 2026-11-15): 속초 96, 양양 91, 남이섬 100, in memory only. "이번 주 내 기록" (`WeekCard`) ends level
+  With the DEMO car, board 16 also shows finished sample trips (`safety/SafetySamples.kt`, unit tested; Member A,
+  2026-11-15), in memory only: this week 속초 96, 양양 91, 남이섬 100, and before it (지난 내 차 기록 only) 안목해변 88,
+  양떼목장 94, 쁘띠프랑스 85. A demo drive itself scores 100 unless the DEMO panel's 급가속 / 급정거 is pressed. "이번 주 내 기록" (`WeekCard`) ends level
   with the ranking card beside it; once the car has stopped a tap opens `Screen.SafetyWeek` (`SafetyWeekScreen`): the
   week's average and every trip of it, each opening board 17. While driving the card can't be tapped and says "주행 중에는
   볼 수 없어요 · 정차 후 열 수 있어요", and the week screen shows a note instead of the trips, like board 17.

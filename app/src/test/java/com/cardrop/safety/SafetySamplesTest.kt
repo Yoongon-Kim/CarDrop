@@ -36,7 +36,16 @@ class SafetySamplesTest {
     fun samplesAreAddedOnceNewestFirst() {
         val stored = SafetySamples.week("dad", "아빠 차", now).take(1)
         val all = SafetySamples.withSamples(stored, "dad", "아빠 차", now)
-        assertEquals(3, all.size)
+        assertEquals(6, all.size) // 3 this week + 3 before, the stored one not twice
         assertEquals(all.sortedByDescending { it.updatedAtMillis }, all)
+    }
+
+    @Test
+    fun earlierTripsAreBeforeThisWeekWithOtherScores() {
+        val past = SafetySamples.past("dad", "아빠 차", now)
+        assertEquals(listOf(88, 94, 85), past.map { it.score })
+        past.forEach { assertTrue(it.startedAtMillis < startOfWeek(now)) } // not in "이번 주"
+        val ids = (SafetySamples.week("dad", "아빠 차", now) + past).map { it.id }
+        assertEquals(ids.size, ids.toSet().size)
     }
 }

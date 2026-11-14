@@ -213,7 +213,9 @@ landed on `main`.
   range or gear. A value that fails stays null (gear: `UNKNOWN`); `adb logcat -s CarDropVehicle` shows why.
 - The gear and range APIs are deprecated in 2.3.2 ("use the Google GEAR_SELECTION / RANGE_REMAINING
   property", i.e. Android Automotive `CarPropertyManager`). They still compile; check them on the emulator.
-  If gear stays `UNKNOWN`, the game (board 15) stays closed: it opens only in P (`ai/QuizScreen.kt`).
+  If gear stays `UNKNOWN`, the games (board 15) stay closed: they open in P once the car has stopped, i.e. no GPS
+  reading of the last 10 s says faster than 5 km/h (`gamesOpen` in `drive/DriveRules.kt`, unit tested). In the 시연 the
+  DEMO panel's P stops `drive_gps.py` first, then the games open. Closed, board 15 shows one card and no game at all.
 - The SDK has no vehicle speed or location API. Crew positions come from Pleos FusedLocation with a GPS fallback (`navi/GpsCrewPositions.kt`).
 - The reference for SDK lifecycle and capability checks is `../pleos-sample-vehicle-app`.
 
@@ -250,7 +252,10 @@ GPS position, live routes, rerouting, turn guidance. Only the GPS input is simul
 **Run the demo car:** start the emulator and the app, then
 `python3 tools/drive_gps.py` (drives the 영동고속도로 from km 40 at 6x speed, 1 GPS fix per second via
 `adb emu geo fix`; `--speed 1` for real time, `--start-km`, `--gpx` for Extended controls,
-`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). The emulator's
+`--stop 여주휴게소` to pull into a stop and stand still 20 s, so the navigator says "도착"). While CarDrop's gear is P
+(the DEMO panel's P) the script holds the car still at 0 km/h where it was and drives on after D: the app writes its
+gear to `files/gear.txt` (`drive/GearFile.kt`), read 4 times a second like the crew code. Ctrl+C or arriving ends with a 0 km/h fix
+(the emulator keeps repeating the last one). The emulator's
 own route player can't make Korean routes (Google has no driving directions in Korea). Grant location
 when the app asks (or `adb shell pm grant --user 10 com.cardrop android.permission.ACCESS_FINE_LOCATION`).
 

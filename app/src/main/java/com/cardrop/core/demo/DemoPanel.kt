@@ -53,7 +53,7 @@ import kotlin.math.roundToInt
 @Composable
 fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
     val vehicle = container.vehicle as? FakeVehicleRepository
-    val crewRepo = container.crew as? FakeCrewRepository
+    val crewRepo = container.demoCrew
     val snapshot by container.vehicle.snapshot.collectAsStateWithLifecycle()
     val crew by container.crew.crew.collectAsStateWithLifecycle()
 

@@ -126,8 +126,10 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   See `SAFETY_SCORE_PLAN.md` and README for settings and validation.
   With the DEMO car, board 16 also shows finished sample trips (`safety/SafetySamples.kt`, unit tested; Member A,
   2026-11-15), in memory only: this week 속초 96, 양양 91, 남이섬 100, and before it (지난 내 차 기록 only) 안목해변 88,
-  양떼목장 94, 쁘띠프랑스 85. A demo drive itself scores 100 unless the DEMO panel's 급가속 / 급정거 is pressed. "이번 주 내 기록" (`WeekCard`) ends level
-  with the ranking card beside it; once the car has stopped a tap opens `Screen.SafetyWeek` (`SafetyWeekScreen`): the
+  양떼목장 94, 쁘띠프랑스 85, under this device's car ("삼촌 차 (나)", `SafetySamples.carName`: the samples are made before
+  any crew exists). A demo drive itself scores 100 unless the DEMO panel's 급가속 / 급정거 is pressed. "이번 주 내 기록"
+  (`WeekCard`) ends level with the ranking card beside it, the taller of the two setting the height (a ranking of few cars
+  is the shorter one; lead, 2026-11-15); once the car has stopped a tap opens `Screen.SafetyWeek` (`SafetyWeekScreen`): the
   week's average and every trip of it, each opening board 17. While driving the card can't be tapped and says "주행 중에는
   볼 수 없어요 · 정차 후 열 수 있어요", and the week screen shows a note instead of the trips, like board 17.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,

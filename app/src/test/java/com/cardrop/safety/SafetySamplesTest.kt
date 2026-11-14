@@ -1,5 +1,6 @@
 package com.cardrop.safety
 
+import com.cardrop.core.demo.DemoData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,6 +39,15 @@ class SafetySamplesTest {
         val all = SafetySamples.withSamples(stored, "dad", "아빠 차", now)
         assertEquals(6, all.size) // 3 this week + 3 before, the stored one not twice
         assertEquals(all.sortedByDescending { it.updatedAtMillis }, all)
+    }
+
+    @Test
+    fun theSamplesCarryThisDevicesCarName() {
+        // Made as the app starts, before any crew: named by the car's id, as the crew names this car (not "아빠 차" for all).
+        assertEquals("아빠 차 (나)", SafetySamples.carName(DemoData.me.id))
+        assertEquals("삼촌 차 (나)", SafetySamples.carName(DemoData.uncle.id))
+        assertEquals("이모 차 (나)", SafetySamples.carName(DemoData.aunt.id))
+        assertEquals("내 차", SafetySamples.carName("car-unknown"))
     }
 
     @Test

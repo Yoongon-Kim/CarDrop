@@ -84,9 +84,9 @@ class SafetyCoordinator(
         scope.launch {
             val stored = withContext(Dispatchers.IO) { store.load() }
             // The DEMO car: three finished sample trips of this week, so the 시연 has something to show (SafetySamples).
+            // No crew yet at this point, so the car's name comes from its id (SafetySamples.carName).
             history.value = if (demo) {
-                val myName = crew.crew.value?.cars?.firstOrNull { it.id == crew.myCarId }?.name ?: "아빠 차"
-                SafetySamples.withSamples(stored, crew.myCarId, myName, System.currentTimeMillis())
+                SafetySamples.withSamples(stored, crew.myCarId, SafetySamples.carName(crew.myCarId), System.currentTimeMillis())
             } else stored
             crew.crew.collectLatest { group ->
                 val started = group?.startedAtMillis

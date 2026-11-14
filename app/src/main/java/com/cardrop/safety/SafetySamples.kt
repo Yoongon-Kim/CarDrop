@@ -1,5 +1,6 @@
 package com.cardrop.safety
 
+import com.cardrop.core.demo.DemoData
 import java.util.Calendar
 
 /**
@@ -78,6 +79,17 @@ object SafetySamples {
             movingSeconds = seconds,
             distanceKm = trip.km,
         )
+    }
+
+    /**
+     * The name the sample trips carry (board 17 shows it): this device's car among the four demo cars, by [carId], as the
+     * crew names this car ("삼촌 차 (나)", like a real record). The samples are made as the app starts, before this car's
+     * crew exists, so the crew can't name it: they used to say "아빠 차" on every device, also on 삼촌 · 민지 · 이모 차's
+     * (lead, 2026-11-15).
+     */
+    fun carName(carId: String): String {
+        val car = listOf(DemoData.me, DemoData.uncle, DemoData.minji, DemoData.aunt).firstOrNull { it.id == carId } ?: return "내 차"
+        return if ("(나)" in car.name) car.name else "${car.name} (나)"
     }
 
     /** [stored] with all the samples added (newest first), unless a record with the same id is already there. */

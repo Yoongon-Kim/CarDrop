@@ -282,6 +282,7 @@ fun CarDropApp(container: AppContainer) {
                 // passes; the answers are in the inbox (lead, 2026-11-15: it used to wait on board 11).
                 onProposalSent = { navigator.switchTab(Screen.Drive) },
                 onSong = { toCarIds -> navigator.go(Screen.SongSend(toCarIds)) },
+                gamesOpen = driveVm.gamesOpen.collectAsStateWithLifecycle().value,
             )
             // Board 12: after 노래 드랍하기 the driver is back on 04, with a quiet caption.
             is Screen.SongSend -> SongSendScreen(

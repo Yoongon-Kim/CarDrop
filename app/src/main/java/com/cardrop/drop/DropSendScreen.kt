@@ -59,7 +59,8 @@ import kotlinx.coroutines.launch
  * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates). The arrow at the row's end (or a swipe) turns it to
  * 카페 (board 10 with the AI's cafés) and 직접 추가 (board 10 without AI picks: the driver adds the places).
  * 한마디 and 음성 메시지 open board 09, 노래 드랍 board 12 ([onSong]). They all get the chosen cars (empty = whole
- * crew). 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play. The ✕ at the top
+ * crew). 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play; only in P
+ * ([gamesOpen]), greyed out while driving. The ✕ at the top
  * right ([onClose]) goes back to 홈 (board 04).
  *
  * 목적지 변경 is different: a driver who wants another destination knows where, so the tile opens
@@ -75,6 +76,8 @@ fun DropSendScreen(
     onClose: () -> Unit,
     onProposalSent: (Drop) -> Unit,
     onSong: (toCarIds: List<String>) -> Unit,
+    /** False while the car is driving ([com.cardrop.drive.gamesOpen]): 게임 초대 is greyed out and can't be tapped. */
+    gamesOpen: Boolean = true,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
@@ -153,7 +156,12 @@ fun DropSendScreen(
                 TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f)) {
                     onSong(toCarIds)
                 }
-                TopicTile("게임 초대", "정차 시 시작", CdIcons.Game, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onGames)
+                // Only once the car has stopped (P): while driving it is greyed out, like 04's 게임 초대 quick drop, rather
+                // than opening board 15's "주행 중에는 게임을 열 수 없어요" (Member A, 2026-11-15).
+                TopicTile(
+                    "게임 초대", "정차 시 시작", CdIcons.Game, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f),
+                    enabled = gamesOpen, onClick = onGames,
+                )
                 TopicTile(
                     "같이 켜기", "P 정차 중 · 포인트", CdIcons.Power, CdColors.YellowLight, CdColors.YellowDeep, Modifier.weight(1f),
                     enabled = false, metaColor = CdColors.OrangeDark, metaWeight = FontWeight.ExtraBold,

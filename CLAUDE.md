@@ -130,7 +130,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
   vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time. 게임 초대 also waits for the car to
-  stop: greyed out and not tappable unless `gamesOpen` (`DriveViewModel.gamesOpen`; Member A, 2026-11-15).
+  stop: greyed out and not tappable unless `gamesOpen` (`DriveViewModel.gamesOpen`; Member A, 2026-11-15), as is
+  board 08's 게임 초대 tile.
   Two to a row (Member A, 2026-11-15; in four to a row the names were too small to read): the drops in their order in
   a 2 x 2 of bigger tiles (88 high, 19 sp Bold), the fifth drop on in rows under it, and one dashed "+ 추가" after the last
   drop while one is left to pick (`QuickDropRules.gridRows`, `showsAddSlot`, `MAX_SLOTS` = 8;

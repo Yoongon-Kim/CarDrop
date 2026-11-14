@@ -46,10 +46,12 @@ const val GAMES_MAX_SPEED_KMH = 5.0
  * The gear alone isn't enough on the emulator: the fake gear is a DEMO-panel button, while `tools/drive_gps.py`
  * drives the car at 100 km/h. A GPS reading older than 10 s (or none, or one without a speed) can't close the
  * games: a parked car indoors has no fix. Any other gear, or an unknown one, keeps them closed.
+ * A reading up to 5 s "in the future" still counts: the GPS clock and the screen's clock differ a little, and
+ * taking only past readings made the games open and close every second while driving.
  */
 fun gamesOpen(gear: Gear, fix: GpsFix?, now: Long): Boolean {
     if (gear != Gear.PARK) return false
-    val fresh = fix != null && now - fix.timeMillis in 0..10_000
+    val fresh = fix != null && now - fix.timeMillis in -5_000..10_000
     val moving = fresh && fix?.speedKmh?.let { it.isFinite() && it > GAMES_MAX_SPEED_KMH } == true
     return !moving
 }

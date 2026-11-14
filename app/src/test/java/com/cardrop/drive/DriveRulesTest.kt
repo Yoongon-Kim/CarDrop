@@ -67,9 +67,12 @@ class DriveRulesTest {
         // The gear says P but the GPS says 100 km/h (the emulator's fake gear with drive_gps.py): closed.
         assertFalse(gamesOpen(Gear.PARK, fix(100.0), now))
         assertFalse(gamesOpen(Gear.PARK, fix(5.1), now))
-        // An old reading (over 10 s) or one from the future says nothing about now.
+        // An old reading (over 10 s) says nothing about now.
         assertTrue(gamesOpen(Gear.PARK, fix(100.0, at = now - 10_001), now))
-        assertTrue(gamesOpen(Gear.PARK, fix(100.0, at = now + 1), now))
+        // A reading a little ahead of this clock (the GPS clock differs) is still now: closed, without flicker.
+        assertFalse(gamesOpen(Gear.PARK, fix(100.0, at = now + 1), now))
+        assertFalse(gamesOpen(Gear.PARK, fix(100.0, at = now + 900), now))
+        assertTrue(gamesOpen(Gear.PARK, fix(100.0, at = now + 5_001), now))
         // Any other gear keeps the games closed, standing still too.
         listOf(Gear.DRIVE, Gear.REVERSE, Gear.NEUTRAL, Gear.UNKNOWN).forEach {
             assertFalse(gamesOpen(it, null, now))

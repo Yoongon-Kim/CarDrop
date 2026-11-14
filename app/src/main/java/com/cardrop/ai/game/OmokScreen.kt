@@ -56,15 +56,17 @@ fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: Lis
     val openRequests by omok.openRequests.collectAsStateWithLifecycle()
     LaunchedEffect(openRequests) { if (openRequests > 0) tab = "omok" }
     val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
-    // A clock that ticks every second while this screen is open, so an old GPS reading stops counting.
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    // Ticks every second while this screen is open, so the check runs again and an old GPS reading stops counting.
+    var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         while (true) {
-            now = System.currentTimeMillis()
             delay(1_000)
+            tick++
         }
     }
-    val open = gamesOpen(snapshot.gear, fix, now)
+    // The time is read right here, not kept from the last tick: a GPS reading that came after the tick would look
+    // like it is from the future, and the games opened and closed every second while driving.
+    val open = remember(snapshot.gear, fix, tick) { gamesOpen(snapshot.gear, fix, System.currentTimeMillis()) }
     DisposableEffect(omok, tab, open) {
         val owner = Any()
         omok.onGameVisible(owner, open && tab == "omok")

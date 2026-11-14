@@ -276,7 +276,9 @@ fun CarDropApp(container: AppContainer) {
                 // For the eyebrow "덕평자연휴게소 · 4대 모두 정차": the stop this car is parked at, and the crew's messages.
                 val stop by container.inAppNavigation.parkedAt.collectAsStateWithLifecycle()
                 val drops by driveVm.drops.collectAsStateWithLifecycle()
-                GamesScreen(aiVm, container.omok, stop = stop, drops = drops)
+                // The games open once the car has stopped: P, and the GPS no longer says it moves (gamesOpen).
+                val nav by container.inAppNavigation.state.collectAsStateWithLifecycle()
+                GamesScreen(aiVm, container.omok, stop = stop, drops = drops, fix = nav.fix)
             }
         }
     }

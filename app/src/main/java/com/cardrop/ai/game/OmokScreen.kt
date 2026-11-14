@@ -40,19 +40,63 @@ import com.cardrop.core.ui.Pill
 import com.cardrop.core.ui.PrimaryButton
 import com.cardrop.core.ui.ScreenHeader
 import com.cardrop.core.ui.theme.CdColors
+import com.cardrop.drive.gamesOpen
+import androidx.compose.runtime.mutableLongStateOf
+import com.cardrop.core.model.Gear
+import com.cardrop.navi.GpsFix
+import kotlinx.coroutines.delay
 
+/**
+ * Board 15. Until the car is parked ([gamesOpen]: P, and the GPS no longer says it moves) nothing of the games shows,
+ * only a card that says so: no board, no quiz, no 도전장. [fix] = this car's latest GPS reading. A game in progress is
+ * paused meanwhile (the board counts as not visible) and comes back at the next stop.
+ */
 @Composable
-fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: List<Drop>) {
+fun GamesScreen(vm: AiViewModel, omok: OmokCoordinator, stop: Place?, drops: List<Drop>, fix: GpsFix?) {
     var tab by rememberSaveable { mutableStateOf("omok") }
     val openRequests by omok.openRequests.collectAsStateWithLifecycle()
     LaunchedEffect(openRequests) { if (openRequests > 0) tab = "omok" }
-    DisposableEffect(omok, tab) {
+    val snapshot by vm.vehicleSnapshot.collectAsStateWithLifecycle()
+    // Ticks every second while this screen is open, so the check runs again and an old GPS reading stops counting.
+    var tick by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            tick++
+        }
+    }
+    // The time is read right here, not kept from the last tick: a GPS reading that came after the tick would look
+    // like it is from the future.
+    val open = remember(snapshot.gear, fix, tick) { gamesOpen(snapshot.gear, fix, System.currentTimeMillis()) }
+    DisposableEffect(omok, tab, open) {
         val owner = Any()
-        omok.onGameVisible(owner, tab == "omok")
+        omok.onGameVisible(owner, open && tab == "omok")
         onDispose { omok.onGameVisible(owner, false) }
+    }
+    if (!open) {
+        GamesClosed(parking = snapshot.gear == Gear.PARK)
+        return
     }
     if (tab == "omok") OmokScreen(omok, stop, drops) { kind -> vm.chooseQuiz(kind); tab = "quiz" }
     else QuizScreen(vm, stop, drops, onOmok = { tab = "omok" })
+}
+
+/** What board 15 shows until the car is parked: the title, the "P" pill and one card. No game can be seen or started. */
+@Composable
+private fun GamesClosed(parking: Boolean) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        ScreenHeader("주행 중", "게임은 정차 중에만 열려요") { Pill("P · 정차 중에만 열려요") }
+        CdCard(Modifier.fillMaxWidth()) {
+            // In P while the car is still rolling: it opens by itself in a moment.
+            Text(
+                if (parking) "차가 멈추면 열려요" else "주행 중에는 게임을 열 수 없어요",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = CdColors.Ink,
+            )
+            Text("안전한 곳에 세우고 P로 바꾸면 열려요 · 하던 게임은 그대로 이어서 해요", fontSize = 15.sp, color = CdColors.Gray600)
+        }
+    }
 }
 
 @Composable

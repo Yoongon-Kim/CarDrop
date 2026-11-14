@@ -25,7 +25,7 @@ class FuelWarningTracker {
 
 /**
  * The pill on boards 04, 05, 06 and 14. It doesn't limit touch: a passenger may use the screen while
- * driving. Only the game (board 15) is closed outside P, by its own check in `ai/QuizScreen.kt`.
+ * driving. Only the games (board 15) are closed while driving ([gamesOpen], `ai/game/OmokScreen.kt`).
  */
 enum class DrivingInput(val label: String) {
     PARKED("P · 정차 중"), MOVING("주행 중 · 음성 모드"), UNKNOWN("차량 상태 확인 중")
@@ -36,6 +36,24 @@ fun drivingInput(gear: Gear, fix: GpsFix?, now: Long): DrivingInput = when (gear
     Gear.DRIVE, Gear.REVERSE, Gear.NEUTRAL -> DrivingInput.MOVING
     Gear.UNKNOWN -> if (fix != null && now - fix.timeMillis in 0..10_000 &&
         fix.speedKmh?.let { it.isFinite() && it > 0 } == true) DrivingInput.MOVING else DrivingInput.UNKNOWN
+}
+
+/** Above this GPS speed the car counts as moving for the games, whatever the gear says. */
+const val GAMES_MAX_SPEED_KMH = 5.0
+
+/**
+ * True when board 15 (the games) may open: the gear is P, and the GPS doesn't say the car is still moving.
+ * So in the 시연 the car stops first and the games open after it: the DEMO panel's P makes `tools/drive_gps.py`
+ * stand still (drive/GearFile.kt), and the games wait for its first 0 km/h reading (about a second).
+ * A GPS reading older than 10 s (or none, or one without a speed) can't keep them closed: a parked car indoors has
+ * no fix. A reading up to 5 s ahead of [now] still counts (the GPS clock differs a little). Any other gear, or an
+ * unknown one, keeps them closed.
+ */
+fun gamesOpen(gear: Gear, fix: GpsFix?, now: Long): Boolean {
+    if (gear != Gear.PARK) return false
+    val fresh = fix != null && now - fix.timeMillis in -5_000..10_000
+    val moving = fresh && fix?.speedKmh?.let { it.isFinite() && it > GAMES_MAX_SPEED_KMH } == true
+    return !moving
 }
 
 /** Route distance plus the offset to the station and a 5 km reserve. */

@@ -31,6 +31,7 @@ import com.cardrop.drive.PlaceTimes
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.StopNotice
 import com.cardrop.drive.TripCoordinator
+import com.cardrop.drive.GearFile
 import com.cardrop.drive.TripCodeFile
 import com.cardrop.drive.PrefsQuickDropStore
 import com.cardrop.drive.QuickDrops
@@ -59,6 +60,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -210,6 +213,10 @@ class AppContainer(context: Context) {
         // saves none, and an old code from an earlier start is removed.
         appScope.launch(Dispatchers.IO) {
             (firebaseTrip?.crewCode ?: flowOf(null)).collect { TripCodeFile.save(context, it) }
+        }
+        // tools/drive_gps.py also reads the gear (drive/GearFile.kt): the DEMO panel's P holds the demo car still.
+        appScope.launch(Dispatchers.IO) {
+            vehicle.snapshot.map { it.gear }.distinctUntilChanged().collect { GearFile.save(context, it) }
         }
     }
 }

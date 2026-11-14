@@ -278,8 +278,9 @@ fun CarDropApp(container: AppContainer) {
                 onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
                 onGames = { navigator.go(Screen.Games) },
                 onClose = { navigator.switchTab(Screen.Drive) },
-                // 목적지 변경: the proposal just sent opens on board 11, where the answers come in.
-                onProposalSent = { drop -> navigator.go(Screen.Vote(drop.id)) },
+                // 목적지 변경: once the proposal is out, back to 홈 (the voice says so). Board 14 opens by itself if it
+                // passes; the answers are in the inbox (lead, 2026-11-15: it used to wait on board 11).
+                onProposalSent = { navigator.switchTab(Screen.Drive) },
                 onSong = { toCarIds -> navigator.go(Screen.SongSend(toCarIds)) },
             )
             // Board 12: after 노래 드랍하기 the driver is back on 04, with a quiet caption.
@@ -318,14 +319,16 @@ fun CarDropApp(container: AppContainer) {
             is Screen.AiRecommend -> AiRecommendScreen(
                 aiVm, screen.topic, screen.toCarIds, placeTimes = container.placeTimes, onBack = navigator::back,
             ) { drop ->
-                navigator.go(Screen.Vote(drop.id))
+                // This car answers its own vote on board 11. One destination is a proposal: sending it said 찬성,
+                // so back to 홈 as after 목적지 변경's proposal.
+                if (VoteRules.isProposal(drop)) navigator.switchTab(Screen.Drive) else navigator.go(Screen.Vote(drop.id))
             }
             // A pass (난 패스) keeps this car's route: the navigator skips the stop, like 14's "우리 차는 안 들르기".
             is Screen.Vote -> VoteScreen(
                 crewVm, screen.dropId, placeTimes = container.placeTimes, onPass = container.navigation.decisions::skip,
                 onOpenResult = { navigator.go(Screen.Decided(it)) },
-                // A destination proposal: its counter-proposal opens as a new vote; 닫기 after a 반대 goes to 홈.
-                onOpenVote = { navigator.go(Screen.Vote(it)) },
+                // After this car's answer (or a counter-proposal, or 닫기 after a 반대): back to 홈 right away. Board 14
+                // opens over it once the vote ends (DropRouting; lead, 2026-11-15).
                 onClose = { navigator.switchTab(Screen.Drive) },
             )
             is Screen.Decided -> DecidedScreen(driveVm, screen.dropId, onDone = { navigator.switchTab(Screen.Drive) }, voice = container.voice)

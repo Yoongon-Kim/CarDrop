@@ -64,6 +64,12 @@ import com.cardrop.navi.PlaceSuggestionList
  */
 object ProposalRules {
 
+    /**
+     * What the voice says once a proposal went out. The screen then goes back to 홈 right away, and board 14 opens by
+     * itself if the proposal passes (lead, 2026-11-15: it used to stay on board 11 until everyone answered).
+     */
+    const val SENT_LINE = "목적지 변경 제안을 보냈어요"
+
     /** The drop to send for [place]: "속초 해수욕장으로 목적지를 바꿀까요?", with the place's address under it. */
     fun draft(place: Place, toCarIds: List<String>): DropDraft = DropDraft(
         kind = DropKind.DECISION,

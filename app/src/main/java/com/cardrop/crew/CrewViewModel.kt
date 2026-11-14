@@ -30,7 +30,7 @@ class CrewViewModel(
     placeSearch: PlaceSearch? = null,
     /** This car's position (GPS), so nearby places come first and show their distance. */
     here: () -> GeoPoint? = { null },
-    /** Board 02 "말로 검색"; null hides the button. */
+    /** Board 02 "말로 검색" (null hides the button), and what is said once a vote answer or a proposal went out. */
     private val voice: VoiceService? = null,
     /** Board 01: road distance and drive time to the destination (from the navigator), or null. */
     destinationTrip: StateFlow<DestinationTrip?> = MutableStateFlow(null),
@@ -182,7 +182,8 @@ class CrewViewModel(
 
     /**
      * Sends "[place]로 목적지를 바꿀까요?" to [toCarIds] (empty = the whole crew), then [onSent] runs with the new
-     * drop. This car proposed it, so its own answer is 찬성 right away.
+     * drop. This car proposed it, so its own answer is 찬성 right away. The voice says "목적지 변경 제안을 보냈어요":
+     * the screen goes back to 홈 right away ([ProposalRules.SENT_LINE]).
      * [against] = the proposal this one answers ("다른 목적지 제안하기"): this car first says 반대 to it, which
      * turns it down (VoteRules), unless it is over or this car answered it already.
      */
@@ -204,6 +205,7 @@ class CrewViewModel(
             _proposal.value = ProposalSend()
             stopListening()
             destinationSearch.clear()
+            voice?.speak(ProposalRules.SENT_LINE)
             onSent(sent)
         }
     }
@@ -320,8 +322,15 @@ class CrewViewModel(
         viewModelScope.launch { onSent(repo.sendDrop(draft)) }
     }
 
-    fun vote(dropId: String, candidateId: String) {
-        viewModelScope.launch { repo.vote(dropId, candidateId) }
+    /**
+     * Board 11's answer. [said] = what the voice says once it is in ("강문 덴켄에 투표했어요"): board 11 goes back to
+     * 홈 right away, so the voice tells the driver which answer went out.
+     */
+    fun vote(dropId: String, candidateId: String, said: String? = null) {
+        viewModelScope.launch {
+            repo.vote(dropId, candidateId)
+            said?.let { voice?.speak(it) }
+        }
     }
 
     /** Board 01 "말로 읽어주기": says the join code aloud, digit by digit. Nothing without a voice service. */

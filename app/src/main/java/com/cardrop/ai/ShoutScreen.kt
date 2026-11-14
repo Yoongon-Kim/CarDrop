@@ -74,7 +74,6 @@ fun ShoutScreen(
     ShoutContent(
         state = state,
         recipients = shoutRecipients(crew, toCarIds, vm.myCarId),
-        exampleCar = vm.exampleCarName(),
         onBack = onBack,
         onSelect = vm::selectPhrase,
         onSelectSpoken = vm::selectSpoken,
@@ -84,7 +83,6 @@ fun ShoutScreen(
         onCancel = vm::cancelPhrase,
         onSave = vm::savePhrase,
         onDelete = vm::deletePhrase,
-        onListen = vm::listenForShout,
         onSend = { vm.sendChosenShout(toCarIds, onSent) },
         voiceMessage = {
             // 녹음해서 보내기 (Member A, 2026-11-15): the driver's own voice, at most 20 s.
@@ -111,7 +109,6 @@ internal fun shoutRecipients(crew: Crew?, toCarIds: List<String>, myCarId: Strin
 private fun ShoutContent(
     state: ShoutState,
     recipients: String,
-    exampleCar: String,
     onBack: () -> Unit = {},
     onSelect: (Int) -> Unit = {},
     onSelectSpoken: () -> Unit = {},
@@ -121,9 +118,8 @@ private fun ShoutContent(
     onCancel: () -> Unit = {},
     onSave: () -> Unit = {},
     onDelete: () -> Unit = {},
-    onListen: () -> Unit = {},
     onSend: () -> Unit = {},
-    /** The 녹음해서 보내기 row, under 직접 말해서 보내기 (nothing in the previews). */
+    /** The 녹음해서 보내기 row, under the phrases (nothing in the previews). */
     voiceMessage: @Composable () -> Unit = {},
 ) {
     Column(
@@ -145,7 +141,6 @@ private fun ShoutContent(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             PhraseCard(state, onSelect, onSelectSpoken, onNew, onEdit, onChange, onCancel, onSave, onDelete)
-            VoiceRow(exampleCar = exampleCar, enabled = !state.hearing, onListen = onListen)
             voiceMessage()
         }
 
@@ -316,36 +311,6 @@ private fun PhraseEditorBox(
     }
 }
 
-/**
- * The violet "직접 말해서 보내기" row. In the design it's only a hint; here a tap also starts listening,
- * because the app has a real microphone now.
- */
-@Composable
-private fun VoiceRow(exampleCar: String, enabled: Boolean, onListen: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
-            .background(CdColors.VioletLight)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onListen)
-            .padding(horizontal = 22.dp, vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(
-            modifier = Modifier.size(58.dp).clip(CircleShape).background(CdColors.Violet),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(CdIcons.Mic, contentDescription = null, tint = CdColors.White, modifier = Modifier.size(26.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("직접 말해서 보내기", color = CdColors.VioletInk, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
-            // Sent word for word, no AI polish (Member A, 2026-11-15).
-            Text("말한 그대로 글자로 보내요 · “${exampleCar}에 곧 도착해요”", color = CdColors.Gray600, fontSize = 14.sp)
-        }
-    }
-}
-
 @Preview(widthDp = 979, heightDp = 900)
 @Composable
 private fun ShoutPreview() {
@@ -354,7 +319,6 @@ private fun ShoutPreview() {
             ShoutContent(
                 state = ShoutState(phrases = ShoutPhrases.DEFAULTS, selected = 4),
                 recipients = "크루 전체 (3대)",
-                exampleCar = "삼촌 차",
             )
         }
     }
@@ -373,7 +337,6 @@ private fun ShoutEditingPreview() {
                     editor = PhraseEditor(editing = 1, text = "천천히 와요~", error = "이미 있는 문구예요."),
                 ),
                 recipients = "삼촌 차 · 민지 차",
-                exampleCar = "삼촌 차",
             )
         }
     }

@@ -62,8 +62,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   never spoken. Another car's SOCIAL drop (a 한마디, "…에 도착했어요"; a song has board 13) shows as a banner at
   the top of the CarDrop side with the sender and 확인, gone after 8 s or on 확인, a newer one replacing it
   (`drop/SocialBanner.kt`; Member A, 2026-11-15; it was a small black caption). Board 08 has no 음성 메시지 tile any more:
-  일행에게 한마디 (board 09) already types or speaks; its 직접 말해서 보내기 sends what was heard word for word, without
-  the AI's polish (Member A, 2026-11-15). Its 녹음해서 보내기 records the driver's voice (Android's MediaRecorder,
+  일행에게 한마디 (board 09) already has phrases and a voice message. Board 09 has no 직접 말해서 보내기 any more (Member A,
+  2026-11-15): its 녹음해서 보내기 records the driver's voice (Android's MediaRecorder,
   at most 20 s, RECORD_AUDIO asked on first use; `ai/VoiceMessageRow.kt`), then 들어보기 / 다시 녹음 / 보내기 sends a SOCIAL
   drop `DropTopic.VOICE` with the AAC recording Base64 in `message` (about 60 KB for 20 s; `drop/VoiceClipRules.kt`). The
   receivers' banner says "음성 메시지 · 12초" with ▶ 재생 and stays 40 s; the inbox row plays it too. Never played by itself.

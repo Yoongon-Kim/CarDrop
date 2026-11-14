@@ -402,23 +402,6 @@ class AiViewModel(
         _shout.update { it.copy(phrases = saved.phrases, selected = saved.selected, editor = null) }
     }
 
-    /**
-     * Board 09 "직접 말해서 보내기": listen, and what was said becomes the chosen phrase word for word. No AI polish
-     * (Member A, 2026-11-15): the crew gets the driver's own words.
-     */
-    fun listenForShout() {
-        if (_shout.value.hearing) return
-        _shout.update { it.copy(hearing = true, editor = null) }
-        viewModelScope.launch {
-            try {
-                val heard = voice.listen()?.trim()
-                if (!heard.isNullOrBlank()) _shout.update { it.copy(spoken = heard, selected = ShoutState.SPOKEN) }
-            } finally {
-                _shout.update { it.copy(hearing = false) }
-            }
-        }
-    }
-
     private suspend fun polishSpoken(raw: String) {
         val text = try {
             ai.polishMessage(raw)

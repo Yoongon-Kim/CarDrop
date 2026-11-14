@@ -16,6 +16,7 @@ import com.cardrop.crew.CrewRepository
 import com.cardrop.crew.FakeCrewRepository
 import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.core.demo.DemoCar
+import com.cardrop.core.demo.MyName
 import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.model.Place
 import com.cardrop.core.navigation.AppNavigator
@@ -84,7 +85,13 @@ class AppContainer(context: Context) {
      * Otherwise the fake crew with bot cars (also the way back if the network fails).
      */
     val crew: CrewRepository =
-        if (useRealCrew) FirebaseCrewRepository(appScope, FirebaseCrewRepository.carFor(myCar))
+        if (useRealCrew) {
+            // The driver's own name and this device (Member A, 2026-11-15): the seat shows the name on every device.
+            FirebaseCrewRepository(
+                appScope, FirebaseCrewRepository.carFor(myCar),
+                myName = MyName.get(context), deviceId = MyName.deviceId(context),
+            )
+        }
         else FakeCrewRepository(appScope)
     val demoCrew: FakeCrewRepository? get() = crew as? FakeCrewRepository
 

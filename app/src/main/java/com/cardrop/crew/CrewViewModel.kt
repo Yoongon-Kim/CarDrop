@@ -56,6 +56,8 @@ class CrewViewModel(
         data object NotFound : JoinState
         /** The crew's trip started without this car: it didn't join within 1 minute. */
         data object Closed : JoinState
+        /** Every seat is taken (Member A, 2026-11-15). */
+        data object Full : JoinState
     }
 
     private val _join = MutableStateFlow<JoinState>(JoinState.Idle)
@@ -255,6 +257,9 @@ class CrewViewModel(
                 repo.joinCrew(code)
             } catch (e: CrewClosedException) {
                 if (joiningCode == code) _join.value = JoinState.Closed
+                return@launch
+            } catch (e: CrewFullException) {
+                if (joiningCode == code) _join.value = JoinState.Full
                 return@launch
             }
             // The driver erased a digit while we were looking: this answer is for a code no longer on screen.

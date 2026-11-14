@@ -45,7 +45,8 @@ import kotlin.coroutines.resumeWithException
  * ```
  * crews/482917/info    name, hostCarId, destination {id, name, lat, lng, detail},
  *                      createdAt (server time; the others can join for 1 minute), startedAt (missing = not started)
- * crews/482917/cars    car-dad: {connected: true}, car-uncle: {...}, ...; out: true = left out at the start
+ * crews/482917/cars    car-dad: {connected: true, name: "홍승현", device: <id>}, car-uncle: {...}, ...;
+ *                      out: true = left out at the start. name / device = the person who took that seat (below)
  * crews/482917/drops   <dropId>: {fromCarId, kind, topic, title, ..., votes: {carId: candidateId}}
  * ```
  * tools/drive_gps.py reads `info/startedAt` too, to drive off with the host. Logs: `adb logcat -s CarDropCrew`.
@@ -54,9 +55,21 @@ class FirebaseCrewRepository(
     private val scope: CoroutineScope,
     myCar: Car,
     databaseUrl: String = DATABASE_URL,
+    /**
+     * The name the driver typed on the start question (Member A, 2026-11-15), e.g. "홍승현": written to this car's
+     * seat, so every device shows it instead of 아빠 / 삼촌 / 민지 / 이모 차. Null = the seat's design name.
+     */
+    private val myName: String? = null,
+    /** This device, so it gets its own seat back when it joins the same crew again (e.g. after a restart). */
+    private val deviceId: String = "",
 ) : CrewRepository {
 
-    override val myCarId: String = myCar.id
+    /**
+     * This device's seat: the host is 아빠 차's seat; a car that joins with the code takes the first free seat
+     * ([joinCrew]), so the id is only final after joining. Everything that needs it asks again (`{ crew.myCarId }`).
+     */
+    @Volatile private var seat: String = myCar.id
+    override val myCarId: String get() = seat
 
     private val _crew = MutableStateFlow<Crew?>(null)
     override val crew: StateFlow<Crew?> = _crew
@@ -110,7 +123,9 @@ class FirebaseCrewRepository(
                     "name" to name, "hostCarId" to myCarId, "destination" to placeToMap(destination),
                     "createdAt" to ServerValue.TIMESTAMP,
                 ),
-                "cars" to LINEUP.associate { car -> car.id to mapOf("connected" to (car.id == myCarId)) },
+                "cars" to LINEUP.associate { car ->
+                    car.id to if (car.id == myCarId) seatClaim() else mapOf("connected" to false)
+                },
             ),
         ).await()
         startListening(ref)
@@ -122,10 +137,15 @@ class FirebaseCrewRepository(
         val ref = db.getReference("crews").child(digits)
         val info = ref.child("info").get().await()
         if (!info.exists()) return null
-        // Left out at the start (not there within 1 minute): the crew went without this car.
-        val mine = ref.child("cars").child(myCarId).get().await()
-        if (mine.child("out").value == true && mine.child("connected").value != true) throw CrewClosedException()
-        ref.child("cars").child(myCarId).child("connected").setValue(true).await()
+        // Take a seat (Member A, 2026-11-15): this device's own if it had one in this crew, else the first free one.
+        // A transaction, so two cars joining at once never get the same seat.
+        val hostId = info.child("hostCarId").getValue(String::class.java)
+        val pick = claimSeat(ref.child("cars"), LINEUP.map { it.id }.filter { it != hostId })
+        when (pick) {
+            SeatRules.Pick.Closed -> throw CrewClosedException()
+            SeatRules.Pick.Full -> throw CrewFullException()
+            is SeatRules.Pick.Take -> seat = pick.id
+        }
         startListening(ref)
         return _crew.value ?: parseCrew(digits, ref.get().await())
     }
@@ -256,6 +276,36 @@ class FirebaseCrewRepository(
         }
     }
 
+    /** Picks a seat among [ids] and writes [seatClaim] to it, in one transaction. */
+    private suspend fun claimSeat(cars: DatabaseReference, ids: List<String>): SeatRules.Pick =
+        suspendCancellableCoroutine { cont ->
+            var pick: SeatRules.Pick = SeatRules.Pick.Full
+            cars.runTransaction(object : Transaction.Handler {
+                override fun doTransaction(current: MutableData): Transaction.Result {
+                    val seats = ids.map { id ->
+                        val c = current.child(id)
+                        SeatRules.Seat(
+                            id = id,
+                            device = c.child("device").getValue(String::class.java),
+                            connected = c.child("connected").value == true,
+                            out = c.child("out").value == true,
+                        )
+                    }
+                    pick = SeatRules.pick(seats, deviceId)
+                    val take = pick as? SeatRules.Pick.Take ?: return Transaction.abort()
+                    seatClaim().forEach { (key, value) -> current.child(take.id).child(key).value = value }
+                    return Transaction.success(current)
+                }
+                override fun onComplete(error: DatabaseError?, committed: Boolean, data: DataSnapshot?) {
+                    if (error != null) cont.resumeWithException(error.toException()) else cont.resume(pick)
+                }
+            })
+        }
+
+    /** What this device writes to its seat: connected, its name and the device. */
+    private fun seatClaim(): Map<String, Any> =
+        mapOf("connected" to true, "device" to deviceId) + (myName?.let { mapOf("name" to it) } ?: emptyMap())
+
     // ---- reading the database ----
 
     private fun parseCrew(code: String, snapshot: DataSnapshot): Crew? {
@@ -269,7 +319,12 @@ class FirebaseCrewRepository(
             .filter { id -> snapshot.child("cars").child(id).child("out").value == true }
             .toSet()
         val createdAt = info.child("createdAt").number()?.toLong()
+        // The names the drivers typed (seats without one keep the design's name).
+        val names = LINEUP.mapNotNull { car ->
+            snapshot.child("cars").child(car.id).child("name").getValue(String::class.java)?.let { car.id to it }
+        }.toMap()
         return buildCrew(
+            names = names,
             code = code,
             name = info.child("name").getValue(String::class.java) ?: DemoData.DEMO_CREW_NAME,
             hostCarId = info.child("hostCarId").getValue(String::class.java) ?: myCarId,
@@ -294,6 +349,7 @@ class FirebaseCrewRepository(
         leftOut: Set<String> = emptySet(),
         joinDeadlineMillis: Long? = null,
         startedAtMillis: Long? = null,
+        names: Map<String, String> = emptyMap(),
     ) = Crew(
         code = code,
         name = name,
@@ -301,8 +357,9 @@ class FirebaseCrewRepository(
         hostCarId = hostCarId,
         cars = LINEUP.filter { it.id !in leftOut || it.id in connected || it.id == myCarId }.map { car ->
             val mine = car.id == myCarId
+            val shown = names[car.id] ?: if (mine) myName ?: car.name else car.name
             car.copy(
-                name = if (mine) "${car.name} (나)" else car.name,
+                name = if (mine) "$shown (나)" else shown,
                 isMe = mine,
                 isBot = false,
                 connected = mine || car.id in connected,

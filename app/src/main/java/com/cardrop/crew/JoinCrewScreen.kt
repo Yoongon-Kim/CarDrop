@@ -225,6 +225,10 @@ private fun CrewFound(vm: CrewViewModel, join: CrewViewModel.JoinState, onJoined
             Text("${JoinRules.JOIN_WINDOW_MILLIS / 60_000}분 안에 참여하지 못했어요", style = NoteStyle)
             Text("방장에게 크루를 다시 만들어 달라고 해 주세요", style = NoteStyle)
         }
+        CrewViewModel.JoinState.Full -> RightHalfNote {
+            ErrorText("크루가 가득 찼어요")
+            Text("한 크루에는 4대까지 들어갈 수 있어요", style = NoteStyle)
+        }
         is CrewViewModel.JoinState.Found -> FoundCrewCard(vm, join, onJoined)
     }
 }

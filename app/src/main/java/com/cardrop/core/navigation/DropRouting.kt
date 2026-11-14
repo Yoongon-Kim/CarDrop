@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
  *
  * Opens the right screen when something arrives from another car:
  * - a song drop (SOCIAL) -> board 13 over board 04, never spoken (Member A)
+ * - a 게임 초대 (SOCIAL, GAME) -> [onGameInvite]: the pop-up in P, only the inbox while driving, never spoken (Member A)
  * - any other SOCIAL drop -> the banner at the top (a 한마디, "…에 도착했어요"), never spoken (Member A, 2026-11-15)
  * - a FUEL drop -> board 06 (같이 갈래요?)
  * - any other DECISION drop -> board 11 (vote), announced by voice
@@ -40,6 +41,8 @@ fun DropRoutingEffect(
     memory: DropRoutingMemory,
     /** Another car's SOCIAL drop (not a song): the top banner (drop/SocialBanner.kt), never spoken. */
     onSocialDrop: (Drop) -> Unit,
+    /** Another car's 게임 초대 (drop/GameInvite.kt): CarDropApp shows the pop-up when this car is in P. */
+    onGameInvite: (Drop) -> Unit = {},
 ) {
     LaunchedEffect(crew, memory) {
         crew.drops.collect { drops ->
@@ -47,6 +50,7 @@ fun DropRoutingEffect(
                 val sender = crew.crew.value?.cars?.firstOrNull { it.id == drop.fromCarId }?.name ?: "일행"
                 when {
                     drop.kind == DropKind.SOCIAL && drop.topic == DropTopic.SONG -> navigator.go(Screen.SongGet(drop.id))
+                    drop.kind == DropKind.SOCIAL && drop.topic == DropTopic.GAME -> onGameInvite(drop)
                     drop.kind == DropKind.SOCIAL -> onSocialDrop(drop)
                     drop.topic == DropTopic.FUEL -> {
                         voice.speak(drop.title)
@@ -109,9 +113,11 @@ internal const val REMIND_BEFORE_MILLIS = 30_000L
  * - a fuel invite -> board 06, whose 같이 갈래요 puts the station into the navigator right away
  *   (board 11 would only record a vote, and the station would wait for the vote to end)
  * - any other decision drop -> board 11 (vote)
- * Social drops have no button in the inbox, so they stay on it. Pure Kotlin, unit tested (InboxScreenForTest).
+ * - a 게임 초대 -> the games (board 15), where an omok 도전장 waits for 수락 (Member A, 2026-11-15)
+ * Other social drops have no button in the inbox, so they stay on it. Pure Kotlin, unit tested (InboxScreenForTest).
  */
 fun inboxScreenFor(drop: Drop): Screen = when {
+    drop.kind == DropKind.SOCIAL && drop.topic == DropTopic.GAME -> Screen.Games
     drop.isDecided -> Screen.Decided(drop.id)
     drop.kind == DropKind.DECISION && drop.topic == DropTopic.FUEL -> Screen.FuelThem(drop.id)
     drop.kind == DropKind.DECISION -> Screen.Vote(drop.id)

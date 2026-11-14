@@ -5,6 +5,7 @@ import com.cardrop.core.model.Crew
 import com.cardrop.core.model.Gear
 import com.cardrop.core.model.VehicleSnapshot
 import com.cardrop.crew.CrewRepository
+import com.cardrop.drop.GameInviteRules
 import com.cardrop.vehicle.FakeVehicleRepository
 import com.cardrop.vehicle.VehicleRepository
 import kotlinx.coroutines.CancellationException
@@ -53,6 +54,8 @@ class OmokCoordinator(
     private var lastGeneration = -1
     private var followedKey: String? = null
     private var botThinkingAt = mutableMapOf<String, Long>()
+    /** The game the 게임 초대 pop-up's 수락 opened the game screen for: accepted as soon as this car is ready there. */
+    @Volatile private var acceptOnReady: String? = null
     val myCarId: String get() = crew.myCarId
     val currentCrew: StateFlow<Crew?> get() = crew.crew
 
@@ -103,6 +106,13 @@ class OmokCoordinator(
     private suspend fun tick() {
         clock.value = transport.now()
         refreshReadiness()
+        acceptOnReady?.let { id ->
+            val game = games.value[id]
+            when {
+                game == null || game.whiteId != myCarId || !game.invited(clock.value) -> acceptOnReady = null
+                localReady.value && !pending.value -> { acceptOnReady = null; accept(game) }
+            }
+        }
         val current = crew.crew.value ?: return
         val key = followedKey ?: return
         if (!transport.connected.value) return
@@ -153,6 +163,30 @@ class OmokCoordinator(
             val kept = rooms.filterValues { it.busy(now) || now - it.createdAt < 86_400_000 }
             OmokRules.invite(kept, game, now)
         }
+        // The 게임 초대 drop that goes with it (Member A, 2026-11-15): the opponent's pop-up in P, or its inbox while driving.
+        try {
+            crew.sendDrop(GameInviteRules.omok(id, opponentId))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The 도전장 itself is out; without the drop the opponent still sees it on its game screen.
+        }
+    }
+
+    /**
+     * The 게임 초대 pop-up's 수락 (Member A, 2026-11-15): accepting needs the game screen open in P ([localReady]), so the
+     * pop-up opens it ([openGame]) and this accepts [gameId] once the screen is up, within the invite's minute.
+     */
+    fun acceptWhenReady(gameId: String) {
+        acceptOnReady = gameId
+        openGame()
+        refresh.trySend(Unit)
+    }
+
+    /** The pop-up's 거절: turns down [gameId] if it still waits for this car. */
+    fun decline(gameId: String) {
+        val game = games.value[gameId]?.takeIf { it.whiteId == myCarId && it.invited(transport.now()) } ?: return
+        close(game)
     }
 
     fun accept(game: OmokGame) = action {

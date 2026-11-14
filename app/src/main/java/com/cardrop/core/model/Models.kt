@@ -79,6 +79,12 @@ enum class DropTopic {
 
     /** 노래 드랍 (boards 12, 13): a SOCIAL drop with a song (drop/SongDrop.kt), never voted on. Member A. */
     SONG,
+
+    /**
+     * 게임 초대 (Member A, 2026-11-15): a SOCIAL drop that goes with an omok 도전장 (the game's id in `message`) or a
+     * quiz 도전장. Never spoken: a car in P gets a pop-up (수락 / 거절), a car driving finds it only in its inbox.
+     */
+    GAME,
 }
 
 data class Candidate(

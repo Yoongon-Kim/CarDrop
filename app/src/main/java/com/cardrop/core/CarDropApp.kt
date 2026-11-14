@@ -40,6 +40,7 @@ import com.cardrop.core.demo.DemoPanel
 import com.cardrop.core.demo.DemoRailButton
 import com.cardrop.core.model.Car
 import com.cardrop.core.model.CarColor
+import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.recipientLabel
 import com.cardrop.core.navigation.DropRoutingEffect
@@ -61,6 +62,7 @@ import com.cardrop.drive.QuickDropEditScreen
 import com.cardrop.drive.QuickDrop
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
+import com.cardrop.drop.SocialBanner
 import com.cardrop.drop.SongGetDialog
 import com.cardrop.drop.SongSendScreen
 import com.cardrop.drop.InboxScreen
@@ -138,12 +140,14 @@ fun CarDropApp(container: AppContainer) {
         }
     }
 
+    // Another car's 한마디 (or "…에 도착했어요"): the banner at the top until 확인 or 8 s (drop/SocialBanner.kt).
+    var socialDrop by remember { mutableStateOf<Drop?>(null) }
     DropRoutingEffect(
         crew = container.crew,
         voice = container.voice,
         navigator = navigator,
         memory = container.dropRouting,
-    ) { socialMessage = it }
+    ) { socialDrop = it }
     BackHandler(enabled = navigator.canGoBack) { navigator.back() }
 
     // The trip just started (the host's 출발, every car joined, or the minute for joining is over): board 01 gives way to
@@ -174,6 +178,11 @@ fun CarDropApp(container: AppContainer) {
         navPanel = { InAppNavigatorPanel(container.inAppNavigation, driveVm) },
         overlay = {
             Captions(container, socialMessage)
+            SocialBanner(
+                drop = socialDrop,
+                sender = crewNow?.cars?.firstOrNull { it.id == socialDrop?.fromCarId },
+                onDismiss = { socialDrop = null },
+            )
             if (navigator.current != Screen.Games) OmokInviteNotice(container.omok) { navigator.go(Screen.Games) }
             DemoPanel(container, open = demoOpen, onClose = { demoOpen = false })
         },

@@ -58,7 +58,7 @@ import kotlinx.coroutines.launch
  * Choose who gets it (크루 전체, or any cars ticked one by one), then what to send: a decision topic
  * (휴게소, 식사, 주유 · 충전) opens board 10 (AI candidates). The arrow at the row's end (or a swipe) turns it to
  * 카페 (board 10 with the AI's cafés) and 직접 추가 (board 10 without AI picks: the driver adds the places).
- * 한마디 and 음성 메시지 open board 09, 노래 드랍 board 12 ([onSong]). They all get the chosen cars (empty = whole
+ * 일행에게 한마디 opens board 09 (typing or speaking; the target's 음성 메시지 tile is gone), 노래 드랍 board 12 ([onSong]). They all get the chosen cars (empty = whole
  * crew). 게임 초대 opens board 15 ([onGames]), where the driver picks the game and who to play; only in P
  * ([gamesOpen]), greyed out while driving. The ✕ at the top
  * right ([onClose]) goes back to 홈 (board 04).
@@ -148,10 +148,8 @@ fun DropSendScreen(
                 TopicTile("일행에게 한마디", "자주 쓰는 말", CdIcons.Shout, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
                     onShout(toCarIds)
                 }
-                // The target's 음성 메시지 opens board 09 too (`voice: G.shout`, line 660); nothing is recorded.
-                TopicTile("음성 메시지", "녹음해서", CdIcons.Mic, CdColors.VioletLight, CdColors.VioletDark, Modifier.weight(1f)) {
-                    onShout(toCarIds)
-                }
+                // The target's 음성 메시지 tile is gone (Member A, 2026-11-15): it only opened board 09 again, which already
+                // has its 말하기 button.
                 // 노래 드랍 opens board 12 for the chosen cars. 같이 켜기 (points) is cut: shown as in the target, greyed out (D8).
                 TopicTile("노래 드랍", "Apple Music", CdIcons.Music, SongTint, SongInk, Modifier.weight(1f)) {
                     onSong(toCarIds)

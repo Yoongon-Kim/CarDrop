@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cardrop.ai.AiRecommendScreen
 import com.cardrop.ai.AiViewModel
@@ -52,12 +56,16 @@ import com.cardrop.drive.DriveViewModel
 import com.cardrop.drive.FuelMeScreen
 import com.cardrop.drive.FuelInvite
 import com.cardrop.drive.QuickDropEditScreen
+import com.cardrop.drive.QuickDrop
 import com.cardrop.drive.StopNoticeCard
 import com.cardrop.drop.DropSendScreen
 import com.cardrop.drop.InboxScreen
 import com.cardrop.drop.VoteRules
 import com.cardrop.drop.VoteScreen
 import com.cardrop.navi.InAppNavigatorPanel
+import com.cardrop.safety.SafetyScoreScreen
+import com.cardrop.safety.SafetyResultScreen
+import com.cardrop.safety.SafetyHomeSummary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -71,6 +79,27 @@ import kotlinx.coroutines.flow.map
 fun CarDropApp(container: AppContainer) {
     // From AppContainer, not `remember`: a new activity (day/night theme, a second MainActivity) keeps the screen.
     val navigator = container.navigator
+    // Only an explicit SCORE quick-slot action creates a new greeting token.
+    LaunchedEffect(navigator.current) {
+        val screen = navigator.current
+        if (screen is Screen.Safety) container.safety.showRecordEntry(screen.entryId)
+        else container.safety.leaveRecordScreen()
+    }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, container) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) container.safety.leaveRecordScreen()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer); container.safety.leaveRecordScreen() }
+    }
+    val safetyCompletion by container.safety.completion.collectAsStateWithLifecycle()
+    LaunchedEffect(safetyCompletion) {
+        safetyCompletion?.let { id ->
+            navigator.go(Screen.SafetyResult(id))
+            container.safety.consumeCompletion(id)
+        }
+    }
     val crewVm: CrewViewModel = viewModel { CrewViewModel(
             container.crew, container.placeSearch, container::myPosition, container.voice, container.destinationTrip,
         ) }
@@ -143,7 +172,8 @@ fun CarDropApp(container: AppContainer) {
                 quickDrops = quickDrops,
                 onQuickDrop = { drop ->
                     val topic = drop.popupTopic()
-                    if (topic != null) quickDropTopic = topic else drop.screen()?.let(navigator::go)
+                    if (drop == QuickDrop.SCORE) navigator.go(Screen.Safety(container.safety.newEntry()))
+                    else if (topic != null) quickDropTopic = topic else drop.screen()?.let(navigator::go)
                 },
                 onEditQuickDrops = { navigator.go(Screen.QuickDropEdit) },
                 onOpenDropSend = { navigator.go(Screen.DropSend) },
@@ -156,6 +186,7 @@ fun CarDropApp(container: AppContainer) {
                     )
                 },
                 invite = invite,
+                safetySummary = { SafetyHomeSummary(container.safety, crewNow) { navigator.go(Screen.Safety()) } },
             )
             // After sending, the pop-up closes and the driver stays on 04; the voice says "휴게소 투표를 보냈어요".
             quickDropTopic?.let { topic ->
@@ -199,6 +230,8 @@ fun CarDropApp(container: AppContainer) {
                 navigator.switchTab(Screen.Drive)
             }
             Screen.Drive -> driveScreen(null)
+            is Screen.Safety -> SafetyScoreScreen(container.safety, crewNow) { navigator.go(Screen.SafetyResult(it)) }
+            is Screen.SafetyResult -> SafetyResultScreen(container.safety, screen.recordId, crewNow) { navigator.switchTab(Screen.Safety()) }
             // 04's 퀵 드랍 편집: 홈에 저장하기 keeps the new slots on this device, then back to 04.
             Screen.QuickDropEdit -> QuickDropEditScreen(
                 saved = container.quickDrops.chosen.value,

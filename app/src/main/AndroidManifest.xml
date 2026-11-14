@@ -7,6 +7,10 @@
     <!-- GPS for the in-app navigator (asked at first launch). -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Public AAOS speed for acceleration/braking records. -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- The real voice (cardrop.useRealVoice=true): the Pleos speech service, used through the Pleos
          TextToSpeech and SpeechToText SDKs (protectionLevel="normal", no prompt). The Pleos service
@@ -30,6 +34,8 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.CarDrop">
+        <uses-library android:name="android.car" android:required="false" />
+        <service android:name=".safety.SafetyRecordingService" android:exported="false" android:foregroundServiceType="location" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

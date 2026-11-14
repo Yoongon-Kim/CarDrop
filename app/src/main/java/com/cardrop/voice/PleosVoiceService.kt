@@ -7,6 +7,10 @@ import ai.pleos.playground.tts.listener.EventListener
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +41,11 @@ import ai.pleos.playground.tts.listener.OnInitializeListener as TtsInitListener
  * local.properties. Logs: `adb logcat -s CarDropVoice`.
  */
 class PleosVoiceService(context: Context) : VoiceService {
+    private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var encouragementId: Long? = null
+    @Volatile private var encouragementCaptionId: Long? = null
+    private var encouragementFocus: AudioFocusRequest? = null
+    private var ignoreEndUntil = 0L
 
     private val main = Handler(Looper.getMainLooper())
 
@@ -129,11 +138,47 @@ class PleosVoiceService(context: Context) : VoiceService {
 
     /** Says [text] after anything already being said, and shows it as a caption. */
     override fun speak(text: String) {
+        encouragementCaptionId = null
         _lastSpoken.update { it.next(text) } // the caption shows even when there is no sound
         main.post {
             queue.addLast(text)
-            speakNext()
+            if (encouragementId != null) stopEncouragement() else speakNext()
         }
+    }
+
+    override fun trySpeakEncouragement(text: String, entryId: Long, deadlineMillis: Long): Boolean {
+        if (Looper.myLooper() != Looper.getMainLooper() || !speakerReady || speaking || queue.isNotEmpty() ||
+            _listening.value || SystemClock.elapsedRealtime() > deadlineMillis || audio.mode != AudioManager.MODE_NORMAL) return false
+        val navigationPlaying = runCatching { audio.activePlaybackConfigurations.any { it.audioAttributes.usage in setOf(
+            AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE, AudioAttributes.USAGE_VOICE_COMMUNICATION, AudioAttributes.USAGE_ASSISTANT,
+        ) } }.getOrDefault(true)
+        if (navigationPlaying) return false
+        val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setOnAudioFocusChangeListener { change -> if (change < 0) cancelEncouragement(entryId) }.build()
+        if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return false
+        encouragementFocus = focus; encouragementId = entryId; speaking = true
+        encouragementCaptionId = entryId
+        _lastSpoken.update { it.next(text) }
+        main.postDelayed(unstick, MAX_SPEAK_MS)
+        if (attempt("speak encouragement") { speaker?.speak(text, true) } == null) { finishedSpeaking(); return false }
+        return true
+    }
+
+    override fun cancelEncouragement(entryId: Long) {
+        main.post {
+            if (encouragementCaptionId == entryId) { encouragementCaptionId = null; _lastSpoken.value = null }
+            if (encouragementId == entryId) stopEncouragement()
+        }
+    }
+
+    private fun stopEncouragement() {
+        encouragementId = null
+        encouragementFocus?.let { audio.abandonAudioFocusRequest(it) }; encouragementFocus = null
+        ignoreEndUntil = SystemClock.elapsedRealtime() + 150
+        attempt("stop encouragement") { speaker?.stop() }
+        speaking = false; main.removeCallbacks(unstick)
+        main.postDelayed({ speakNext() }, 175)
     }
 
     private fun speakNext() {
@@ -147,6 +192,9 @@ class PleosVoiceService(context: Context) : VoiceService {
     }
 
     private fun finishedSpeaking() {
+        if (SystemClock.elapsedRealtime() < ignoreEndUntil) return
+        encouragementId = null
+        encouragementFocus?.let { audio.abandonAudioFocusRequest(it) }; encouragementFocus = null
         main.removeCallbacks(unstick)
         speaking = false
         speakNext()
@@ -165,7 +213,7 @@ class PleosVoiceService(context: Context) : VoiceService {
         }
         main.post {
             queue.clear() // don't let the microphone hear our own voice
-            attempt("stop speaking") { speaker?.stop() }
+            if (encouragementId != null) stopEncouragement() else attempt("stop speaking") { speaker?.stop() }
         }
         _listening.value = true
         return try {

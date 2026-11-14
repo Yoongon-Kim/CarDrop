@@ -28,8 +28,8 @@ class QuickDropsTest {
     }
 
     @Test
-    fun nothingSavedMeansRestAndFuelThenTwoEmptySlots() {
-        assertEquals(listOf(REST, FUEL), QuickDrops(MemoryStore()).chosen.value)
+    fun nothingSavedIncludesTheDrivingRecordSlot() {
+        assertEquals(listOf(REST, FUEL, SCORE), QuickDrops(MemoryStore()).chosen.value)
     }
 
     @Test
@@ -81,7 +81,7 @@ class QuickDropsTest {
 
     @Test
     fun cutDropsCantBePicked() {
-        listOf(SONG, TOGETHER, SCORE).forEach { cut ->
+        listOf(SONG, TOGETHER).forEach { cut ->
             assertEquals(Pick.Changed(listOf(REST)), QuickDropRules.pick(listOf(REST), cut))
         }
     }
@@ -96,8 +96,10 @@ class QuickDropsTest {
         assertEquals(Screen.Shout(), SHOUT.screen())
         assertEquals(Screen.Games, GAME.screen())
         assertEquals(Screen.Inbox, INBOX.screen())
-        listOf(SHOUT, GAME, INBOX).forEach { assertNull(it.popupTopic()) }
-        listOf(SONG, TOGETHER, SCORE).forEach {
+        assertEquals(Screen.Safety(), SCORE.screen())
+        assertEquals(Pick.Changed(listOf(REST, SCORE)), QuickDropRules.pick(listOf(REST), SCORE))
+        listOf(SHOUT, GAME, INBOX, SCORE).forEach { assertNull(it.popupTopic()) }
+        listOf(SONG, TOGETHER).forEach {
             assertNull(it.screen())
             assertNull(it.popupTopic())
         }

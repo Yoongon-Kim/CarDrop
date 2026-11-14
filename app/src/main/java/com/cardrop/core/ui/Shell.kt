@@ -98,7 +98,7 @@ internal class LastItemAtBottom(private val gap: Dp) : Arrangement.Vertical {
 }
 
 /**
- * The left menu ("rail") from the design. 기록 (safety race) is cut for week 1, so 편지함 takes its place.
+ * The left menu ("rail") from the design, including records and the existing inbox.
  * [needsTrip]: greyed out until the crew's trip starts (the host's 출발): drops, games and the inbox come with it.
  */
 private data class RailItem(val label: String, val icon: ImageVector, val screen: Screen, val needsTrip: Boolean = false)
@@ -108,6 +108,7 @@ private val railItems = listOf(
     RailItem("드랍", CdIcons.Send, Screen.DropSend, needsTrip = true),
     RailItem("크루", CdIcons.Crew, Screen.CreateCrew),
     RailItem("게임", CdIcons.Game, Screen.Games, needsTrip = true),
+    RailItem("기록", CdIcons.Trophy, Screen.Safety()),
     RailItem("편지함", CdIcons.Inbox, Screen.Inbox, needsTrip = true),
 )
 
@@ -117,6 +118,7 @@ private fun Screen.railGroup(): Screen = when (this) {
     Screen.CreateCrew, Screen.DestinationSearch, Screen.JoinCrew -> Screen.CreateCrew
     Screen.Games -> Screen.Games
     Screen.Inbox -> Screen.Inbox
+    is Screen.Safety, is Screen.SafetyResult -> Screen.Safety()
 }
 
 /**

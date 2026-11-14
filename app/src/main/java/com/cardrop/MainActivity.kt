@@ -14,6 +14,7 @@ import com.cardrop.core.demo.DemoCrew
 import com.cardrop.core.demo.StartMode
 import com.cardrop.core.demo.StartModeScreen
 import com.cardrop.core.ui.theme.CarDropTheme
+import com.cardrop.safety.AaosSafetyTelemetry
 
 class CarDropApplication : Application() {
     /**
@@ -31,9 +32,13 @@ class MainActivity : ComponentActivity() {
 
     private val app get() = application as CarDropApplication
 
-    /** The in-app navigator needs GPS; ask once, then start it. */
-    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) app.container?.inAppNavigation?.onLocationPermissionGranted()
+    /** Navigation GPS and optional public vehicle speed are requested together. */
+    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            app.container?.inAppNavigation?.onLocationPermissionGranted()
+            app.container?.safety?.onAppVisible(true)
+        }
+        if (grants[AaosSafetyTelemetry.PERMISSION] == true) app.container?.safety?.onSpeedPermissionGranted()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,13 +66,25 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun show(container: AppContainer) {
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            askLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        container.safety.onAppVisible(true)
+        val missingPermissions = buildList {
+            if (BuildConfig.USE_REAL_VEHICLE && checkSelfPermission(AaosSafetyTelemetry.PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+                add(AaosSafetyTelemetry.PERMISSION)
+            }
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                add(Manifest.permission.ACCESS_COARSE_LOCATION)
+                add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
         }
         setContent {
             CarDropTheme {
                 CarDropApp(container)
             }
         }
+        if (missingPermissions.isNotEmpty()) askLocation.launch(missingPermissions.toTypedArray())
     }
+
+    override fun onStart() { super.onStart(); app.container?.safety?.onAppVisible(true) }
+    override fun onStop() { app.container?.safety?.onAppVisible(false); super.onStop() }
+    override fun onResume() { super.onResume(); app.container?.safety?.onSpeedPermissionGranted() }
 }

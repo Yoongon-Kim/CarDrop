@@ -25,8 +25,8 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
     /** 같이 켜기 (ads and points, boards 18, 19): cut. */
     TOGETHER("together", "같이 켜기", available = false),
     INBOX("inbox", "편지함"),
-    /** 운전 기록 (the safety race, boards 16, 17): cut. */
-    SCORE("score", "운전 기록", available = false),
+    /** Safety race, boards 16 and 17. Entry speech is attached by CarDropApp only for this slot. */
+    SCORE("score", "운전 기록"),
     ;
 
     /**
@@ -48,7 +48,8 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
         SHOUT -> Screen.Shout()
         GAME -> Screen.Games
         INBOX -> Screen.Inbox
-        REST, FOOD, FUEL, SONG, TOGETHER, SCORE -> null
+        SCORE -> Screen.Safety()
+        REST, FOOD, FUEL, SONG, TOGETHER -> null
     }
 }
 
@@ -61,10 +62,9 @@ object QuickDropRules {
     const val FULL_HINT = "기존 기능 하나를 해제하면 추가할 수 있어요."
 
     /**
-     * Board 04's slots until the driver saves their own list: 휴게소 and 주유, the other two empty (the lead's choice,
-     * 2026-11-14; the canvas starts with all four empty).
+     * Slots before the driver saves a custom list. Explicitly saved and empty lists are preserved.
      */
-    val DEFAULTS = listOf(QuickDrop.REST, QuickDrop.FUEL)
+    val DEFAULTS = listOf(QuickDrop.REST, QuickDrop.FUEL, QuickDrop.SCORE)
 
     /**
      * The drops for these saved [keys], in their order: only ones that exist and aren't cut, each once, at most

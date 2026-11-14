@@ -81,6 +81,9 @@ class FakeAiService(
             DropTopic.FOOD -> listOf("4대 모두 20분 안에 도착", "평점 4.6 · 대기 짧음", "한우 맛집")
             DropTopic.FUEL -> listOf("남은 연료로 갈 수 있어요", "가장 저렴한 휘발유", "충전소도 있어요")
             DropTopic.CAFE -> listOf("목적지에서 1.5km", "강문해변 바로 앞", "안목 커피거리에 있어요")
+            DropTopic.DROWSY -> listOf("가장 가까운 졸음쉼터", "화장실 있어요", "4대 모두 지나가는 길")
+            DropTopic.STORE -> listOf("가장 가까운 편의점", "주차하기 편해요", "24시간 열어요")
+            DropTopic.EV -> listOf("가장 가까운 충전소", "급속 충전기", "대기 짧음")
             else -> listOf("4대 모두 지나가는 길", "도착 시간 차이 5분", "넓은 주차장")
         }
         // Stops on the way: only those every car still has ahead (a 1-minute vote must end before

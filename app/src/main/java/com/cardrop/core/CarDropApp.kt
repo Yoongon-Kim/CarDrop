@@ -316,6 +316,10 @@ fun CarDropApp(container: AppContainer) {
             }
             Screen.DropSend -> DropSendScreen(
                 vm = crewVm,
+                // 졸음쉼터 · 편의점 · 전기차 충전: the driver's own tiles on the second page (Member A, 2026-11-15).
+                slots = container.dropSlots.slots.collectAsStateWithLifecycle().value,
+                onAddSlot = container.dropSlots::add,
+                onRemoveSlot = container.dropSlots::remove,
                 onPickTopic = { topic, toCarIds -> navigator.go(Screen.AiRecommend(topic, toCarIds)) },
                 onShout = { toCarIds -> navigator.go(Screen.Shout(toCarIds = toCarIds)) },
                 onGames = { navigator.go(Screen.Games) },

@@ -43,6 +43,22 @@ object DemoData {
     )
 
     /**
+     * 졸음쉼터 on the 영동고속도로, the 강릉-bound side (Member A, 2026-11-15), for the 졸음쉼터 drop: 한국도로공사's
+     * 전국졸음쉼터표준데이터 (data.go.kr 15028203), the rows "인천기점 + 강릉종점". They lie on the demo route, km from its
+     * start: 40, 72, 85, 95, 131, 162, 197, 221.
+     */
+    val drowsyShelters = listOf(
+        Place("drowsy-yongin", "용인 졸음쉼터", 37.28861576, 127.1387267, "졸음쉼터 · 화장실"),
+        Place("drowsy-icheon", "이천 졸음쉼터", 37.24176915, 127.4654933, "졸음쉼터 · 화장실"),
+        Place("drowsy-wetland", "생태습지 졸음쉼터", 37.23526586, 127.6038416, "졸음쉼터 · 화장실"),
+        Place("drowsy-jeokgeum", "적금 졸음쉼터", 37.25885706, 127.7153001, "졸음쉼터 · 화장실"),
+        Place("drowsy-socho", "소초 졸음쉼터", 37.42026395, 128.0019496, "졸음쉼터 · 화장실"),
+        Place("drowsy-sapgyo", "삽교 졸음쉼터", 37.52216459, 128.2743265, "졸음쉼터 · 화장실"),
+        Place("drowsy-woljeong", "월정 졸음쉼터", 37.66392828, 128.5932328, "졸음쉼터 · 화장실"),
+        Place("drowsy-daegwallyeong", "대관령전망대 졸음쉼터", 37.72400902, 128.7790019, "졸음쉼터 · 화장실 · 전망대"),
+    )
+
+    /**
      * Cafés near the destination (강릉 경포해변), for the 카페 drop. Real places with positions from
      * OpenStreetMap (nodes 9704377417, 11119092279, 4452773889), named by area + their OSM name.
      * Distances are straight-line from 경포해변.

@@ -107,7 +107,8 @@ class ClaudeAiService(
 
     private val intentSchema = jsonSchema(
         // CUSTOM (직접 추가) is a button on board 08, not something a driver says.
-        "topic" to mapOf("type" to "string", "enum" to DropTopic.entries.filter { it != DropTopic.CUSTOM && it != DropTopic.SONG && it != DropTopic.GAME && it != DropTopic.VOICE }.map { it.name }),
+        "topic" to mapOf("type" to "string", "enum" to DropTopic.entries.filter { it != DropTopic.CUSTOM && it != DropTopic.SONG && it != DropTopic.GAME && it != DropTopic.VOICE &&
+            it != DropTopic.DROWSY && it != DropTopic.STORE && it != DropTopic.EV }.map { it.name }),
         "confidence" to mapOf("type" to "number"),
         "message" to STRING,
     )
@@ -176,7 +177,8 @@ class ClaudeAiService(
             - Every car must get there comfortably: mind the car with the least fuel and the driver
               who has been driving longest.
             - Prefer places that fit the topic: a good rest stop for REST, good food for FOOD, a gas
-              station for FUEL, a pleasant café for CAFE.
+              station for FUEL, a pleasant café for CAFE, a 졸음쉼터 coming up soon for DROWSY, a convenience
+              store for STORE, an EV charger for EV.
             For each place give placeId, reason and detourMinutes. reason is Korean, at most 25
             characters, and says why the place suits the group, for example "4대 모두 15분 안 · 주유 가능".
             detourMinutes is how many minutes the stop adds to the trip, not counting the stop

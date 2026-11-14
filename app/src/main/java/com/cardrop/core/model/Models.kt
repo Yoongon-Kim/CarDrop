@@ -91,6 +91,15 @@ enum class DropTopic {
      * Base64 in `message` (drop/VoiceClip.kt). Never spoken by the app: the receiver plays it with ▶.
      */
     VOICE,
+
+    /** 졸음쉼터 (Member A, 2026-11-15): board 08's own tiles (drop/DropSlots.kt); the AI picks from 영동고속도로's 졸음쉼터. */
+    DROWSY,
+
+    /** 편의점 (Member A, 2026-11-15): board 08's own tiles; the AI picks from Kakao's 편의점 near the car. */
+    STORE,
+
+    /** 전기차 충전 (Member A, 2026-11-15): board 08's own tiles; the AI picks from Kakao's chargers near the car. */
+    EV,
 }
 
 data class Candidate(

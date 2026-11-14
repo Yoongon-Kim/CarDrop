@@ -191,6 +191,13 @@ class AppContainer(context: Context) {
         omokResume, useRealCrew,
     )
 
+    /** Record-entry GPT is independent of the shared Claude-backed AI features. */
+    private val safetyEncouragement = com.cardrop.ai.OpenAiSafetyEncouragement(BuildConfig.SAFETY_OPENAI_API_KEY)
+    val safety = com.cardrop.safety.SafetyCoordinator(
+        context.applicationContext, appScope, crew, vehicle, inAppNavigation, safetyEncouragement, voice,
+        demo = !BuildConfig.USE_REAL_VEHICLE, realCrew = useRealCrew,
+    )
+
     /**
      * The open screen with its back stack, and which drops have already been opened. They live here, as long
      * as the crew and trip data, so a new activity (day/night theme, language, a second MainActivity on top)

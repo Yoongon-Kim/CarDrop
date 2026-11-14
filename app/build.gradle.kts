@@ -41,6 +41,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 android {
     namespace = "com.cardrop"
     compileSdk = 35
+    useLibrary("android.car", false)
 
     defaultConfig {
         applicationId = "com.cardrop"
@@ -57,6 +58,8 @@ android {
         buildConfigField("boolean", "USE_REAL_VEHICLE", localFlag("cardrop.useRealVehicle").toString())
         buildConfigField("boolean", "USE_REAL_VOICE", localFlag("cardrop.useRealVoice").toString())
         buildConfigField("String", "CLAUDE_API_KEY", "\"${localString("cardrop.claudeApiKey")}\"")
+        // Private record-entry encouragement only; the shared Claude-backed AiService stays unchanged.
+        buildConfigField("String", "SAFETY_OPENAI_API_KEY", "\"${localString("cardrop.safetyOpenaiApiKey").ifBlank { localString("cardrop.openaiApiKey") }}\"")
         buildConfigField("String", "KAKAO_REST_KEY", "\"${localString("cardrop.kakaoRestKey")}\"")
         buildConfigField("String", "KAKAO_NATIVE_KEY", "\"${localString("cardrop.kakaoNativeKey")}\"")
     }

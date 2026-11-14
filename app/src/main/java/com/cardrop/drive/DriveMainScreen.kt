@@ -56,6 +56,7 @@ fun DriveMainScreen(
     onFuelWarning: () -> Unit,
     onSpeak: () -> Unit,
     invite: FuelInvite? = null,
+    safetySummary: (@Composable () -> Unit)? = null,
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val drops by vm.drops.collectAsStateWithLifecycle()
@@ -118,6 +119,7 @@ fun DriveMainScreen(
         CrewRoad(cars, positions, vm.myCarId, navRoute.destination?.name ?: crew?.destination?.name)
         if (invite != null && inviteDrop != null) FuelInviteBanner(vm, invite, inviteDrop)
         CrewCards(cars, positions, vm.myCarId, fuel, onMyLowFuel = if (canDrop) onFuelWarning else null)
+        safetySummary?.invoke()
 
         // The quick drops: 4 px more above them than between the other parts (18 in all), 8 between label and tiles.
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -28,8 +28,8 @@ class QuickDropsTest {
     }
 
     @Test
-    fun nothingSavedMeansRestAndFuelThenTwoEmptySlots() {
-        assertEquals(listOf(REST, FUEL), QuickDrops(MemoryStore()).chosen.value)
+    fun nothingSavedIncludesTheDrivingRecordSlot() {
+        assertEquals(listOf(REST, FUEL, SCORE), QuickDrops(MemoryStore()).chosen.value)
     }
 
     @Test
@@ -48,10 +48,10 @@ class QuickDropsTest {
 
     @Test
     fun unknownRepeatedOrCutDropsAreLeftOut() {
-        // 운전 기록 is cut, 카페 doesn't exist, 휴게소 is there twice: the six real ones stay, in their order.
+        // 같이 켜기 is cut, 카페 doesn't exist, 휴게소 is there twice: the saved available drops keep their order.
         assertEquals(
-            listOf(REST, SONG, FOOD, SHOUT, GAME, INBOX),
-            QuickDropRules.decode("rest,song,score,cafe,rest,,food,shout,game,inbox"),
+            listOf(REST, SONG, SCORE, FOOD, SHOUT, GAME, INBOX),
+            QuickDropRules.decode("rest,song,score,together,cafe,rest,,food,shout,game,inbox"),
         )
     }
 
@@ -93,9 +93,9 @@ class QuickDropsTest {
 
     @Test
     fun theAddSlotShowsWhileThereIsADropLeftToPick() {
-        // 휴게소, 식사, 주유, 한마디, 노래, 게임 초대, 편지함 can be picked; 같이 켜기 and 운전 기록 are cut.
+        // Song drops and driving records both remain available; only 같이 켜기 is cut.
         val all = QuickDrop.entries.filter { it.available }
-        assertEquals(listOf(REST, FOOD, FUEL, SHOUT, SONG, GAME, INBOX), all)
+        assertEquals(listOf(REST, FOOD, FUEL, SHOUT, SONG, GAME, INBOX, SCORE), all)
         assertEquals(all.size, QuickDropRules.pickable)
         assertEquals(true, QuickDropRules.showsAddSlot(emptyList()))
         assertEquals(true, QuickDropRules.showsAddSlot(all.take(4)))
@@ -105,7 +105,7 @@ class QuickDropsTest {
 
     @Test
     fun cutDropsCantBePicked() {
-        listOf(TOGETHER, SCORE).forEach { cut ->
+        listOf(TOGETHER).forEach { cut ->
             assertEquals(Pick.Changed(listOf(REST)), QuickDropRules.pick(listOf(REST), cut))
         }
     }
@@ -121,8 +121,11 @@ class QuickDropsTest {
         assertEquals(Screen.Games, GAME.screen())
         assertEquals(Screen.Inbox, INBOX.screen())
         assertEquals(Screen.SongSend(), SONG.screen())
-        listOf(SHOUT, SONG, GAME, INBOX).forEach { assertNull(it.popupTopic()) }
-        listOf(TOGETHER, SCORE).forEach {
+        assertEquals(Screen.Safety(), SCORE.screen())
+        assertEquals(Pick.Changed(listOf(REST, SONG)), QuickDropRules.pick(listOf(REST), SONG))
+        assertEquals(Pick.Changed(listOf(REST, SCORE)), QuickDropRules.pick(listOf(REST), SCORE))
+        listOf(SHOUT, SONG, GAME, INBOX, SCORE).forEach { assertNull(it.popupTopic()) }
+        listOf(TOGETHER).forEach {
             assertNull(it.screen())
             assertNull(it.popupTopic())
         }

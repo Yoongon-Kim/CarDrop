@@ -35,6 +35,10 @@ interface VoiceService {
 
     fun speak(text: String)
 
+    /** Low-priority entry greeting. Implementations must not enqueue it behind other speech. */
+    fun trySpeakEncouragement(text: String, entryId: Long, deadlineMillis: Long): Boolean = false
+    fun cancelEncouragement(entryId: Long) = Unit
+
     /**
      * Listens for one sentence. Returns null when nothing was heard.
      * [placeName] = true when we expect only a place name (board 10 "말해서 추가"). The fake then
@@ -44,6 +48,7 @@ interface VoiceService {
 }
 
 class FakeVoiceService : VoiceService {
+    private var encouragementId: Long? = null
     private val _lastSpoken = MutableStateFlow<SpokenLine?>(null)
     override val lastSpoken: StateFlow<SpokenLine?> = _lastSpoken
 
@@ -51,8 +56,19 @@ class FakeVoiceService : VoiceService {
     override val listening: StateFlow<Boolean> = _listening
 
     override fun speak(text: String) {
+        encouragementId = null
         Log.i("CarDropVoice", "speak: $text")
         _lastSpoken.update { it.next(text) }
+    }
+
+    override fun trySpeakEncouragement(text: String, entryId: Long, deadlineMillis: Long): Boolean {
+        if (_listening.value) return false
+        speak(text); encouragementId = entryId
+        return true
+    }
+
+    override fun cancelEncouragement(entryId: Long) {
+        if (encouragementId == entryId) { encouragementId = null; _lastSpoken.value = null }
     }
 
     override suspend fun listen(placeName: Boolean): String? {

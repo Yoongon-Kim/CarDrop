@@ -16,6 +16,7 @@ import com.cardrop.core.demo.StartMode
 import com.cardrop.core.demo.StartModeScreen
 import com.cardrop.core.ui.theme.CarDropTheme
 import com.cardrop.navi.PleosFusedLocationSource
+import com.cardrop.safety.AaosSafetyTelemetry
 
 class CarDropApplication : Application() {
     /**
@@ -33,11 +34,13 @@ class MainActivity : ComponentActivity() {
 
     private val app get() = application as CarDropApplication
 
-    /** GPS drives the map; Pleos vehicle location drives the crew diagram when available. */
+    /** Request navigation GPS, crew vehicle location and optional public vehicle speed together. */
     private val askLocation = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
             app.container?.inAppNavigation?.onLocationPermissionGranted()
+            app.container?.safety?.onAppVisible(true)
         }
+        if (grants[AaosSafetyTelemetry.PERMISSION] == true) app.container?.safety?.onSpeedPermissionGranted()
         if (grants[PleosFusedLocationSource.PERMISSION] == true) {
             app.container?.onFusedLocationPermissionGranted()
         }
@@ -68,7 +71,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun show(container: AppContainer) {
+        container.safety.onAppVisible(true)
         val missingPermissions = buildList {
+            if (BuildConfig.USE_REAL_VEHICLE && checkSelfPermission(AaosSafetyTelemetry.PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+                add(AaosSafetyTelemetry.PERMISSION)
+            }
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 add(Manifest.permission.ACCESS_COARSE_LOCATION)
                 add(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -100,4 +107,8 @@ class MainActivity : ComponentActivity() {
         val gpsPermissions = permissions.filter { it != PleosFusedLocationSource.PERMISSION }
         if (gpsPermissions.isNotEmpty()) askLocation.launch(gpsPermissions.toTypedArray())
     }
+
+    override fun onStart() { super.onStart(); app.container?.safety?.onAppVisible(true) }
+    override fun onStop() { app.container?.safety?.onAppVisible(false); super.onStop() }
+    override fun onResume() { super.onResume(); app.container?.safety?.onSpeedPermissionGranted() }
 }

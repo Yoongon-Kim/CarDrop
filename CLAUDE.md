@@ -94,11 +94,19 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
 - Board 14 (결정, `drive/DecidedScreen.kt`) starts guidance after 3 s and goes back to 04 by itself 15 s after it
   opened (lead, 2026-11-14; not on the design board), also when opened from 11's 결과 보기 or the inbox, but not
   while the microphone is listening. 지금 안내 시작 / 주행 화면으로 still go at once.
+- Safety scoring (user-approved, 2026-11-14): `safety/` owns boards 16/17, trip-scoped public AAOS speed,
+  SQLite journals and separate Firebase `safetyTrips` summaries. Only acceleration (-2) and braking (-3)
+  deduct from 100 points, with a floor of 0; no speeding/lane-change scoring or speed-limit SDK dependency.
+  Rules version 2 migrates local version 1 journals by keeping motion events and omitting retired events.
+  Live ranks are provisional; final ranks require 60 moving seconds and 95% speed coverage.
+  `SafetyEncouragement` is a separate optional GPT client, called only once per explicit SCORE-slot entry.
+  Keep entry-token cancellation, speech priority and the shared Claude-backed `AiService` intact.
+  See `SAFETY_SCORE_PLAN.md` and README for settings and validation.
 - Board 04's quick drops, as on the live canvas (lead, 2026-11-14; `git show 1caa955:design/FinalApp.dc.html`,
-  lines 302-344): four slots. Until the driver saves their own list they hold 휴게소 and 주유 and two dashed "추가"
+  lines 302-344): four slots. Until the driver saves their own list they hold 휴게소, 주유, 운전 기록 and one dashed "추가"
   (`QuickDropRules.DEFAULTS`, lead's choice; the canvas starts with all four empty); a list the driver emptied stays
-  empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 4, in
-  the order ticked; 같이 켜기 and 운전 기록 are greyed out (cut). The list stays on the device (`drive/QuickDrops.kt`,
+  empty. 편집 or an empty slot opens 퀵 드랍 편집 (`Screen.QuickDropEdit`, `drive/QuickDropEditScreen.kt`): up to 8, in
+  the order ticked; 같이 켜기 is greyed out (cut). Existing custom lists stay saved. The list stays on the device (`drive/QuickDrops.kt`,
   SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names: 휴게소 / 식사 / 주유
   board 10 as a pop-up over 04 for the whole crew (`QuickDrop.popupTopic()`, `QuickDropPicker`; lead, 2026-11-14). After
   보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
@@ -106,7 +114,7 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time.
   More than four (Member A, 2026-11-14; not on the canvas): under the four slots a second row holds the fifth drop on
   and one dashed "추가" slot while a drop is left to pick (`QuickDropRules.secondRow`, `showsAddSlot`, `MAX_SLOTS` = 8;
-  the editor counts "2 / 7" of the drops that aren't cut).
+  the editor counts the saved drops out of 8 available drops, including 노래 and 운전 기록).
 - Board 04's crew cards show every car's fuel (`drive/CrewFuel.kt`, unit tested): this car's from its own car,
   another car's only while it is connected (a bot once it has joined). Real crew: each device writes its own to
   `trips/<code>/fuel/<car>` (`drive/FirebaseTrip.kt`) when it changes, and again within a second if the trip lacks
@@ -125,7 +133,8 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   only the quick-drop slots with 편집 and the quick-drop pop-up without its result notice (see board 04's quick drops
   above), not the others. Read the canvas only for reference; never copy it over `design/FinalApp.dc.html`.
 - `design/FeatureMap.dc.html` = what is in scope (A = must, B = 1-2 extras, C = vision, D = cut).
-- Week 1 cuts: chess (15), safety race (16, 17), ads and points (18, 19).
+- Week 1 cuts: chess (15), ads and points (18, 19). Safety race (16, 17) was
+  restored by user request, limited to acceleration and braking.
 - Song drop (12, 13) was restored by the user (Member A, 2026-11-14), screen only: nothing plays (no Apple Music).
   `drop/SongDrop.kt` (`SongRules`, the target's 4 songs; `SongPlayer` = what "plays", unit tested) and
   `drop/SongScreens.kt`. Board 08's 노래 드랍 tile and 04's 노래 quick drop open board 12; it sends a SOCIAL drop
@@ -208,6 +217,7 @@ landed on `main`.
 | `cardrop.useRealVehicle` | `true` / `false` | Pleos Vehicle SDK instead of the fake car |
 | `cardrop.useRealVoice` | `true` / `false` | Pleos speech SDKs: spoken Korean and real listening (`voice/PleosVoiceService.kt`). `false` = the fake: captions only, and the mic always hears "배고파" (for rehearsing without speaking) |
 | `cardrop.claudeApiKey` | key | Set = the real AI (`ai/ClaudeAiService.kt`, Anthropic Java SDK); empty = the fake. If a Claude call fails, the fake answers (`adb logcat -s CarDropAi`). The key is built into the APK, so don't share the APK |
+| `cardrop.safetyOpenaiApiKey` | optional key | Private GPT record-entry greeting only (`ai/OpenAiSafetyEncouragement.kt`). Falls back to `cardrop.openaiApiKey` for existing local setups, then to a canned greeting. Does not select or modify the shared Claude-backed AI. Keep keys in ignored local.properties |
 | `cardrop.kakaoRestKey` | key | Kakao Developers REST API key for live routes and the place search on boards 02 and 10 (empty = OSRM only, and boards 02 / 10 offer only places the app knows) |
 | `cardrop.kakaoNativeKey` | key | Kakao Developers native app key: the in-app navigator draws Kakao's map (`navi/KakaoNavMap.kt`); empty = MapLibre + OpenFreeMap. If Kakao refuses the key, the app falls back to MapLibre (`adb logcat -s CarDropKakaoMap`) |
 

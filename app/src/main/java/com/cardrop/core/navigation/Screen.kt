@@ -23,6 +23,10 @@ sealed interface Screen {
      * the live canvas (`quickEdit`, drive/QuickDropEditScreen.kt).
      */
     data object QuickDropEdit : Screen
+    /** 16 안전운전 대결. Only a direct quick-slot entry carries a new encouragement token. */
+    data class Safety(val entryId: Long? = null) : Screen
+    /** 17 내 차 결과 / 지난 기록. No entry encouragement. */
+    data class SafetyResult(val recordId: String) : Screen
     /** 05 연료 경고 (내 차) · Member B */
     data object FuelMe : Screen
     /** 06 연료 알림 받은 차 · Member B */

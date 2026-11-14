@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -41,6 +44,7 @@ import com.cardrop.crew.FirebaseCrewRepository
 import com.cardrop.drop.ProposalRules
 import com.cardrop.drop.SongRules
 import com.cardrop.vehicle.FakeVehicleRepository
+import com.cardrop.safety.SafetyEventType
 import kotlin.math.roundToInt
 
 /**
@@ -64,8 +68,10 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
         Column(
             modifier = Modifier
                 .width(320.dp)
+                .heightIn(max = 790.dp)
                 .clip(RoundedCornerShape(18.dp))
                 .background(CdColors.NavBanner)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -89,6 +95,19 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
             // The bots send drops only on the road, like the real cars, and only the bots that came along (a bot
             // that hadn't joined by 출발 was left out).
             val current = crew
+            if (container.safety.demo && current?.isStarted == true) {
+                Text("안전운전 DEMO · 같은 감점 판정기 사용", color = CdColors.White, fontSize = 13.sp)
+                Text("D에서 감점 입력 · P에서 도착 / 종료", color = CdColors.Gray400, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DemoButton("급가속") { container.safety.demoTelemetry?.scenario(SafetyEventType.ACCELERATION) }
+                    DemoButton("급정거") { container.safety.demoTelemetry?.scenario(SafetyEventType.BRAKING) }
+                }
+                var gap by remember { mutableStateOf(false) }
+                DemoButton(if (gap) "속도 입력 재개" else "속도 입력 끊기") {
+                    gap = !gap; container.safety.demoTelemetry?.paused = gap
+                }
+                DemoButton("P · 최종 도착 재현") { vehicle?.setGear(Gear.PARK); container.safety.demoArrival() }
+            }
             val along = { bot: Car -> current?.cars?.any { it.id == bot.id } == true }
             if (crewRepo != null && current != null && current.isStarted) {
                 if (along(DemoData.minji)) {

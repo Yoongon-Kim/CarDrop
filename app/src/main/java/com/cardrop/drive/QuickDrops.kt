@@ -25,8 +25,8 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
     /** 같이 켜기 (ads and points, boards 18, 19): cut. */
     TOGETHER("together", "같이 켜기", available = false),
     INBOX("inbox", "편지함"),
-    /** 운전 기록 (the safety race, boards 16, 17): cut. */
-    SCORE("score", "운전 기록", available = false),
+    /** Safety race, boards 16 and 17. Entry speech is attached by CarDropApp only for this slot. */
+    SCORE("score", "운전 기록"),
     ;
 
     /**
@@ -41,7 +41,8 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
     }
 
     /**
-     * Where the other tiles go: 한마디 board 09, 노래 board 12, 게임 초대 board 15, 편지함 board 07. Null for the pop-up ones
+     * Where the other tiles go: 한마디 board 09, 노래 board 12, 게임 초대 board 15, 편지함 board 07,
+     * 운전 기록 boards 16/17. Null for the pop-up ones
      * ([popupTopic]) and the cut ones.
      */
     fun screen(): Screen? = when (this) {
@@ -49,7 +50,8 @@ enum class QuickDrop(val key: String, val label: String, val available: Boolean 
         SONG -> Screen.SongSend()
         GAME -> Screen.Games
         INBOX -> Screen.Inbox
-        REST, FOOD, FUEL, TOGETHER, SCORE -> null
+        SCORE -> Screen.Safety()
+        REST, FOOD, FUEL, TOGETHER -> null
     }
 }
 
@@ -80,10 +82,9 @@ object QuickDropRules {
     fun showsAddSlot(chosen: List<QuickDrop>): Boolean = chosen.size < pickable
 
     /**
-     * Board 04's slots until the driver saves their own list: 휴게소 and 주유, the other two empty (the lead's choice,
-     * 2026-11-14; the canvas starts with all four empty).
+     * Slots before the driver saves a custom list. Explicitly saved and empty lists are preserved.
      */
-    val DEFAULTS = listOf(QuickDrop.REST, QuickDrop.FUEL)
+    val DEFAULTS = listOf(QuickDrop.REST, QuickDrop.FUEL, QuickDrop.SCORE)
 
     /**
      * The drops for these saved [keys], in their order: only ones that exist and aren't cut, each once, at most

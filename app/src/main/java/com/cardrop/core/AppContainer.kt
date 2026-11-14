@@ -32,6 +32,7 @@ import com.cardrop.drive.GearFile
 import com.cardrop.drive.TripCodeFile
 import com.cardrop.drive.PrefsQuickDropStore
 import com.cardrop.drive.QuickDrops
+import com.cardrop.drop.DropSlots
 import com.cardrop.drop.SongPlayer
 import com.cardrop.navi.AndroidLocationSource
 import com.cardrop.navi.DestinationTrip
@@ -183,6 +184,8 @@ class AppContainer(context: Context) {
     val phrases: PhraseStore = PrefsPhraseStore(context)
     /** Board 04's quick-drop slots (퀵 드랍 편집), kept on this device. */
     val quickDrops = QuickDrops(PrefsQuickDropStore(context))
+    /** Board 08's own tiles on the decision row's second page (졸음쉼터 · 편의점 · 전기차 충전), kept on this device. */
+    val dropSlots = DropSlots(context)
     /** What this car "plays" (boards 12, 13; no sound). Member A. */
     val songs = SongPlayer()
     /**

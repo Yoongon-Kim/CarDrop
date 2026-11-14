@@ -99,8 +99,13 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
     here: rest stops, cafés, destinations. A searched place that is an AI pick under a longer name
     ("덕평자연휴게소 양방향") ticks the AI's row (`PlacePick.find`). Board 08's decision row turns, as on the live
     canvas (lead, 2026-11-15; this undoes D11), with the arrow at its end or a swipe to a second page: 카페 (board 10
-    with the AI's cafés; 카페 also comes up by voice, "커피") and 직접 추가 (`DropTopic.CUSTOM`: board 10 with no AI
-    picks, the driver adds the places here).
+    with the AI's cafés; 카페 also comes up by voice, "커피"), then the driver's own tiles (Member A, 2026-11-15; this
+    replaced 직접 추가): up to 3 of 졸음쉼터 · 편의점 · 전기차 충전 (`drop/DropSlotRules.kt`, unit tested; kept on the device,
+    `DropSlots`), a "+" while one is left (it shows the kinds not picked yet, with 취소), a long press takes a tile out.
+    Each opens board 10 with three AI picks: 졸음쉼터 (`DropTopic.DROWSY`) from the 영동고속도로's 졸음쉼터
+    (`DemoData.drowsyShelters`, 한국도로공사 data) plus Kakao's "졸음쉼터" near the car, kept 25 km ahead like rest stops;
+    편의점 / 전기차 충전 (`STORE` / `EV`) from Kakao's places within 20 km of the car (needs `cardrop.kakaoRestKey`, else
+    "…찾지 못했어요").
 - Board 08 "받는 차" (live canvas, lead, 2026-11-15; replaces D13's 조합 만들기): 크루 전체, then a tick box per car;
   any cars can be ticked together, and none or all of them is 크루 전체 (`Recipients` in `drop/DropSendScreen.kt`,
   unit tested). A drop goes to the whole crew (`Drop.toCarIds` empty) or to the ticked cars. Cars it

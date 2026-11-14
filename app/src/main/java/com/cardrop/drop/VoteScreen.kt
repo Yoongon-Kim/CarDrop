@@ -499,4 +499,7 @@ internal fun DropTopic.voteTag(): String = when (this) {
     DropTopic.SONG -> "노래"
     DropTopic.GAME -> "게임"
     DropTopic.VOICE -> "음성 메시지"
+    DropTopic.DROWSY -> "졸음쉼터"
+    DropTopic.STORE -> "편의점"
+    DropTopic.EV -> "전기차 충전"
 }

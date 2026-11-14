@@ -2,7 +2,9 @@ package com.cardrop.drop
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +80,10 @@ fun DropSendScreen(
     onSong: (toCarIds: List<String>) -> Unit,
     /** False while the car is driving ([com.cardrop.drive.gamesOpen]): 게임 초대 is greyed out and can't be tapped. */
     gamesOpen: Boolean = true,
+    /** The driver's own tiles on the decision row's second page ([DropSlotRules]). */
+    slots: List<PlaceKind> = emptyList(),
+    onAddSlot: (PlaceKind) -> Unit = {},
+    onRemoveSlot: (PlaceKind) -> Unit = {},
 ) {
     val crew by vm.crew.collectAsStateWithLifecycle()
     val others = crew?.cars.orEmpty().filterNot { it.isMe }
@@ -141,6 +147,9 @@ fun DropSendScreen(
             DecisionPages(
                 onTopic = { topic -> onPickTopic(topic, toCarIds) },
                 onDestination = { proposing = true },
+                slots = slots,
+                onAddSlot = onAddSlot,
+                onRemoveSlot = onRemoveSlot,
             )
         }
         TopicGroup("소셜 드랍 · 화면에만 조용히", CdColors.VioletDark, CdColors.VioletLight) {
@@ -171,13 +180,23 @@ fun DropSendScreen(
 
 /**
  * The decision row in two pages, as on the live canvas (its `morePlaces`): 휴게소 / 식사 / 주유 · 충전 / 목적지 변경,
- * then 카페 and 직접 추가. The arrow at the right end (44 wide, as high as the tiles, light blue with corners 16)
+ * then 카페 and the driver's own tiles (Member A, 2026-11-15; it was 직접 추가): up to 3 of 졸음쉼터 · 편의점 · 전기차 충전
+ * ([slots]) and a dashed "+" while one is left. "+" shows the kinds not picked yet in the page's place, with 취소; a
+ * long press on an own tile takes it out. The arrow at the right end (44 wide, as high as the tiles, light blue with corners 16)
  * turns the page, › forward and ‹ back; a swipe on the tiles turns it too.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DecisionPages(onTopic: (DropTopic) -> Unit, onDestination: () -> Unit) {
+private fun DecisionPages(
+    onTopic: (DropTopic) -> Unit,
+    onDestination: () -> Unit,
+    slots: List<PlaceKind>,
+    onAddSlot: (PlaceKind) -> Unit,
+    onRemoveSlot: (PlaceKind) -> Unit,
+) {
     val pages = rememberPagerState(pageCount = { 2 })
+    // True after "+": the second page offers the kinds not picked yet.
+    var picking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
         HorizontalPager(state = pages, modifier = Modifier.weight(1f), pageSpacing = 10.dp) { page ->
@@ -194,14 +213,38 @@ private fun DecisionPages(onTopic: (DropTopic) -> Unit, onDestination: () -> Uni
                     }
                     // A new crew destination: the driver searches for it and proposes it (찬성 / 반대).
                     TopicTile("목적지 변경", "직접 골라 제안", CdIcons.Flag, CdColors.TealLight, CdColors.TealDark, Modifier.weight(1f), onClick = onDestination)
+                } else if (picking) {
+                    // "+": the kinds not picked yet, then 취소.
+                    val choices = DropSlotRules.choices(slots)
+                    choices.forEach { kind ->
+                        val (tint, ink) = kind.colors()
+                        TopicTile(kind.label, "눌러서 추가", kind.icon(), tint, ink, Modifier.weight(1f)) {
+                            onAddSlot(kind)
+                            picking = false
+                        }
+                    }
+                    TopicTile("취소", "그대로 두기", CdIcons.Close, CdColors.Gray100, CdColors.Ink2, Modifier.weight(1f)) {
+                        picking = false
+                    }
+                    repeat(3 - choices.size) { Spacer(Modifier.weight(1f)) }
                 } else {
-                    // The canvas's second page: 카페 has the 휴게소 cup in the 식사 colours, 직접 추가 a plus in blue.
+                    // The canvas's second page: 카페 has the 휴게소 cup in the 식사 colours, then the driver's own tiles.
                     TopicTile("카페", "커피 · 드라이브 스루", CdIcons.Rest, CdColors.OrangeLight, CdColors.OrangeDeep, Modifier.weight(1f)) {
                         onTopic(DropTopic.CAFE)
                     }
-                    TopicTile("직접 추가", "원하는 곳 입력", CdIcons.Plus, CdColors.BlueLight, CdColors.BlueDark, Modifier.weight(1f)) {
-                        onTopic(DropTopic.CUSTOM)
+                    slots.forEach { kind ->
+                        val (tint, ink) = kind.colors()
+                        TopicTile(
+                            kind.label, kind.sub, kind.icon(), tint, ink, Modifier.weight(1f),
+                            onLongClick = { onRemoveSlot(kind) },
+                        ) { onTopic(kind.topic) }
                     }
+                    if (DropSlotRules.showsAdd(slots)) {
+                        TopicTile("추가", "장소 종류 고르기", CdIcons.Plus, CdColors.BlueLight, CdColors.BlueDark, Modifier.weight(1f), dashed = true) {
+                            picking = true
+                        }
+                    }
+                    repeat(3 - slots.size - (if (DropSlotRules.showsAdd(slots)) 1 else 0)) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -228,6 +271,20 @@ private fun DecisionPages(onTopic: (DropTopic) -> Unit, onDestination: () -> Uni
     }
 }
 
+/** The icon of an own tile on board 08's second page. */
+private fun PlaceKind.icon(): ImageVector = when (this) {
+    PlaceKind.DROWSY -> CdIcons.Moon
+    PlaceKind.STORE -> CdIcons.Bag
+    PlaceKind.EV -> CdIcons.Bolt
+}
+
+/** Its icon square's colours: 졸음쉼터 violet, 편의점 teal, 전기차 충전 yellow. */
+private fun PlaceKind.colors(): Pair<Color, Color> = when (this) {
+    PlaceKind.DROWSY -> CdColors.VioletLight to CdColors.VioletDark
+    PlaceKind.STORE -> CdColors.TealLight to CdColors.TealDark
+    PlaceKind.EV -> CdColors.YellowLight to CdColors.YellowDeep
+}
+
 /** 노래 드랍's icon colours (target line 658, `song`); no other screen uses them. */
 private val SongTint = Color(0xFFFFF0F5)
 private val SongInk = Color(0xFFD6336C)
@@ -237,6 +294,7 @@ private val SongInk = Color(0xFFD6336C)
  * line (12px), centred, 6 apart; the tile is white, 148 high with corners 22 (target lines 375-381, 658-659, 687).
  * A tile that isn't built ([enabled] = false) is faded to 40%, like a greyed-out chip, and ignores taps.
  */
+@OptIn(ExperimentalFoundationApi::class) // combinedClickable, for the own tiles' long press
 @Composable
 private fun TopicTile(
     name: String,
@@ -249,6 +307,10 @@ private fun TopicTile(
     /** 같이 켜기's line is orange 800 in the target ("P 정차 중 · 포인트"). */
     metaColor: Color = CdColors.Gray600,
     metaWeight: FontWeight = FontWeight.Normal,
+    /** A long press (board 08's own tiles: takes the tile out). */
+    onLongClick: (() -> Unit)? = null,
+    /** The "+" tile: a light blue edge, so it reads as an empty slot. */
+    dashed: Boolean = false,
     onClick: () -> Unit = {},
 ) {
     val shape = RoundedCornerShape(22.dp)
@@ -258,7 +320,8 @@ private fun TopicTile(
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(CdColors.White)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .then(if (dashed) Modifier.border(BorderStroke(2.dp, CdColors.Blue.copy(alpha = 0.45f)), shape) else Modifier)
+            .combinedClickable(enabled = enabled, role = Role.Button, onLongClick = onLongClick, onClick = onClick)
             .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),

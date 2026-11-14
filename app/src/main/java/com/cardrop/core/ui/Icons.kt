@@ -96,6 +96,15 @@ object CdIcons {
 
     // The side rail's icons.
     val Home = lineIcon("Home", strokeWidth = 2f, "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z")
+    /** A crescent moon: board 08's 졸음쉼터. */
+    val Moon = lineIcon("Moon", strokeWidth = 2.2f, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z")
+
+    /** A shopping bag: board 08's 편의점. */
+    val Bag = lineIcon("Bag", strokeWidth = 2.2f, "M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18", "M16 10a4 4 0 0 1-8 0")
+
+    /** A lightning bolt: board 08's 전기차 충전. */
+    val Bolt = lineIcon("Bolt", strokeWidth = 2.2f, "M13 2 3 14h9l-1 8 10-12h-9l1-8z")
+
     /** Two arrows in a circle: the quick drop's 다른 곳 추천. */
     val Refresh = lineIcon(
         "Refresh", strokeWidth = 2.2f,

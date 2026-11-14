@@ -21,6 +21,7 @@ import com.cardrop.drive.GeoPoint
 import com.cardrop.drive.RouteSimulator
 import com.cardrop.drive.haversineKm
 import com.cardrop.drop.voteTag
+import com.cardrop.navi.KakaoPlaceSearch
 import com.cardrop.navi.PlaceSearch
 import com.cardrop.navi.PlaceSuggester
 import com.cardrop.navi.PlaceSuggestion
@@ -43,9 +44,9 @@ class AiViewModel(
     private val voice: VoiceService,
     private val phraseStore: PhraseStore,
     /** Board 10's place search (Kakao), or null without a Kakao key: then only the places the app knows. */
-    placeSearch: PlaceSearch? = null,
+    private val placeSearch: PlaceSearch? = null,
     /** This car's position (GPS), so nearby places come first. */
-    here: () -> GeoPoint? = { null },
+    private val here: () -> GeoPoint? = { null },
 ) : ViewModel() {
 
     sealed interface Loadable<out T> {
@@ -158,18 +159,30 @@ class AiViewModel(
         _picker.value = PickerState(loading = true)
         loadJob = viewModelScope.launch {
             _picker.value = try {
+                // 편의점 and 전기차 충전 (board 08's own tiles): Kakao's places near the car, all of them (poolIsFinal).
+                val nearbyQuery = when (topic) {
+                    DropTopic.STORE -> "편의점"
+                    DropTopic.EV -> "전기차충전소"
+                    else -> null
+                }
                 val pool = when (topic) {
                     // Not where the crew is already going: a vote to change it must offer somewhere else.
                     DropTopic.DESTINATION -> DemoData.destinations.filterNot { it.isNear(currentCrew.destination) }
                     DropTopic.CAFE -> DemoData.cafes
+                    DropTopic.DROWSY -> drowsyPool()
+                    DropTopic.STORE, DropTopic.EV -> nearbyPool(nearbyQuery!!)
                     else -> DemoData.restStops
                 }
+                if (pool.isEmpty()) error(noPlacesText(topic))
                 val involved = if (toCarIds.isEmpty()) {
                     currentCrew
                 } else {
                     currentCrew.copy(cars = currentCrew.cars.filter { it.id == crew.myCarId || it.id in toCarIds })
                 }
-                val picks = ai.recommend(topic, TripContext(involved, route.positions.value, vehicle.snapshot.value, pool))
+                val picks = ai.recommend(
+                    topic,
+                    TripContext(involved, route.positions.value, vehicle.snapshot.value, pool, poolIsFinal = nearbyQuery != null),
+                )
                 PickerState(pick = PlacePick.fromAi(picks).let { if (single) it.single() else it })
             } catch (e: CancellationException) {
                 throw e // the screen asked again; that newer request wins
@@ -177,6 +190,32 @@ class AiViewModel(
                 PickerState(aiError = e.message ?: "AI 추천에 실패했어요")
             }
         }
+    }
+
+    /**
+     * 졸음쉼터 (Member A, 2026-11-15): the 영동고속도로's ones the app knows, plus Kakao's "졸음쉼터" near the car when there
+     * is a key; the AI then keeps those every car still has ahead, as for rest stops.
+     */
+    private suspend fun drowsyPool(): List<Place> {
+        val known = DemoData.drowsyShelters
+        val found = runCatching { placeSearch?.search("졸음쉼터", here()).orEmpty() }.getOrDefault(emptyList())
+            .map { it.place }
+            .filter { it.name.contains("졸음쉼터") }
+            .filter { p -> known.none { k -> haversineKm(GeoPoint(k.lat, k.lng), GeoPoint(p.lat, p.lng)) < 0.5 } }
+        return known + found
+    }
+
+    /** Kakao's [query] places within 20 km of the car, nearest first; none without a key, a position or the internet. */
+    private suspend fun nearbyPool(query: String): List<Place> {
+        val kakao = placeSearch as? KakaoPlaceSearch ?: return emptyList()
+        val near = here() ?: return emptyList()
+        return runCatching { kakao.nearby(query, near).map { it.place } }.getOrDefault(emptyList())
+    }
+
+    private fun noPlacesText(topic: DropTopic): String = when (topic) {
+        DropTopic.STORE -> "근처 편의점을 찾지 못했어요 · 카카오 키와 인터넷을 확인해 주세요"
+        DropTopic.EV -> "근처 충전소를 찾지 못했어요 · 카카오 키와 인터넷을 확인해 주세요"
+        else -> "추천할 곳을 찾지 못했어요"
     }
 
     /** Board 10: tick or untick a place. */
@@ -572,6 +611,9 @@ class AiViewModel(
         DropTopic.SONG -> "노래"
         DropTopic.GAME -> "게임 초대"
         DropTopic.VOICE -> "음성 메시지"
+        DropTopic.DROWSY -> "어느 졸음쉼터에서 쉴까요?"
+        DropTopic.STORE -> "어느 편의점에 들를까요?"
+        DropTopic.EV -> "어디서 충전할까요?"
     }
 }
 

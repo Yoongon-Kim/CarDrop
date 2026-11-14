@@ -194,10 +194,10 @@ private fun CarMarker(car: StripCar, isMe: Boolean, modifier: Modifier) {
                 .padding(horizontal = 10.dp, vertical = 5.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(car.car.name, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (isMe) CdColors.White else CdColors.Ink, maxLines = 1)
+            Text(car.car.name, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (isMe) CdColors.White else CdColors.Ink, maxLines = 1)
             Text(
                 "${car.rank}번째 · ${car.minutes}분",
-                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isMe) CdColors.White else CdColors.BlueDark, maxLines = 1,
+                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isMe) CdColors.White else CdColors.BlueDark, maxLines = 1,
             )
         }
         CarBadge(car.car)
@@ -311,22 +311,23 @@ private fun CrewCard(
             .background(tint)
             .border(2.dp, if (low) CdColors.FuelLow else tint, shape)
             .then(if (low && onLowFuel != null) Modifier.clickable(onClick = onLowFuel) else Modifier)
-            .padding(start = 10.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 10.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CarBadge(car, size = 54)
+        // A little bigger than the design's 16 / 13 so the names can be read from the seat (Member A, 2026-11-15).
+        CarBadge(car, size = 58)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(car.name, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1)
-            Text(gap, fontSize = 13.sp, color = CdColors.Gray600, maxLines = 1)
+            Text(car.name, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = CdColors.Ink, maxLines = 1)
+            Text(gap, fontSize = 14.sp, color = CdColors.Gray600, maxLines = 1)
         }
         if (fuel != null) {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     if (low) "연료 경고" else "연료 ${fuel.percent}%",
-                    fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (low) CdColors.OrangeDark else CdColors.Gray600,
+                    fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (low) CdColors.OrangeDark else CdColors.Gray600,
                 )
-                Box(Modifier.width(74.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color.Black.copy(alpha = 0.08f))) {
+                Box(Modifier.width(84.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color.Black.copy(alpha = 0.08f))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(fuel.percent.coerceIn(0, 100) / 100f).background(if (low) CdColors.Orange else CdColors.Blue))
                 }
             }

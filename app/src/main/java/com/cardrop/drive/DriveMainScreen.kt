@@ -140,11 +140,11 @@ fun DriveMainScreen(
                     "편집",
                     onClick = onEditQuickDrops,
                     style = ChipStyle.White,
-                    height = 34.dp,
-                    radius = 10.dp,
-                    fontSize = 13.sp,
+                    height = 40.dp,
+                    radius = 12.dp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
                 )
             }
             // Two tiles to a row, each half the width; null = the one "+ 추가" tile. A row with one tile keeps the

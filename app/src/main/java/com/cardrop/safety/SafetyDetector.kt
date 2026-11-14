@@ -6,6 +6,11 @@ import kotlin.math.abs
 class SafetyDetector(initial: SafetyRecord, startNanos: Long) {
     var record: SafetyRecord = initial
         private set
+
+    /** The same trip under its server-confirmed id and start time (the host's 출발; see [sameTripRestamped]). */
+    fun retag(tripId: String, startedAtMillis: Long) {
+        record = record.copy(tripId = tripId, startedAtMillis = startedAtMillis)
+    }
     private data class Sample(val nanos: Long, val speed: Double)
     private val samples = ArrayDeque<Sample>()
     private var previous: SpeedReading? = null
@@ -100,3 +105,11 @@ class SafetyDetector(initial: SafetyRecord, startNanos: Long) {
         clearContinuity()
     }
 }
+
+/**
+ * True when [key] (the trip being recorded) and the new start belong to one trip: the same crew [code], and a start
+ * time that moved by less than a minute. Firebase first reports the host's own 출발 with its local guess of the
+ * server time, then corrects it to the server's value; a crew starts only once.
+ */
+internal fun sameTripRestamped(key: String?, code: String, recordedStart: Long, newStart: Long): Boolean =
+    key != null && key.startsWith("$code-") && kotlin.math.abs(newStart - recordedStart) < 60_000

@@ -124,6 +124,10 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   row (lead, 2026-11-15; it read "안전운전 대결 · DEMO"): board 16 opens from the rail's 기록 or the 운전 기록 quick drop.
   Keep entry-token cancellation, speech priority and the shared Claude-backed `AiService` intact.
   See `SAFETY_SCORE_PLAN.md` and README for settings and validation.
+  The host's own 출발 reaches its device twice (Firebase's local guess of the server time, then the server's
+  `startedAt`, a few ms apart); `SafetyCoordinator` keeps it one trip (`sameTripRestamped`, `SafetyDetector.retag`)
+  instead of ending and restarting it, which stopped the foreground service right after starting it and crashed the
+  host's app (`ForegroundServiceDidNotStartInTimeException`; Member A, 2026-11-15).
   With the DEMO car, board 16 also shows finished sample trips (`safety/SafetySamples.kt`, unit tested; Member A,
   2026-11-15), in memory only: this week 속초 96, 양양 91, 남이섬 100, and before it (지난 내 차 기록 only) 안목해변 88,
   양떼목장 94, 쁘띠프랑스 85, under this device's car ("삼촌 차 (나)", `SafetySamples.carName`: the samples are made before

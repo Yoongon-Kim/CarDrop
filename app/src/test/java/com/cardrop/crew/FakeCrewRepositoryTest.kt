@@ -6,6 +6,7 @@ import com.cardrop.core.model.Drop
 import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Place
+import com.cardrop.drop.ProposalRules
 import com.cardrop.drop.VoteRules
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -110,5 +111,33 @@ class FakeCrewRepositoryTest {
     @Test fun everyBotSaysYesToAProposal() {
         val one = places("속초 해수욕장")
         assertEquals(List(3) { one.single() }, bots.map { FakeCrewRepository.botChoice(it, one) })
+    }
+
+    // ---- A bot's own vote (the DEMO panel's drops) ----
+
+    private fun restVote(candidates: List<Candidate>, toCarIds: List<String> = emptyList()) = DropDraft(
+        kind = DropKind.DECISION, topic = DropTopic.REST, title = "어디서 쉬어갈까요?", candidates = candidates, toCarIds = toCarIds,
+    )
+
+    @Test fun aBotThatSendsAVoteAnswersItAtOnceWithItsFirstPlace() = withCrew { repo ->
+        repo.joinCrew(DemoData.DEMO_CREW_CODE)
+        val three = places("덕평자연휴게소", "여주휴게소", "문막휴게소")
+        repo.injectDrop(DemoData.uncle, restVote(three))
+        assertEquals(mapOf(DemoData.uncle.id to three.first().id), repo.drops.value.single().votes)
+    }
+
+    @Test fun aBotsVoteEndsAsSoonAsTheLastCarAnswers() = withCrew { repo ->
+        repo.joinCrew(DemoData.DEMO_CREW_CODE)
+        // Sent to this car only, so 삼촌 and this car answer. It used to wait for 삼촌 until its time was up.
+        val two = places("덕평자연휴게소", "여주휴게소")
+        repo.injectDrop(DemoData.uncle, restVote(two, toCarIds = listOf(DemoData.me.id)))
+        repo.vote(repo.drops.value.single().id, two[1].id)
+        assertTrue(repo.drops.value.single().isDecided)
+    }
+
+    @Test fun aBotsProposalNeedsNoVoteFromItsSender() = withCrew { repo ->
+        repo.joinCrew(DemoData.DEMO_CREW_CODE)
+        repo.injectDrop(DemoData.uncle, ProposalRules.draft(DemoData.destinations.first(), toCarIds = emptyList()))
+        assertTrue(repo.drops.value.single().votes.isEmpty()) // its sender counts as 찬성 (VoteRules)
     }
 }

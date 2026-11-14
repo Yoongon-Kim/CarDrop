@@ -19,7 +19,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -142,25 +141,6 @@ private fun SafetyEncouragementCard(safety: SafetyCoordinator) {
             fontSize = 17.sp, fontWeight = FontWeight.Bold, color = CdColors.BlueDark,
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)).background(CdColors.BlueLight).padding(14.dp))
         Text("기록 메뉴나 운전 기록 퀵 드랍을 누를 때마다 한 번씩 들려드려요", fontSize = 12.sp, color = CdColors.Gray500)
-    }
-}
-
-@Composable
-fun SafetyHomeSummary(safety: SafetyCoordinator, crew: Crew?, onOpen: () -> Unit) {
-    val record by safety.current.collectAsStateWithLifecycle()
-    val peers by safety.peers.collectAsStateWithLifecycle()
-    val now by safety.clock.collectAsStateWithLifecycle()
-    val mine = record ?: return
-    val rows = rankSafetyCars(crew?.cars.orEmpty(), peers, now, safety.demo, live = true)
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CdColors.White).clickable(onClick = onOpen).padding(horizontal = 18.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(CdIcons.Trophy, null, tint = CdColors.Blue, modifier = Modifier.size(24.dp))
-        Column(Modifier.weight(1f)) {
-            Text("안전운전 대결${if (safety.demo) " · DEMO" else ""}", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-            Text(rows.take(4).joinToString("  ·  ") { "${it.car.name} ${if (it.peer == null) "대기" else "${it.peer.score}점"}" },
-                fontSize = 12.sp, color = CdColors.Gray600, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Text("내 차 ${mine.score}점  ›", fontSize = 15.sp, color = CdColors.BlueDark, fontWeight = FontWeight.Bold)
     }
 }
 

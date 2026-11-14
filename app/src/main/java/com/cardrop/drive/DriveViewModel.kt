@@ -74,6 +74,16 @@ class DriveViewModel(
     ) { car, nav -> drivingInput(car.gear, nav?.fix, System.currentTimeMillis()) }
         .stateIn(scope, SharingStarted.Eagerly, drivingInput(snapshot.value.gear, null, System.currentTimeMillis()))
 
+    /**
+     * True while board 15's games may open ([gamesOpen]: P, and the GPS doesn't say the car still moves). Board 04's
+     * 게임 초대 quick drop can't be tapped otherwise (Member A, 2026-11-15), instead of opening a closed board 15.
+     * Worked out again on every GPS fix and gear change, like [inputMode].
+     */
+    val gamesOpen: StateFlow<Boolean> = combine(
+        snapshot, liveNavigation?.state ?: MutableStateFlow(null),
+    ) { car, nav -> com.cardrop.drive.gamesOpen(car.gear, nav?.fix, System.currentTimeMillis()) } // the rule in DriveRules.kt
+        .stateIn(scope, SharingStarted.Eagerly, com.cardrop.drive.gamesOpen(snapshot.value.gear, null, System.currentTimeMillis()))
+
     init {
         vehicle.start()
         scope.launch {

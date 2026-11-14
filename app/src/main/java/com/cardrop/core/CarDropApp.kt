@@ -70,7 +70,6 @@ import com.cardrop.navi.InAppNavigatorPanel
 import com.cardrop.safety.SafetyScoreScreen
 import com.cardrop.safety.SafetyResultScreen
 import com.cardrop.safety.SafetyWeekScreen
-import com.cardrop.safety.SafetyHomeSummary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -204,7 +203,6 @@ fun CarDropApp(container: AppContainer) {
                     )
                 },
                 invite = invite,
-                safetySummary = { SafetyHomeSummary(container.safety, crewNow) { navigator.go(Screen.Safety()) } },
             )
             // After sending, the pop-up closes and the driver stays on 04; the voice says "휴게소 투표를 보냈어요".
             quickDropTopic?.let { topic ->
@@ -286,6 +284,7 @@ fun CarDropApp(container: AppContainer) {
                 // passes; the answers are in the inbox (lead, 2026-11-15: it used to wait on board 11).
                 onProposalSent = { navigator.switchTab(Screen.Drive) },
                 onSong = { toCarIds -> navigator.go(Screen.SongSend(toCarIds)) },
+                gamesOpen = driveVm.gamesOpen.collectAsStateWithLifecycle().value,
             )
             // Board 12: after 노래 드랍하기 the driver is back on 04, with a quiet caption.
             is Screen.SongSend -> SongSendScreen(

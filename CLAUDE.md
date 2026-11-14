@@ -236,8 +236,14 @@ export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Ho
 When CarDrop starts, this demo version first asks how the device runs (not in the official app;
 `core/demo/StartModeScreen.kt`): **봇 크루** (this device alone with three bot cars) or **실제 크루** and its car
 (아빠 / 삼촌 / 민지 / 이모 차). The app's parts are made only after the answer. A build without
-`app/google-services.json` has only the bot crew and doesn't ask. For adb, `--ez cardrop.skipStartQuestion true`
-on `am start` skips it and uses the last answer. A pencil next to each car there renames it (user request,
+`app/google-services.json` has only the bot crew and doesn't ask. 실제 크루 (Member A, 2026-11-15): the driver types their own name
+(`core/demo/MyName.kt`), then 방 만들기 (board 01, this car is the host's seat) or 코드로 참여 (board 03). The app keeps
+its 4 seats (아빠 / 삼촌 / 민지 / 이모 차: colours, badges, GPS order): a joining car takes the first free seat in a
+Firebase transaction (`crew/SeatRules.kt`, unit tested; `cars/<seat>/name` and `device`), so `myCarId` is final only
+after joining, and the same device gets its own seat back in the same crew (e.g. after a restart). Every device shows
+each seat by its driver's name; a full crew says "크루가 가득 찼어요". Board 01's 크루 멤버 lists only the cars that came in
+(no "기다리는 중" rows for empty seats). For adb, `--ez cardrop.skipStartQuestion true`
+on `am start` skips it and uses the last answer. The bot crew's card has a pencil chip per car that renames it (user request,
 2026-11-15; up to 10 letters, no brackets, 원래 이름으로 undoes it): the name shows on every screen of this device,
 the bot crew's included, and stays after a restart (`core/demo/CarNames.kt`, SharedPreferences; `DemoData`'s cars
 and `FirebaseCrewRepository.LINEUP` read it). It is this device's only (user's choice): in the real crew another

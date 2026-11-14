@@ -63,6 +63,9 @@ interface CrewRepository {
 /** [CrewRepository.joinCrew]: the crew set off without this car, which didn't join within 1 minute. */
 class CrewClosedException : Exception("이미 출발한 크루예요")
 
+/** Every seat of the crew is taken (4 cars; Member A, 2026-11-15). */
+class CrewFullException : Exception("크루가 가득 찼어요 · 4대까지 들어갈 수 있어요")
+
 /**
  * [CrewRepository.sendDrop] before the trip has started. An IllegalStateException, so the screens that show such
  * messages (e.g. board 05's) say this line as it is.

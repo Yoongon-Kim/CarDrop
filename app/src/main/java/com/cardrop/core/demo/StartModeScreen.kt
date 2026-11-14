@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,14 +25,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.cardrop.core.text.particle
 import com.cardrop.core.ui.CdCard
 import com.cardrop.core.ui.CdChip
 import com.cardrop.core.ui.CdIcons
@@ -65,16 +60,25 @@ object StartMode {
 }
 
 /**
- * The start question. [lastRealCrew] / [lastCar]: what this device used last time (marked).
- * [onPick]: the bot crew (car null) or the real crew as that car. The pencil next to each car renames it on this
- * device ([CarNames]; user request, 2026-11-15), for the bot crew too.
+ * The start question. [lastRealCrew]: what this device used last time (marked).
+ * [onPick]: the bot crew (car null) or the real crew: [DemoCar.HOST] makes a crew, another car joins one with the code.
+ * 실제 크루 (Member A, 2026-11-15): the driver types their own name, then 방 만들기 (board 01, this car is the host) or
+ * 코드로 참여 (board 03); the crew gives a joining car the first free seat and shows everyone by the names they typed
+ * ([MyName]). The bot crew's pencils rename the demo cars on this device ([CarNames]; lead, 2026-11-15).
  */
 @Composable
 fun StartModeScreen(lastRealCrew: Boolean, lastCar: String, onPick: (realCrew: Boolean, car: String?) -> Unit) {
+    val context = LocalContext.current
     // The car whose name is being typed (a car id), and the names shown, read again after each rename.
     var editing by remember { mutableStateOf<String?>(null) }
     var names by remember { mutableStateOf(CarNames.DEFAULTS.keys.associateWith(CarNames::of)) }
     val hostName = names.getValue(FirebaseCrewRepository.carFor(DemoCar.HOST).id)
+    var myName by remember { mutableStateOf(MyName.get(context).orEmpty()) }
+    val nameOk = CarNames.clean(myName) != null
+    val real = { car: String ->
+        MyName.set(context, myName)
+        onPick(true, car)
+    }
     // Sized like the CarDrop area (1067 x 900 design px), so it reads large on the car screen.
     DesignScale(designWidth = 1067f) {
         Box(modifier = Modifier.fillMaxSize().background(CdColors.Gray100), contentAlignment = Alignment.Center) {
@@ -86,26 +90,47 @@ fun StartModeScreen(lastRealCrew: Boolean, lastCar: String, onPick: (realCrew: B
                         Text("봇 크루", style = MaterialTheme.typography.headlineLarge)
                         Text("이 기기 혼자 연습해요. 내 차는 $hostName, 다른 3대는 봇이에요.", style = MaterialTheme.typography.bodyLarge)
                         PrimaryButton("봇 크루로 시작", onClick = bots, modifier = Modifier.fillMaxWidth())
+                        // The bot crew's cars, each with its pencil (this device only).
+                        CarNames.DEFAULTS.keys.chunked(2).forEach { pair ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                pair.forEach { id ->
+                                    CdChip(
+                                        names.getValue(id),
+                                        onClick = { editing = id },
+                                        icon = CdIcons.Pencil,
+                                        style = ChipStyle.White,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        }
                         if (!lastRealCrew) Pill("지난번")
                     }
                     CdCard(modifier = Modifier.weight(1f).fillMaxHeight(), selected = lastRealCrew) {
                         Text("실제 크루", style = MaterialTheme.typography.headlineLarge)
-                        Text("여러 기기가 한 크루로 달려요. 내 차를 누르면 시작해요.", style = MaterialTheme.typography.bodyLarge)
-                        // One car a row, so a longer name fits next to its pencil.
-                        DemoCar.KEYS.forEach { car ->
-                            val id = FirebaseCrewRepository.carFor(car).id
-                            val name = names.getValue(id)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                PrimaryButton(
-                                    text = if (car == lastCar) "$name ✓" else name,
-                                    onClick = { onPick(true, car) },
-                                    modifier = Modifier.weight(1f),
-                                )
-                                PencilButton(label = "$name 이름 바꾸기", onClick = { editing = id })
-                            }
-                        }
+                        Text("여러 기기가 한 크루로 달려요. 내 이름을 넣고 방을 만들거나 코드로 들어가요.", style = MaterialTheme.typography.bodyLarge)
+                        CdTextField(
+                            value = myName,
+                            onValueChange = { myName = it },
+                            placeholder = "내 이름 (예: 홍승현)",
+                            maxLength = CarNames.MAX_LENGTH,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClear = { myName = "" },
+                        )
+                        PrimaryButton(
+                            if (lastRealCrew && lastCar == DemoCar.HOST) "방 만들기 ✓" else "방 만들기",
+                            onClick = { real(DemoCar.HOST) },
+                            enabled = nameOk,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        PrimaryButton(
+                            if (lastRealCrew && lastCar != DemoCar.HOST) "코드로 참여 ✓" else "코드로 참여",
+                            onClick = { real(JOIN_SEAT) },
+                            enabled = nameOk,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                         Text(
-                            "${hostName.particle("은", "는")} 크루를 만들고, 다른 차는 그 코드로 참여해요. 연필로 차 이름을 바꿔요.",
+                            if (nameOk) "방을 만들면 크루 코드가 나와요. 다른 사람은 그 코드로 들어와요." else "이름을 넣으면 시작할 수 있어요 · 최대 ${CarNames.MAX_LENGTH}자",
                             style = MaterialTheme.typography.bodyMedium,
                             color = CdColors.Gray600,
                         )
@@ -126,20 +151,11 @@ fun StartModeScreen(lastRealCrew: Boolean, lastCar: String, onPick: (realCrew: B
     }
 }
 
-/** The small round pencil next to a car's button: opens [CarNameEditor] for that car. */
-@Composable
-private fun PencilButton(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(52.dp)
-            .clip(CircleShape)
-            .background(CdColors.BlueLight)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(CdIcons.Pencil, contentDescription = label, tint = CdColors.Blue, modifier = Modifier.size(24.dp))
-    }
-}
+/**
+ * The seat a joining car starts with until the crew gives it the first free one (crew/SeatRules.kt). Any car but the
+ * host's, so the app opens on board 03 (DemoCar.startScreen).
+ */
+private const val JOIN_SEAT = "uncle"
 
 /**
  * Renames [carId] ([CarNames.rename]), like board 01's crew name: an empty box with the current name in grey, 저장

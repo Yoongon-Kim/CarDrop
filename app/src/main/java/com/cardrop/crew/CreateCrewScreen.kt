@@ -386,7 +386,9 @@ private fun MembersCard(
                 modifier = Modifier.alignByBaseline(),
             )
         }
-        cars.forEach { car ->
+        // Only the cars that came in (Member A, 2026-11-15): the seats nobody took yet aren't listed as "기다리는 중";
+        // each car shows up as it joins, under the name its driver typed.
+        cars.filter { it.connected }.forEach { car ->
             // The host (방장) is the car that made the crew, which isn't always this one: a car that joined with
             // a code sees the host's row marked, not its own.
             val meta = MemberRules.meta(

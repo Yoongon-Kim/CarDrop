@@ -43,6 +43,7 @@ import com.cardrop.core.model.DropKind
 import com.cardrop.core.model.DropTopic
 import com.cardrop.core.model.Gear
 import com.cardrop.core.model.Place
+import com.cardrop.core.text.particle
 import com.cardrop.core.text.withRo
 import com.cardrop.core.ui.CdIcons
 import com.cardrop.core.ui.theme.CdColors
@@ -128,19 +129,19 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                 if (crewRepo != null && current != null && current.isStarted) {
                     DemoButtons {
                         if (along(DemoData.minji)) {
-                            DemoButton("민지 차 연료 경고 받기") {
+                            DemoButton("${DemoData.minji.name} 연료 경고 받기") {
                                 crewRepo.injectDrop(DemoData.minji, minjiFuelInvite(container))
                             }
                         }
                         if (along(DemoData.uncle)) {
-                            DemoButton("삼촌 차 휴게소 투표 받기") {
+                            DemoButton("${DemoData.uncle.name} 휴게소 투표 받기") {
                                 crewRepo.injectDrop(
                                     DemoData.uncle,
                                     DropDraft(
                                         kind = DropKind.DECISION,
                                         topic = DropTopic.REST,
                                         title = "어디서 쉬어갈까요?",
-                                        message = "삼촌 차 · 2시간 연속 운전",
+                                        message = "${DemoData.uncle.name} · 2시간 연속 운전",
                                         candidates = demoCandidates(container),
                                     ),
                                 )
@@ -148,7 +149,7 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                         }
                         // A quick drop from a bot (04's pop-up, one place): board 11 asks only 예 / 아니요 (Member A).
                         if (along(DemoData.uncle)) {
-                            DemoButton("삼촌 차 퀵 드랍 받기 (예/아니요)") {
+                            DemoButton("${DemoData.uncle.name} 퀵 드랍 받기 (예/아니요)") {
                                 demoCandidates(container).firstOrNull()?.let { place ->
                                     crewRepo.injectDrop(
                                         DemoData.uncle,
@@ -156,7 +157,7 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                                             kind = DropKind.DECISION,
                                             topic = DropTopic.REST,
                                             title = "휴게소 들렀다 가요",
-                                            message = "삼촌 차 · 퀵 드랍",
+                                            message = "${DemoData.uncle.name} · 퀵 드랍",
                                             candidates = listOf(place),
                                             senderVotes = false,
                                         ),
@@ -166,7 +167,7 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                         }
                         // A destination proposal from a bot (board 11's 찬성 / 반대 / 다른 목적지 제안하기), added by Member A:
                         // 속초 해수욕장, or another known destination when the crew is heading there already.
-                        DemoButton("삼촌 차 목적지 제안 받기") {
+                        DemoButton("${DemoData.uncle.name} 목적지 제안 받기") {
                             val now = crew?.destination
                             val others = DemoData.destinations.filterNot { ProposalRules.isCurrent(it, now) }
                             (others.firstOrNull { it.id == "sokcho" } ?: others.firstOrNull())?.let { place ->
@@ -175,20 +176,20 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                         }
                         // A song drop from a bot (board 13), added by Member A.
                         if (along(DemoData.uncle)) {
-                            DemoButton("삼촌 차 노래 드랍 받기") {
+                            DemoButton("${DemoData.uncle.name} 노래 드랍 받기") {
                                 crewRepo.injectDrop(DemoData.uncle, SongRules.draft(SongRules.SONGS.first(), toCarIds = emptyList()))
                             }
                         }
                         // A 게임 초대 from a bot (Member A): the pop-up in P, only the inbox while driving.
                         if (along(DemoData.uncle)) {
-                            DemoButton("삼촌 차 게임 초대 받기") {
+                            DemoButton("${DemoData.uncle.name} 게임 초대 받기") {
                                 crewRepo.injectDrop(DemoData.uncle, GameInviteRules.quiz("상식 퀴즈", toCarIds = emptyList()))
                             }
                         }
                         // A voice message from a bot (Member A): the last one this car recorded on board 09, sent back as
                         // if 삼촌 차 said it, so the banner's ▶ 재생 can be tried on one emulator.
                         if (along(DemoData.uncle)) {
-                            DemoButton("삼촌 차 음성 메시지 받기 (내 마지막 녹음)") {
+                            DemoButton("${DemoData.uncle.name} 음성 메시지 받기 (내 마지막 녹음)") {
                                 val mine = crewRepo.drops.value.lastOrNull { it.topic == DropTopic.VOICE && it.fromCarId == crewRepo.myCarId }
                                 if (mine != null) {
                                     crewRepo.injectDrop(
@@ -200,7 +201,7 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                         }
                         DemoButton("투표 바로 마감 (시간 다 됨)") { crewRepo.closeOpenVotesNow() }
                         if (along(DemoData.aunt)) {
-                            DemoButton("이모 차 한마디 받기") {
+                            DemoButton("${DemoData.aunt.name} 한마디 받기") {
                                 crewRepo.injectDrop(
                                     DemoData.aunt,
                                     DropDraft(kind = DropKind.SOCIAL, topic = DropTopic.MESSAGE, title = "뒤에 사고 났어요, 조심하세요"),
@@ -275,8 +276,8 @@ private fun minjiFuelInvite(container: AppContainer): DropDraft {
     return DropDraft(
         kind = DropKind.DECISION,
         topic = DropTopic.FUEL,
-        title = "민지 차 연료가 부족해요 · 같이 갈래요?",
-        message = "민지 차 · 주행 가능 85km$where",
+        title = "${DemoData.minji.name} 연료가 부족해요 · 같이 갈래요?",
+        message = "${DemoData.minji.name} · 주행 가능 85km$where",
         candidates = stations,
     )
 }
@@ -315,7 +316,7 @@ private fun CrewSwitch(realCrew: Boolean, myCar: String) {
     var pending by remember { mutableStateOf<Boolean?>(null) } // true = to the real crew
     Text("크루", color = CdColors.White, fontSize = 14.sp)
     if (!BuildConfig.HAS_FIREBASE) {
-        Text("봇 크루 · 내 차는 아빠 차 (실제 크루는 app/google-services.json이 있어야 해요)", color = CdColors.Gray400, fontSize = 13.sp)
+        Text("봇 크루 · 내 차는 ${carName(DemoCar.HOST)} (실제 크루는 app/google-services.json이 있어야 해요)", color = CdColors.Gray400, fontSize = 13.sp)
         return
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -323,13 +324,13 @@ private fun CrewSwitch(realCrew: Boolean, myCar: String) {
         DemoButton(if (realCrew) "봇 크루" else "봇 크루 ✓") { pending = if (realCrew) false else null }
         DemoButton(if (realCrew) "실제 크루 ✓" else "실제 크루") { pending = if (realCrew) null else true }
     }
-    if (!realCrew) Text("봇 크루에서는 내 차가 아빠 차예요", color = CdColors.Gray400, fontSize = 13.sp)
+    if (!realCrew) Text("봇 크루에서는 내 차가 ${carName(DemoCar.HOST).particle("이에요", "예요")}", color = CdColors.Gray400, fontSize = 13.sp)
     pending?.let { toReal ->
         val text = if (toReal) {
             val then = if (myCar == DemoCar.HOST) "크루를 새로 만들면 다른 차는 다시 참여해야 해요." else "크루 코드로 참여해 주세요."
             "실제 크루로 바꾸면 앱이 다시 시작돼요. 내 차: ${carName(myCar)} · $then"
         } else {
-            "봇 크루로 바꾸면 앱이 다시 시작돼요. 내 차: 아빠 차"
+            "봇 크루로 바꾸면 앱이 다시 시작돼요. 내 차: ${carName(DemoCar.HOST)}"
         }
         Text(text, color = CdColors.White, fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -1,6 +1,7 @@
 package com.cardrop.crew
 
 import android.util.Log
+import com.cardrop.core.demo.CarNames
 import com.cardrop.core.demo.DemoData
 import com.cardrop.core.model.Candidate
 import com.cardrop.core.model.Car
@@ -374,9 +375,12 @@ class FirebaseCrewRepository(
 
         const val DATABASE_URL = "https://cardrop-d47ca-default-rtdb.asia-southeast1.firebasedatabase.app"
 
-        /** The 4 cars of the demo crew, in crew order (names without "(나)"). */
-        val LINEUP: List<Car> = listOf(
-            DemoData.me.copy(name = "아빠 차"),
+        /**
+         * The 4 cars of the demo crew, in crew order (names without "(나)"). Made on every read, so a name typed on
+         * the start question's pencil (CarNames, this device only) shows.
+         */
+        val LINEUP: List<Car> get() = listOf(
+            DemoData.me.copy(name = CarNames.of(DemoData.me.id)),
             DemoData.uncle,
             DemoData.minji,
             DemoData.aunt,

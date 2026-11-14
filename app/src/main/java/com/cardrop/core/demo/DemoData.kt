@@ -53,10 +53,12 @@ object DemoData {
         Place("cafe-anmok-bossanova", "안목 보사노바", 37.772055, 128.947908, "안목해변 커피거리 · 경포해변에서 5km"),
     )
 
-    val me = Car("car-dad", "아빠 차 (나)", CarColor.BLUE, isMe = true)
-    val uncle = Car("car-uncle", "삼촌 차", CarColor.PURPLE, isBot = true)
-    val minji = Car("car-minji", "민지 차", CarColor.YELLOW, isBot = true)
-    val aunt = Car("car-aunt", "이모 차", CarColor.TEAL, isBot = true)
+    // Made fresh on every read, so they carry the names typed on the start question's pencils (CarNames);
+    // never renamed = the design's 아빠 / 삼촌 / 민지 / 이모 차.
+    val me: Car get() = Car("car-dad", "${CarNames.of("car-dad")} (나)", CarColor.BLUE, isMe = true)
+    val uncle: Car get() = Car("car-uncle", CarNames.of("car-uncle"), CarColor.PURPLE, isBot = true)
+    val minji: Car get() = Car("car-minji", CarNames.of("car-minji"), CarColor.YELLOW, isBot = true)
+    val aunt: Car get() = Car("car-aunt", CarNames.of("car-aunt"), CarColor.TEAL, isBot = true)
 
     const val DEMO_CREW_CODE = "482917"
     const val DEMO_CREW_NAME = "강릉 여행"

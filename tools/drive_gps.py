@@ -54,18 +54,9 @@ def find_adb() -> str:
     found = shutil.which("adb")
     if found:
         return found
-    # Android Studio's own SDK folder: Mac ~/Library/Android/sdk, Windows %LOCALAPPDATA%\Android\Sdk.
-    local = os.environ.get("LOCALAPPDATA")
-    sdks = (
-        os.environ.get("ANDROID_HOME"),
-        os.environ.get("ANDROID_SDK_ROOT"),
-        str(Path.home() / "Library/Android/sdk"),
-        str(Path(local) / "Android/Sdk") if local else None,
-    )
-    for sdk in sdks:
-        for name in ("adb", "adb.exe"):  # Windows names it adb.exe
-            if sdk and (Path(sdk) / "platform-tools" / name).exists():
-                return str(Path(sdk) / "platform-tools" / name)
+    for sdk in (os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"), str(Path.home() / "Library/Android/sdk")):
+        if sdk and (Path(sdk) / "platform-tools/adb").exists():
+            return str(Path(sdk) / "platform-tools/adb")
     sys.exit("adb not found: add Android SDK platform-tools to PATH or set ANDROID_HOME")
 
 

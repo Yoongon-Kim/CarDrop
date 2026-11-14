@@ -179,6 +179,13 @@ class AppContainer(context: Context) {
      * Without the key, null: the driver can add only the places the app knows (rest stops, cafés, destinations).
      */
     val placeSearch: PlaceSearch? = BuildConfig.KAKAO_REST_KEY.takeIf { it.isNotBlank() }?.let(::KakaoPlaceSearch)
+    /**
+     * Board 05's last resort: Kakao's 주유소 within 20 km of a point, nearest first, for when no rest stop on the
+     * route will do (past the last one, near the destination). Null without the Kakao key.
+     */
+    val nearbyStations: (suspend (GeoPoint) -> List<Place>)? = (placeSearch as? KakaoPlaceSearch)?.let { kakao ->
+        { here -> kakao.nearby("주유소", here).map { it.place } }
+    }
     /** Board 09's phrases, kept on this device. */
     val phrases: PhraseStore = PrefsPhraseStore(context)
     /** Board 04's quick-drop slots (퀵 드랍 편집), kept on this device. */

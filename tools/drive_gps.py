@@ -19,11 +19,11 @@ panel's P) the car stands still and drives on after D. The reported speed is alw
 
 --car picks where the car starts: 아빠 km 40, 삼촌 39.2, 민지 38.2, 이모 37 (the bot cars' gaps). It also
 holds the car still at its start until the crew's trip starts (the host's 출발 on board 01, every car joined, or
-2 minutes after the crew was made), read from the real crew's Firebase (crews/<code>/info/startedAt, see
-crew/FirebaseCrewRepository.kt), so every car sets off together. Every real crew has its own random code, so the
-script asks CarDrop on the emulator it drives which crew it is in (drive/TripCodeFile.kt) and follows that crew,
-also when the host makes a new one; --code 123456 sets it by hand. --no-wait drives right away (the bot crew has
-no host to wait for).
+the end of board 01's countdown, JoinRules.JOIN_WINDOW_MILLIS after the crew was made), read from the real crew's
+Firebase (crews/<code>/info/startedAt, see crew/FirebaseCrewRepository.kt), so every car sets off together. Every
+real crew has its own random code, so the script asks CarDrop on the emulator it drives which crew it is in
+(drive/TripCodeFile.kt) and follows that crew, also when the host makes a new one; --code 123456 sets it by hand.
+--no-wait drives right away (the bot crew has no host to wait for).
 
 --stop shows the navigator's "도착" (arrived): it needs about 10 s standing still within 300 m of the
 voted stop. Without --stop the car drives past every stop, which the navigator reports as "지나침".
@@ -104,7 +104,7 @@ def device_gear(adb):
 def wait_for_host(stand_still, crew_code, database_url: str, poll_s: float = 1.0):
     """Calls stand_still() every poll_s seconds until the trip of the crew that crew_code() names has started
     (None while there is none yet; it changes when the host makes a new crew)."""
-    print("Waiting for the trip to start: the host's 출발, every car joined, or 2 minutes after the crew was made"
+    print("Waiting for the trip to start: the host's 출발, every car joined, or the end of board 01's countdown"
           " (the car stands at its start). Ctrl+C to stop.")
     misses = 0
     shown = ""

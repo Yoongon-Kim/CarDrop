@@ -163,6 +163,13 @@ class DropRoutingMemoryTest {
     }
 
     @Test
+    fun `this car's own quick drop is not said, another car's is`() {
+        val mine = drop("mine", from = me, deadline = 120_000).copy(senderVotes = false) // the other cars decide it
+        val theirs = drop("theirs", deadline = 120_000).copy(senderVotes = false) // 삼촌's quick drop: this car votes
+        assertEquals(listOf(theirs), DropRoutingMemory({ me }).dueReminders(listOf(mine, theirs), nowMillis = 100_000))
+    }
+
+    @Test
     fun `a proposal is said to the cars that answer it, not to the car that sent it`() {
         val theirs = proposal("theirs", deadline = 120_000)
         val mine = proposal("mine", from = me, deadline = 120_000) // sending it said 찬성

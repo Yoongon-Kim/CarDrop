@@ -177,6 +177,7 @@ class FakeCrewRepository(
             createdAtMillis = created,
             deadlineMillis = created + draft.voteSeconds * 1_000L,
             toCarIds = draft.toCarIds,
+            senderVotes = draft.senderVotes,
         )
     }
 
@@ -214,7 +215,7 @@ class FakeCrewRepository(
         val time = now()
         _drops.update { list ->
             list.map { drop ->
-                // Only the sender and the cars it was sent to count in the vote.
+                // Only the sender and the cars it was sent to count in the vote; a quick drop's sender doesn't.
                 val voters = drop.voterIds(carIds)
                 if (drop.kind == DropKind.DECISION && !drop.isDecided && drop.candidates.isNotEmpty() &&
                     VoteRules.isOver(drop, voters, time)
@@ -241,7 +242,8 @@ class FakeCrewRepository(
         /**
          * The place [bot] votes for: 삼촌 place 1, 민지 place 2 (place 1 when there is one place), 이모 the last place.
          * With the AI's three places each has one vote, so this car's answer decides, and the vote ends as soon as it
-         * answers. On a proposal (one place) all three say 찬성. Unit tested (FakeCrewRepositoryTest).
+         * answers. A quick drop leaves this car out (`Drop.senderVotes`): it ends with 이모's answer after 8 s, and the
+         * three-way tie goes to place 1. On a proposal (one place) all three say 찬성. Unit tested (FakeCrewRepositoryTest).
          */
         internal fun botChoice(bot: Car, candidates: List<Candidate>): Candidate? = when (bot.id) {
             DemoData.minji.id -> candidates.getOrNull(1) ?: candidates.firstOrNull()

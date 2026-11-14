@@ -26,7 +26,8 @@ import kotlinx.coroutines.delay
  * - a vote that just ended -> board 14 (decision), only if it changed this car's route ([DecidedScreenPicker])
  * - a destination proposal that was just turned down -> said aloud ("…로 바꾸자는 제안은 반대가 있어서…")
  * - a vote this car hasn't answered, 30 s before it ends -> said aloud ([reminderLine]): no answer counts as place 1,
- *   and its board 14 would otherwise come as a surprise (lead, 2026-11-15)
+ *   and its board 14 would otherwise come as a surprise (lead, 2026-11-15); not this car's own quick drop, which it
+ *   doesn't vote on
  *
  * [memory] says what was already opened. It comes from AppContainer, so when an activity restart starts
  * this effect again, old drops are not opened a second time or said aloud again.
@@ -154,12 +155,12 @@ class DropRoutingMemory(private val myCarId: () -> String, isSkipped: (dropId: S
     /**
      * The votes this car still has to answer that end within [REMIND_BEFORE_MILLIS], each once (the voice reminds the
      * driver, [reminderLine]). Not a fuel invite (no answer there means not going along, and the car that sent it never
-     * votes) nor this car's own proposal (sending it said 찬성).
+     * votes), this car's own proposal (sending it said 찬성) or this car's own quick drop (its sender doesn't vote).
      */
     fun dueReminders(drops: List<Drop>, nowMillis: Long): List<Drop> {
         val me = myCarId()
         return drops.filter {
-            it.isFor(me) && it.kind == DropKind.DECISION && it.topic != DropTopic.FUEL && !it.isDecided &&
+            it.isVoter(me) && it.kind == DropKind.DECISION && it.topic != DropTopic.FUEL && !it.isDecided &&
                 it.candidates.isNotEmpty() && me !in it.votes && !(VoteRules.isProposal(it) && it.fromCarId == me) &&
                 it.deadlineMillis - nowMillis in 1..REMIND_BEFORE_MILLIS && reminded.add(it.id)
         }

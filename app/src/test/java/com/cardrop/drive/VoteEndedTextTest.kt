@@ -58,6 +58,18 @@ class VoteEndedTextTest {
         assertEquals("민지 차의 휴게소 투표가 끝났어요 · 2대 중 1대 동의", voteEndedText(drop, cars, me))
     }
 
+    @Test fun aQuickDropCountsOnlyTheOtherCars() {
+        // This car's quick drop: the bots answered a, b and c, and a won the tie. This car didn't vote.
+        val votes = mapOf(DemoData.uncle.id to "a", DemoData.minji.id to "b", DemoData.aunt.id to "c")
+        val drop = decided(from = me, votes = votes).copy(senderVotes = false)
+        assertEquals("우리 차의 휴게소 투표가 끝났어요 · 3대 중 1대 동의", voteEndedText(drop, cars, me))
+    }
+
+    @Test fun aQuickDropWithNoOtherCarHasNoCount() {
+        val drop = decided(from = me).copy(senderVotes = false)
+        assertEquals("우리 차의 휴게소 투표가 끝났어요", voteEndedText(drop, listOf(DemoData.me), me))
+    }
+
     @Test fun aDestinationProposalNamesItsTopic() {
         val proposal = decided(from = DemoData.uncle.id, topic = DropTopic.DESTINATION, candidates = places.take(1))
         assertEquals("삼촌 차의 목적지 변경 투표가 끝났어요 · 4대 중 4대 동의", voteEndedText(proposal, cars, me))

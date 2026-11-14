@@ -106,6 +106,12 @@ data class Drop(
     val decidedCandidateId: String? = null,
     /** The cars it was sent to besides the sender (board 08 "받는 차"). Empty = the whole crew. */
     val toCarIds: List<String> = emptyList(),
+    /**
+     * False for a quick drop's vote (board 04's 휴게소 / 식사 / 주유 pop-up): the car that sent it doesn't vote, so the
+     * vote ends as soon as the other cars have answered, and only their answers decide (lead, 2026-11-15). The decided
+     * stop still goes into the sender's route. True for every other drop: its sender votes like the cars it went to.
+     */
+    val senderVotes: Boolean = true,
 ) {
     val isDecided: Boolean get() = decidedCandidateId != null
     val decidedCandidate: Candidate? get() = candidates.firstOrNull { it.id == decidedCandidateId }
@@ -113,8 +119,11 @@ data class Drop(
     /** True when [carId] takes part: the sender, a receiver, or any car when it went to the whole crew. */
     fun isFor(carId: String): Boolean = toCarIds.isEmpty() || carId == fromCarId || carId in toCarIds
 
-    /** The cars whose answers count in a vote: those that take part, in crew order. */
-    fun voterIds(crewCarIds: List<String>): List<String> = crewCarIds.filter(::isFor)
+    /** True when [carId]'s answer counts in a vote: a car that takes part ([isFor]), except a quick drop's sender. */
+    fun isVoter(carId: String): Boolean = isFor(carId) && (senderVotes || carId != fromCarId)
+
+    /** The cars whose answers count in a vote ([isVoter]), in crew order. */
+    fun voterIds(crewCarIds: List<String>): List<String> = crewCarIds.filter(::isVoter)
 }
 
 enum class Gear { PARK, DRIVE, REVERSE, NEUTRAL, UNKNOWN }

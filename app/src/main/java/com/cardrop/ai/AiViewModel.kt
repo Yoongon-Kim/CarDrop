@@ -246,7 +246,7 @@ class AiViewModel(
 
     /**
      * The cars a drop to [toCarIds] is for, in crew order: this car and [toCarIds], or every car when it goes to
-     * the whole crew. The same cars vote on it (`Drop.voterIds`).
+     * the whole crew. The same cars vote on it (`Drop.voterIds`), except this car on a quick drop.
      */
     fun involvedCarIds(toCarIds: List<String>): List<String> =
         crew.crew.value?.cars.orEmpty().map { it.id }.filter { toCarIds.isEmpty() || it == crew.myCarId || it in toCarIds }
@@ -257,9 +257,10 @@ class AiViewModel(
 
     /**
      * Board 10 "이 N곳으로 투표 보내기": only the ticked places go into the vote, sent to [toCarIds]
-     * (empty = the whole crew).
+     * (empty = the whole crew). [senderVotes] = false for a quick drop (04's pop-up): this car doesn't vote on it, the
+     * other cars decide (`Drop.senderVotes`).
      */
-    fun sendVote(topic: DropTopic, toCarIds: List<String>, onSent: (Drop) -> Unit) {
+    fun sendVote(topic: DropTopic, toCarIds: List<String>, onSent: (Drop) -> Unit, senderVotes: Boolean = true) {
         val pick = _picker.value.pick
         val chosen = pick.selected
         if (chosen.isEmpty() || sending) return
@@ -277,6 +278,7 @@ class AiViewModel(
                             message = voteReason(cars = involvedCarIds(toCarIds).size, aiPicks = chosen.size - added, added = added),
                             candidates = chosen,
                             toCarIds = toCarIds,
+                            senderVotes = senderVotes,
                         ),
                     )
                 } catch (e: CancellationException) {

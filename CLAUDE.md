@@ -64,14 +64,16 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   so `carId in drop.votes` means "answered", not "chose a place".
 - After its answer the driver is back on 04 at once (lead, 2026-11-15): board 11's 응답하기 (a proposal's 찬성 / 반대
   too) sends the vote, says which answer went out ("강문 덴켄에 투표했어요", `VotePick.answeredLine`) and goes to 04;
-  board 14 opens over it once the vote ends. The car that sends a board 10 vote still answers it on board 11 first.
+  board 14 opens over it once the vote ends. The car that sends a board 10 vote still answers it on board 11 first,
+  except a quick drop's (04's pop-up, see board 04's quick drops): its sender doesn't vote.
   The bot crew's bots all answer (`FakeCrewRepository.botChoice`): 삼촌 place 1 after 3 s, 민지 place 2 after 5 s,
-  이모 the last place after 8 s, so with three places this car's answer decides and ends the vote. A bot that sends
+  이모 the last place after 8 s, so with three places this car's answer decides and ends the vote (a quick drop's ends
+  with 이모's answer, and the three-way tie goes to place 1). A bot that sends
   a vote answers it at once with its first place (`injectDrop`; lead, 2026-11-15), so the DEMO panel's votes also end
   once every car has answered (a fuel invite only after 같이 갈래요: 가던 길 갈래요 records no vote). A vote this car hasn't
   answered is said once more 30 s before it ends ("휴게소 투표가 30초 남았어요. 답이 없으면 1번 횡성휴게소에 투표한 걸로
   봐요"; a proposal: "…답이 없으면 찬성으로 봐요"), so its board 14 is no surprise; not a fuel invite or this car's own
-  proposal (`DropRoutingMemory.dueReminders`).
+  proposal or quick drop (`DropRoutingMemory.dueReminders`).
 - Place search (boards 02 and 10), like Kakao Map's: typing shows the places that fit (Kakao Local keyword
   search, `navi/KakaoPlaceSearch.kt`, key `cardrop.kakaoRestKey`, nearby places first, distance from the car's
   GPS via `AppContainer.myPosition()`). The shared parts: `navi/PlaceSuggester.kt` (2+ letters, 300 ms pause,
@@ -130,7 +132,11 @@ Screens (Compose)  ->  ViewModels  ->  interfaces  ->  fake now / real later
   SharedPreferences; clearing the app's data brings the defaults back). A tile opens what it names: 휴게소 / 식사 / 주유
   board 10 as a pop-up over 04 for the whole crew (`QuickDrop.popupTopic()`, `QuickDropPicker`; lead, 2026-11-14). After
   보내기 it closes, the driver stays on 04 and the voice says "휴게소 투표를 보냈어요"; any other screen (e.g. another car's
-  vote) closes it. 한마디 09, 게임 초대 15, 편지함 07 (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
+  vote) closes it. The car that sends a quick drop doesn't vote on it (lead, 2026-11-15; `Drop.senderVotes` = false,
+  `Drop.isVoter` / `voterIds`): the vote ends once the other cars have answered (or the minute is up) and only their answers
+  decide; the decided stop still goes into the sender's route and board 14 counts only the others ("3대 중 1대 동의").
+  Opened from the inbox, its board 11 only shows their answers ("다른 차들이 고르고 있어요"). 한마디 09, 게임 초대 15, 편지함 07
+  (`QuickDrop.screen()`). 말하기 ("배고파") still opens board 10 as a
   page. Like 드랍하기, the tiles wait for the trip to start; 편집 works at any time. 게임 초대 also waits for the car to
   stop: greyed out and not tappable unless `gamesOpen` (`DriveViewModel.gamesOpen`; Member A, 2026-11-15), as is
   board 08's 게임 초대 tile.

@@ -108,6 +108,27 @@ class FakeCrewRepositoryTest {
         for (mine in two) assertEquals(mine.id, VoteRules.winner(vote(two, mine), cars))
     }
 
+    @Test fun aQuickDropLeavesThisCarOutOfItsVote() = withCrew { repo ->
+        repo.joinCrew(DemoData.DEMO_CREW_CODE)
+        repo.sendDrop(restVote(places("덕평자연휴게소", "여주휴게소", "문막휴게소")).copy(senderVotes = false))
+        val drop = repo.drops.value.single()
+        assertFalse(drop.senderVotes)
+        assertEquals(bots.map { it.id }, drop.voterIds(cars))
+    }
+
+    @Test fun theBotsEndAQuickDropWithoutThisCarAndTheTieGoesToPlace1() {
+        val three = places("덕평자연휴게소", "여주휴게소", "문막휴게소")
+        // One place each from the bots (삼촌 1, 민지 2, 이모 3), nothing from this car.
+        val quick = Drop(
+            id = "quick", fromCarId = DemoData.me.id, kind = DropKind.DECISION, topic = DropTopic.REST, title = "",
+            candidates = three, createdAtMillis = 0, deadlineMillis = 60_000, senderVotes = false,
+            votes = bots.associate { it.id to FakeCrewRepository.botChoice(it, three)!!.id },
+        )
+        val voters = quick.voterIds(cars)
+        assertTrue(VoteRules.isOver(quick, voters, nowMillis = 8_000)) // with 이모's answer, not after the minute
+        assertEquals(three.first().id, VoteRules.winner(quick, voters))
+    }
+
     @Test fun everyBotSaysYesToAProposal() {
         val one = places("속초 해수욕장")
         assertEquals(List(3) { one.single() }, bots.map { FakeCrewRepository.botChoice(it, one) })

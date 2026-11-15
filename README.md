@@ -61,7 +61,7 @@ CarDrop은 여러 대의 차량으로 이동하는 일행이 경로상 가까운
 | Pleos 음성 인식·안내 | `cardrop.useRealVoice=true`. 에뮬레이터를 시작할 때 호스트 마이크 입력을 켜고 앱에 마이크 권한을 허용합니다. |
 | 크루 위치 공유 | 지원 환경에서 위치 권한을 허용하면 크루 도식에 Pleos FusedLocation SDK 측정값을 우선 사용하고, 유효한 값이 없으면 Android GPS를 사용합니다. 앱 내 길안내는 Android 위치 정보를 사용합니다. |
 | 차량 데이터 조회 | `cardrop.useRealVehicle=true`. Pleos Vehicle SDK를 통해 차량이 제공하는 연료 잔량·주행 가능 거리 등을 조회합니다. 기본 모드에서는 DEMO로 연료 부족을 재현합니다. |
-| AI 의도 분석·추천 | `cardrop.claudeApiKey` 설정. 미설정 시 샘플 응답을 사용합니다. 현재 빌드는 키를 APK에 포함하므로 공유용 APK는 Claude 비밀 키를 비운 상태로 빌드합니다. |
+| AI 의도 분석·추천 | `cardrop.claudeApiKey` 설정. 미설정 시 샘플 응답을 사용합니다. 현재 빌드는 키를 APK에 포함하므로 공유용 APK에는 개발용 키 대신 사용 한도를 건 별도 키를 넣습니다. |
 | 지도·경로·장소 검색 | `cardrop.kakaoRestKey`는 카카오 경로 계산·장소 검색에, `cardrop.kakaoNativeKey`는 카카오 지도 표시에 사용합니다. 키가 없으면 OSRM 경로, MapLibre 지도, 앱에 등록된 장소 목록을 사용합니다. |
 | 두 차량 간 실제 투표 | 팀 Firebase 프로젝트의 설정 파일을 `app/google-services.json`에 두고 `cardrop.useRealCrew=true`로 설정합니다. Firebase 설정을 포함한 빌드를 두 기기에 설치하고 시작 화면에서 **실제 크루**와 서로 다른 차량을 선택합니다. 한 차량이 만든 크루에 다른 차량이 6자리 코드로 참여하면 제안·투표와 차량별 위치·연료 상태를 공유합니다. |
 
@@ -99,7 +99,7 @@ APK 파일이 GitHub 저장소의 파일 용량 제한(100 MB)을 넘어서, 저
 
 제출용 APK의 설정은 다음과 같습니다.
 
-- Claude API 키는 넣지 않았습니다. AI 의도 분석·추천은 샘플 응답을 사용합니다.
+- 심사용 Claude API 키(사용 한도가 있는 별도 키)를 넣었습니다. AI 의도 분석·추천·지역 퀴즈에 Claude를 사용하고, 호출이 실패하면 샘플 응답을 사용합니다.
 - 음성 안내와 음성 인식은 Pleos 음성 SDK를 사용합니다. 음성 인식을 쓰려면 에뮬레이터의 호스트 마이크 입력을 켭니다.
 - 지도, 경로 계산, 장소 검색에는 인터넷 연결이 필요합니다.
 

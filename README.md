@@ -85,7 +85,25 @@ python tools/drive_gps.py
 
 세부 판정·복구·검증 범위는 [안전점수 구현 계획](SAFETY_SCORE_PLAN.md)을 참고하세요. API 키·Firebase 설정·빌드 APK는 저장소에 포함하지 않습니다.
 
-## APK 파일 위치(제출 전 실제 APK 위치로 수정)
+## APK 파일 위치
+
+**제출용 release APK**: [GitHub Release `v0.1.0-contest`](https://github.com/Yoongon-Kim/CarDrop/releases/tag/v0.1.0-contest)의 `CarDrop_CarDrop_release.apk`
+
+APK 파일이 GitHub 저장소의 파일 용량 제한(100 MB)을 넘어서, 저장소의 `apk/` 폴더 대신 GitHub Release에 올렸습니다.
+
+### 제출용 APK로 실행하기
+
+1. **Pleos Connect v2.1.0** 에뮬레이터를 시작합니다.
+2. `adb install CarDrop_CarDrop_release.apk`로 설치한 뒤 CarDrop을 실행하고, 위치 권한을 허용합니다.
+3. 시작 화면에서 **봇 크루로 시작**을 누르면 에뮬레이터 한 대로 크루·추천·투표 흐름을 체험할 수 있습니다.
+
+제출용 APK의 설정은 다음과 같습니다.
+
+- Claude API 키는 넣지 않았습니다. AI 의도 분석·추천은 샘플 응답을 사용합니다.
+- 음성 안내와 음성 인식은 Pleos 음성 SDK를 사용합니다. 음성 인식을 쓰려면 에뮬레이터의 호스트 마이크 입력을 켭니다.
+- 지도, 경로 계산, 장소 검색에는 인터넷 연결이 필요합니다.
+
+### 소스에서 빌드한 테스트용 APK
 
 소스에서 직접 빌드한 **테스트용 APK**의 위치는 `app/build/outputs/apk/debug/app-debug.apk`입니다. 저장소 루트에서 아래 명령으로 생성할 수 있습니다.
 

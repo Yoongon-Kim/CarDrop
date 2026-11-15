@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import com.cardrop.drive.GeoPoint
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -226,18 +227,19 @@ fun DemoPanel(container: AppContainer, open: Boolean, onClose: () -> Unit) {
                         reason = "${DemoData.seoul.name.withRo()} 안내해요",
                     )
                 }
-                // The 시연 scenario (Member A, 2026-11-15): the car was heading to 달빛약국 when the crew's code came. Kakao
-                // finds the 달빛약국 nearest the car, so it is a real place; without a key or the internet, it says so.
+                // The 시연 scenario (Member A, 2026-11-15): the car was heading to a pharmacy when the crew's code came.
+                // Kakao finds the pharmacy nearest 신촌역 (a real place); without a key or the internet, it says so.
                 val scope = rememberCoroutineScope()
                 var pharmacyNote by remember { mutableStateOf<String?>(null) }
-                DemoButton("내 내비를 달빛약국으로 (03 들렀다 가기)") {
+                DemoButton("내 내비를 신촌 약국으로 (03 들렀다 가기)") {
                     scope.launch {
-                        val found = runCatching { container.placeSearch?.search("달빛약국", container.myPosition()) }.getOrNull()
-                            ?.map { it.place }?.firstOrNull { "달빛약국" in it.name }
+                        val near = GeoPoint(DemoData.seoul.lat, DemoData.seoul.lng)
+                        val found = runCatching { container.placeSearch?.search("신촌 약국", near) }.getOrNull()
+                            ?.map { it.place }?.firstOrNull { "약국" in it.name }
                         if (found == null) {
-                            pharmacyNote = "달빛약국을 찾지 못했어요 · 카카오 키와 인터넷이 있어야 해요"
+                            pharmacyNote = "신촌 근처 약국을 찾지 못했어요 · 카카오 키와 인터넷이 있어야 해요"
                         } else {
-                            pharmacyNote = "${found.name} · ${found.detail}".trimEnd(' ', '·')
+                            pharmacyNote = found.name
                             container.navigation.setRoute(found, waypoint = null, reason = "${found.name.withRo()} 안내해요")
                         }
                     }

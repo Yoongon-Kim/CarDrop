@@ -1,6 +1,7 @@
 CarDrop
 
 CarDrop은 여러 대의 차량으로 이동하는 일행이 경로상 가까운 경유지를 추천받고, 투표로 들를 곳을 정하며, 이동 중에도 서로 소식을 나누는 차량용 Social/Communication 앱입니다.
+<img width="1672" height="941" alt="Cardrop_16_9_banner2" src="https://github.com/user-attachments/assets/d6ed6fce-69fd-403d-a1d6-ebabd9ed99ca" />
 
 ## 빠른 실행
 

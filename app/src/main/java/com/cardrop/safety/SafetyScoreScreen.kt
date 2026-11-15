@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -275,21 +276,46 @@ private fun QualityLine(record: SafetyRecord) {
         fontSize = 12.sp, color = if (!record.rankEligible) CdColors.OrangeDark else CdColors.Green)
 }
 
+/**
+ * The crew's podium (Member A, 2026-11-15; it raised only 1위): the first three on steps, 2위 left, 1위 in the middle and
+ * highest, 3위 right and lowest, each step its own colour. A 4th car is in the list under it. Cars tied share a rank and
+ * so a step height.
+ */
 @Composable
 private fun SafetyPodium(rows: List<RankedSafetyCar>) {
-    val show = rows.take(4).let { if (it.size >= 3) listOf(it[1], it[0]) + it.drop(2) else it }
-    Row(Modifier.fillMaxWidth().height(230.dp), horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Bottom) {
+    val top = rows.take(3)
+    val show = when (top.size) {
+        3 -> listOf(top[1], top[0], top[2])
+        2 -> listOf(top[1], top[0])
+        else -> top
+    }
+    Row(Modifier.fillMaxWidth().height(250.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Bottom) {
         show.forEach { row ->
+            val step = PodiumStep.of(row.rank)
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (row.rank == 1) Icon(CdIcons.Trophy, null, tint = CdColors.Amber, modifier = Modifier.size(28.dp))
+                Icon(CdIcons.Trophy, null, tint = step.trophy, modifier = Modifier.size(if (row.rank == 1) 30.dp else 24.dp))
                 CarBadge(row.car, 48, bob = false)
-                Text(row.car.name, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Column(Modifier.fillMaxWidth().height(if (row.rank == 1) 112.dp else 82.dp).clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)).background(if (row.rank == 1) CdColors.Blue else CdColors.BlueLight),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Text("${row.rank}위", color = if (row.rank == 1) CdColors.White else CdColors.BlueDark, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("${row.peer?.score}점", color = if (row.rank == 1) CdColors.White else CdColors.BlueDark, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(row.car.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Column(
+                    Modifier.fillMaxWidth().height(step.height).clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)).background(step.block),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text("${row.rank}위", color = step.ink, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("${row.peer?.score}점", color = step.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+}
+
+/** One podium step: 1위 blue and highest with a gold trophy, 2위 light blue with silver, 3위 light orange with bronze. */
+private class PodiumStep(val height: Dp, val block: Color, val ink: Color, val trophy: Color) {
+    companion object {
+        fun of(rank: Int?): PodiumStep = when (rank) {
+            1 -> PodiumStep(124.dp, CdColors.Blue, CdColors.White, CdColors.Amber)
+            2 -> PodiumStep(92.dp, CdColors.BlueLight, CdColors.BlueDark, Color(0xFF9AA4B2))
+            else -> PodiumStep(66.dp, CdColors.OrangeLight, CdColors.OrangeDark, Color(0xFFC07A3A))
         }
     }
 }

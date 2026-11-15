@@ -1,6 +1,7 @@
 CarDrop은 여러 차에 나눠 탄 일행이 6자리 코드로 크루를 만들고, 주행 경로에서 함께 들를 곳을 투표로 정하며, 차량 간에 짧은 소식과 노래 정보를 주고받는 Pleos Connect용 차량 소통 앱입니다.
 <img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/8eee812e-e555-41a0-9e44-1c1978d7fc17" />
-![Uploading 앱 홈 화면(리드미).jpg…]()
+
+<img width="1492" height="1144" alt="앱 홈 화면(리드미)" src="https://github.com/user-attachments/assets/919f5e85-da4d-4c9f-ba30-02a749fc9e31" />
 
 
 
